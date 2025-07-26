@@ -33,6 +33,31 @@ class LLMOrchestrator {
         }
       });
     }
+
+    // Google Gemini Configuration
+    if (process.env.GOOGLE_API_KEY) {
+      this.providers.set('google', {
+        name: 'Google',
+        models: ['gemini-1.5-pro', 'gemini-1.5-flash'],
+        endpoint: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${process.env.GOOGLE_API_KEY}`,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+    }
+
+    // Cohere Configuration
+    if (process.env.COHERE_API_KEY) {
+      this.providers.set('cohere', {
+        name: 'Cohere',
+        models: ['command-r-plus', 'command-r', 'command'],
+        endpoint: 'https://api.cohere.ai/v1/chat',
+        headers: {
+          'Authorization': `Bearer ${process.env.COHERE_API_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      });
+    }
   }
 
   async executeQuery(provider, model, prompt, options = {}) {
@@ -44,7 +69,12 @@ class LLMOrchestrator {
     const requestBody = this.buildRequestBody(provider, model, prompt, options);
     
     try {
-      const response = await axios.post(providerConfig.endpoint, requestBody, {
+      // Special handling for Google Gemini endpoint
+      const endpoint = provider === 'google' 
+        ? `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GOOGLE_API_KEY}`
+        : providerConfig.endpoint;
+
+      const response = await axios.post(endpoint, requestBody, {
         headers: providerConfig.headers,
         timeout: options.timeout || 30000
       });
@@ -73,6 +103,27 @@ class LLMOrchestrator {
           messages: [{ role: 'user', content: prompt }]
         };
       
+      case 'google':
+        return {
+          contents: [{
+            parts: [{
+              text: prompt
+            }]
+          }],
+          generationConfig: {
+            temperature: options.temperature || 0.7,
+            maxOutputTokens: options.maxTokens || 1000
+          }
+        };
+      
+      case 'cohere':
+        return {
+          model,
+          message: prompt,
+          temperature: options.temperature || 0.7,
+          max_tokens: options.maxTokens || 1000
+        };
+      
       default:
         throw new Error(`Unsupported provider: ${provider}`);
     }
@@ -97,6 +148,26 @@ class LLMOrchestrator {
             prompt: responseData.usage.input_tokens,
             completion: responseData.usage.output_tokens,
             total: responseData.usage.input_tokens + responseData.usage.output_tokens
+          }
+        };
+      
+      case 'google':
+        return {
+          content: responseData.candidates[0].content.parts[0].text,
+          tokenUsage: {
+            prompt: responseData.usageMetadata?.promptTokenCount || 0,
+            completion: responseData.usageMetadata?.candidatesTokenCount || 0,
+            total: responseData.usageMetadata?.totalTokenCount || 0
+          }
+        };
+      
+      case 'cohere':
+        return {
+          content: responseData.text,
+          tokenUsage: {
+            prompt: responseData.meta?.tokens?.input_tokens || 0,
+            completion: responseData.meta?.tokens?.output_tokens || 0,
+            total: (responseData.meta?.tokens?.input_tokens || 0) + (responseData.meta?.tokens?.output_tokens || 0)
           }
         };
       
