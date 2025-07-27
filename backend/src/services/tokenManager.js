@@ -306,6 +306,35 @@ class TokenManager {
       throw new Error(`Failed to get token analytics: ${error.message}`);
     }
   }
+
+  // Estimate tokens for different operations
+  async estimateTokensForOperation(operationType, contentLength) {
+    try {
+      // Base token estimates for different operations
+      const baseEstimates = {
+        consensus: 8000,      // 3-phase LLM consensus
+        analysis: 3000,       // Single analysis
+        summary: 1500,        // Text summarization
+        translation: 2000,    // Language translation
+        qa: 2500             // Q&A operations
+      };
+
+      // Content length multiplier (rough estimate: 1 token ≈ 4 characters)
+      const contentTokens = Math.ceil(contentLength / 4);
+      const baseTokens = baseEstimates[operationType] || 3000;
+      
+      // Total estimate with some buffer (20%)
+      const estimatedTokens = Math.ceil((baseTokens + contentTokens) * 1.2);
+      
+      console.log(`📊 Token estimation: operation=${operationType}, content=${contentLength} chars, estimated=${estimatedTokens}`);
+      
+      return estimatedTokens;
+    } catch (error) {
+      console.error('Error estimating tokens:', error);
+      // Return conservative estimate if calculation fails
+      return 10000;
+    }
+  }
 }
 
 module.exports = new TokenManager(); 
