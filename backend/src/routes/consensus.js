@@ -13,11 +13,19 @@ router.post('/generate', async (req, res) => {
   try {
     const { topic, sources, options = {} } = req.body;
     
-    // Validate request
+    // Validate request with detailed logging
+    console.log('📥 Request body:', JSON.stringify(req.body, null, 2));
     const { error } = validateConsensusRequest(req.body);
     if (error) {
-      return res.status(400).json({ error: error.details[0].message });
+      console.log('❌ Validation error:', error.details[0].message);
+      console.log('🔍 Full error details:', error.details);
+      return res.status(400).json({ 
+        error: error.details[0].message,
+        field: error.details[0].path,
+        received: error.details[0].context
+      });
     }
+    console.log('✅ Validation passed!');
     
     // TESTING: Mock user for demo purposes
     req.user = { id: 'demo-user-123' };
@@ -77,8 +85,19 @@ router.post('/generate', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Consensus generation error:', error);
-    res.status(500).json({ error: 'Failed to generate consensus' });
+    console.error('💥 Consensus generation error:', error);
+    console.error('📍 Error stack:', error.stack);
+    console.error('🔍 Error details:', {
+      name: error.name,
+      message: error.message,
+      code: error.code,
+      status: error.status
+    });
+    res.status(500).json({ 
+      error: 'Failed to generate consensus',
+      message: error.message,
+      type: error.name
+    });
   }
 });
 
