@@ -90,7 +90,6 @@ module.exports = {
     },
   },
   plugins: [
-    require('@tailwindcss/forms'),
-    require('@tailwindcss/typography'),
+    // Removed @tailwindcss/forms and @tailwindcss/typography - not needed for basic setup
   ],
 } 
