@@ -28,58 +28,52 @@ function EnhancedConsensusForm() {
     }
   };
 
-  return (
-    <div className="max-w-4xl mx-auto p-6">
-      <div className="bg-white rounded-lg shadow-lg p-8">
-        <h2 className="text-3xl font-bold text-gray-900 mb-8">Generate Consensus Report</h2>
-        
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          <div>
-            <label htmlFor="topic" className="block text-sm font-medium text-gray-700 mb-2">
-              Question or Topic
-            </label>
-            <textarea
-              {...register('topic', { required: true })}
-              id="topic"
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Enter your question or topic for consensus analysis..."
-            />
-          </div>
+  return React.createElement('div', { className: 'max-w-4xl mx-auto p-6' },
+    React.createElement('div', { className: 'bg-white rounded-lg shadow-lg p-8' },
+      React.createElement('h2', { className: 'text-3xl font-bold text-gray-900 mb-8' }, 'Generate Consensus Report'),
+      
+      React.createElement('form', { onSubmit: handleSubmit(onSubmit), className: 'space-y-6' },
+        React.createElement('div', null,
+          React.createElement('label', { htmlFor: 'topic', className: 'block text-sm font-medium text-gray-700 mb-2' },
+            'Question or Topic'
+          ),
+          React.createElement('textarea', {
+            ...register('topic', { required: true }),
+            id: 'topic',
+            rows: 3,
+            className: 'w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500',
+            placeholder: 'Enter your question or topic for consensus analysis...'
+          })
+        ),
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Sources (Optional)
-            </label>
-            <textarea
-              {...register('sources.0')}
-              rows={2}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Add a source or reference..."
-            />
-          </div>
+        React.createElement('div', null,
+          React.createElement('label', { className: 'block text-sm font-medium text-gray-700 mb-2' },
+            'Sources (Optional)'
+          ),
+          React.createElement('textarea', {
+            ...register('sources.0'),
+            rows: 2,
+            className: 'w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500',
+            placeholder: 'Add a source or reference...'
+          })
+        ),
 
-          <button
-            type="submit"
-            disabled={isGenerating}
-            className="w-full bg-blue-600 text-white py-3 px-6 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {isGenerating ? 'Generating Consensus...' : 'Generate Consensus Report'}
-          </button>
-        </form>
+        React.createElement('button', {
+          type: 'submit',
+          disabled: isGenerating,
+          className: 'w-full bg-blue-600 text-white py-3 px-6 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
+        }, isGenerating ? 'Generating Consensus...' : 'Generate Consensus Report')
+      ),
 
-        {result && (
-          <div className="mt-8 p-6 bg-gray-50 rounded-lg">
-            <h3 className="text-xl font-semibold mb-4">Consensus Report</h3>
-            <p className="text-gray-700 mb-4">{result.consensus}</p>
-            <div className="flex justify-between text-sm text-gray-600">
-              <span>Confidence: {(result.confidence * 100).toFixed(1)}%</span>
-              <span>Tokens Used: {result.totalTokens}</span>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+      result && React.createElement('div', { className: 'mt-8 p-6 bg-gray-50 rounded-lg' },
+        React.createElement('h3', { className: 'text-xl font-semibold mb-4' }, 'Consensus Report'),
+        React.createElement('p', { className: 'text-gray-700 mb-4' }, result.consensus),
+        React.createElement('div', { className: 'flex justify-between text-sm text-gray-600' },
+          React.createElement('span', null, `Confidence: ${(result.confidence * 100).toFixed(1)}%`),
+          React.createElement('span', null, `Tokens Used: ${result.totalTokens}`)
+        )
+      )
+    )
   );
 }
 
