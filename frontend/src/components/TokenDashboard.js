@@ -1,348 +1,44 @@
-import React, { useState } from 'react';
-import { useQuery } from 'react-query';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell
-} from 'recharts';
-import { 
-  Zap, 
-  TrendingUp, 
-  Calendar, 
-  Download,
-  AlertTriangle,
-  CheckCircle,
-  Clock
-} from 'lucide-react';
-import { apiHelpers } from '../config/api';
-
-// API functions using the new API configuration
-const fetchTokenUsage = async () => {
-  try {
-    const response = await apiHelpers.getTokenUsage();
-    return response.data;
-  } catch (error) {
-    console.warn('API call failed, using mock data:', error);
-    // Fallback to mock data for development
-    return {
-      used: 4850,
-      limit: 10000,
-      remaining: 5150,
-      tier: 'basic',
-      status: 'normal',
-      nextReset: '2024-02-01T00:00:00Z',
-      overage: 0
-    };
-  }
-};
-
-const fetchUsageHistory = async () => {
-  try {
-    const response = await apiHelpers.getTokenHistory();
-    return response.data;
-  } catch (error) {
-    console.warn('API call failed, using mock data:', error);
-    // Fallback to mock data for development
-    return [
-      { date: '2024-01-24', tokens: 850, cost: 0.85 },
-      { date: '2024-01-25', tokens: 1200, cost: 1.20 },
-      { date: '2024-01-26', tokens: 950, cost: 0.95 },
-      { date: '2024-01-27', tokens: 1100, cost: 1.10 },
-      { date: '2024-01-28', tokens: 800, cost: 0.80 },
-      { date: '2024-01-29', tokens: 1300, cost: 1.30 },
-      { date: '2024-01-30', tokens: 650, cost: 0.65 }
-    ];
-  }
-};
+import React from 'react';
 
 function TokenDashboard() {
-  const [selectedPeriod, setSelectedPeriod] = useState('7d');
-
-  const { data: usage, isLoading: usageLoading } = useQuery(
-    'tokenUsage',
-    fetchTokenUsage,
-    { refetchInterval: 30000 } // Refetch every 30 seconds
-  );
-
-  const { data: history, isLoading: historyLoading } = useQuery(
-    ['usageHistory', selectedPeriod],
-    fetchUsageHistory
-  );
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'low': return 'success';
-      case 'moderate': return 'primary';
-      case 'warning': return 'warning';
-      case 'critical': return 'error';
-      case 'exceeded': return 'error';
-      default: return 'gray';
-    }
-  };
-
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'low':
-      case 'moderate':
-        return <CheckCircle className="w-5 h-5" />;
-      case 'warning':
-      case 'critical':
-        return <AlertTriangle className="w-5 h-5" />;
-      case 'exceeded':
-        return <AlertTriangle className="w-5 h-5" />;
-      default:
-        return <Clock className="w-5 h-5" />;
-    }
-  };
-
-  const pieData = usage ? [
-    { name: 'Used', value: usage.used, color: '#3b82f6' },
-    { name: 'Remaining', value: usage.remaining, color: '#e5e7eb' }
-  ] : [];
-
   return (
-    <div className="container-wide space-y-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Token Dashboard</h1>
-          <p className="text-gray-600 mt-2">
-            Monitor your token usage and manage your subscription
-          </p>
-        </div>
+    <div className="max-w-6xl mx-auto p-6">
+      <div className="bg-white rounded-lg shadow-lg p-8">
+        <h2 className="text-3xl font-bold text-gray-900 mb-8">Token Dashboard</h2>
         
-        <div className="flex items-center space-x-3">
-          <select
-            value={selectedPeriod}
-            onChange={(e) => setSelectedPeriod(e.target.value)}
-            className="form-input"
-          >
-            <option value="7d">Last 7 days</option>
-            <option value="30d">Last 30 days</option>
-            <option value="90d">Last 90 days</option>
-          </select>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-blue-50 p-6 rounded-lg">
+            <h3 className="text-lg font-semibold text-blue-900 mb-2">Available Tokens</h3>
+            <p className="text-3xl font-bold text-blue-600">25,000</p>
+            <p className="text-sm text-blue-700">Lite Plan</p>
+          </div>
           
-          <button className="btn btn-secondary">
-            <Download className="w-4 h-4 mr-2" />
-            Export Report
-          </button>
-        </div>
-      </div>
-
-      {/* Usage Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <UsageCard
-          title="Current Usage"
-          value={usage ? `${usage.used.toLocaleString()}` : '--'}
-          subtitle={usage ? `of ${usage.limit.toLocaleString()} tokens` : 'Loading...'}
-          icon={<Zap className="w-6 h-6" />}
-          color="primary"
-          loading={usageLoading}
-        />
-        
-        <UsageCard
-          title="Remaining Tokens"
-          value={usage ? `${usage.remaining.toLocaleString()}` : '--'}
-          subtitle={usage ? `${(100 - usage.usagePercentage).toFixed(1)}% available` : 'Loading...'}
-          icon={<TrendingUp className="w-6 h-6" />}
-          color="success"
-          loading={usageLoading}
-        />
-        
-        <UsageCard
-          title="Subscription Tier"
-          value={usage ? usage.tier.toUpperCase() : '--'}
-          subtitle="Current plan"
-          icon={getStatusIcon(usage?.status)}
-          color={getStatusColor(usage?.status)}
-          loading={usageLoading}
-        />
-        
-        <UsageCard
-          title="Next Reset"
-          value="24 days"
-          subtitle="Jan 1, 2024"
-          icon={<Calendar className="w-6 h-6" />}
-          color="gray"
-          loading={usageLoading}
-        />
-      </div>
-
-      {/* Usage Progress */}
-      {usage && (
-        <div className="card">
-          <div className="card-body">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">
-                Token Usage Progress
-              </h3>
-              <span className={`badge badge-${getStatusColor(usage.status)}`}>
-                {usage.status.charAt(0).toUpperCase() + usage.status.slice(1)}
-              </span>
-            </div>
-            
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">
-                  {usage.used.toLocaleString()} / {usage.limit.toLocaleString()} tokens
-                </span>
-                <span className="font-medium">
-                  {usage.usagePercentage.toFixed(1)}%
-                </span>
-              </div>
-              
-              <div className="progress">
-                <div
-                  className={`progress-${getStatusColor(usage.status)}`}
-                  style={{ width: `${Math.min(usage.usagePercentage, 100)}%` }}
-                />
-              </div>
-              
-              {usage.usagePercentage > 75 && (
-                <div className="flex items-center mt-3 p-3 bg-warning-50 border border-warning-200 rounded-md">
-                  <AlertTriangle className="w-5 h-5 text-warning-600 mr-2" />
-                  <div className="text-sm">
-                    <p className="text-warning-800 font-medium">
-                      High Usage Alert
-                    </p>
-                    <p className="text-warning-700">
-                      You've used {usage.usagePercentage.toFixed(1)}% of your monthly tokens. 
-                      Consider upgrading your plan to avoid overage charges.
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
+          <div className="bg-green-50 p-6 rounded-lg">
+            <h3 className="text-lg font-semibold text-green-900 mb-2">Tokens Used</h3>
+            <p className="text-3xl font-bold text-green-600">2,430</p>
+            <p className="text-sm text-green-700">This month</p>
           </div>
-        </div>
-      )}
-
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Usage Chart */}
-        <div className="lg:col-span-2 card">
-          <div className="card-body">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Daily Token Usage
-            </h3>
-            
-            {historyLoading ? (
-              <div className="h-64 flex items-center justify-center">
-                <div className="spinner w-8 h-8" />
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={history}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey="date" 
-                    tickFormatter={(value) => new Date(value).toLocaleDateString()}
-                  />
-                  <YAxis />
-                  <Tooltip 
-                    labelFormatter={(value) => new Date(value).toLocaleDateString()}
-                    formatter={(value, name) => [
-                      `${value.toLocaleString()} ${name}`, 
-                      name === 'tokens' ? 'Tokens' : 'Requests'
-                    ]}
-                  />
-                  <Bar dataKey="tokens" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
+          
+          <div className="bg-purple-50 p-6 rounded-lg">
+            <h3 className="text-lg font-semibold text-purple-900 mb-2">Reports Generated</h3>
+            <p className="text-3xl font-bold text-purple-600">3</p>
+            <p className="text-sm text-purple-700">This month</p>
           </div>
         </div>
 
-        {/* Usage Distribution */}
-        <div className="card">
-          <div className="card-body">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Usage Distribution
-            </h3>
-            
-            {usageLoading ? (
-              <div className="h-64 flex items-center justify-center">
-                <div className="spinner w-8 h-8" />
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <ResponsiveContainer width="100%" height={200}>
-                  <PieChart>
-                    <Pie
-                      data={pieData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
-                      paddingAngle={5}
-                      dataKey="value"
-                    >
-                      {pieData.map((entry, index) => (
-                        <Cell key={index} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value) => `${value.toLocaleString()} tokens`} />
-                  </PieChart>
-                </ResponsiveContainer>
-                
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 bg-primary-600 rounded-full mr-2" />
-                      <span>Used</span>
-                    </div>
-                    <span className="font-medium">
-                      {usage?.used.toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 bg-gray-300 rounded-full mr-2" />
-                      <span>Remaining</span>
-                    </div>
-                    <span className="font-medium">
-                      {usage?.remaining.toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
+        <div className="bg-gray-50 p-6 rounded-lg">
+          <h3 className="text-xl font-semibold mb-4">Token Usage Overview</h3>
+          <p className="text-gray-600">
+            Your 3-phase consensus system is ready! Each report uses approximately 8,000-12,000 tokens 
+            across GPT-4o, Claude 3.5 Sonnet, Gemini 1.5 Pro, and Command R+.
+          </p>
+          <div className="mt-4 bg-gray-200 rounded-full h-2">
+            <div 
+              className="bg-blue-600 h-2 rounded-full" 
+              style={{ width: '9.7%' }}
+            ></div>
           </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Usage Card Component
-function UsageCard({ title, value, subtitle, icon, color, loading }) {
-  return (
-    <div className="card">
-      <div className="card-body">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-gray-600 mb-1">{title}</p>
-            {loading ? (
-              <div className="skeleton h-8 w-24 mb-2" />
-            ) : (
-              <p className="text-2xl font-bold text-gray-900 mb-1">{value}</p>
-            )}
-            {loading ? (
-              <div className="skeleton h-4 w-32" />
-            ) : (
-              <p className="text-sm text-gray-500">{subtitle}</p>
-            )}
-          </div>
-          <div className={`text-${color}-600`}>
-            {icon}
-          </div>
+          <p className="text-sm text-gray-500 mt-2">9.7% of monthly allocation used</p>
         </div>
       </div>
     </div>
