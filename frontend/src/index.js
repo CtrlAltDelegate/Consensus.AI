@@ -1,15 +1,26 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-
-const App = () => {
-  return React.createElement('div', 
-    { style: { padding: '20px', fontFamily: 'Arial, sans-serif' } },
-    React.createElement('h1', null, 'Consensus.AI'),
-    React.createElement('p', null, 'Frontend successfully deployed!'),
-    React.createElement('p', null, 'Backend URL: ' + (import.meta.env.VITE_API_URL || 'Not configured')),
-    React.createElement('small', null, 'Build time: ' + new Date().toISOString())
-  );
-};
+import { BrowserRouter } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
+import App from './App';
+import './index.css';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(React.createElement(App)); 
+
+root.render(
+  React.createElement(React.StrictMode, null,
+    React.createElement(BrowserRouter, null,
+      React.createElement(App),
+      React.createElement(Toaster, {
+        position: 'top-right',
+        toastOptions: {
+          duration: 4000,
+          style: {
+            background: '#363636',
+            color: '#fff',
+          },
+        }
+      })
+    )
+  )
+); 
