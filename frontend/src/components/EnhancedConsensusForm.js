@@ -22,8 +22,9 @@ function EnhancedConsensusForm() {
         topic: data.topic,
         sources: data.sources.filter(source => source && source.trim() !== ''),
         options: {
-          includeConfidence: true,
-          includeSources: true
+          includeMetadata: true,
+          generatePdf: false,
+          emailReport: false
         }
       };
       
