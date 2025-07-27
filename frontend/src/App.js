@@ -1,11 +1,10 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
 
 // Components
 import TokenDashboard from './components/TokenDashboard';
-import SubscriptionManagement from './components/SubscriptionManagement';
 import EnhancedConsensusForm from './components/EnhancedConsensusForm';
 
 // Initialize Stripe
@@ -16,10 +15,10 @@ function App() {
     <div className="min-h-screen bg-gray-50">
       {/* Navigation Header */}
       <nav className="bg-white shadow-sm border-b border-gray-200">
-        <div className="container-wide">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
-              <h1 className="text-xl font-bold text-gradient">
+              <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                 Consensus.AI
               </h1>
             </div>
@@ -27,8 +26,7 @@ function App() {
             <div className="flex items-center space-x-4">
               <NavLink to="/dashboard">Dashboard</NavLink>
               <NavLink to="/consensus">Generate Consensus</NavLink>
-              <NavLink to="/subscription">Subscription</NavLink>
-              <button className="btn btn-primary btn-sm">
+              <button className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition-colors">
                 Sign Out
               </button>
             </div>
@@ -43,7 +41,6 @@ function App() {
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<TokenDashboard />} />
             <Route path="/consensus" element={<EnhancedConsensusForm />} />
-            <Route path="/subscription" element={<SubscriptionManagement />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Elements>
@@ -51,7 +48,7 @@ function App() {
 
       {/* Footer */}
       <footer className="bg-white border-t border-gray-200 mt-16">
-        <div className="container-wide py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-between">
             <div className="text-sm text-gray-500">
               © 2024 Consensus.AI. All rights reserved.
@@ -76,39 +73,37 @@ function App() {
 
 // Navigation Link Component
 function NavLink({ to, children }) {
-  const location = window.location.pathname;
-  const isActive = location === to;
+  const location = useLocation();
+  const isActive = location.pathname === to;
   
   return (
-    <a
-      href={to}
+    <Link
+      to={to}
       className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
         isActive
-          ? 'bg-primary-100 text-primary-700'
-          : 'text-gray-700 hover:text-primary-600 hover:bg-gray-100'
+          ? 'bg-blue-100 text-blue-700'
+          : 'text-gray-700 hover:text-blue-600 hover:bg-gray-100'
       }`}
     >
       {children}
-    </a>
+    </Link>
   );
 }
 
 // 404 Not Found Component
 function NotFound() {
   return (
-    <div className="container-narrow text-center py-16">
-      <div className="max-w-md mx-auto">
-        <div className="text-6xl font-bold text-gray-300 mb-4">404</div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-4">
-          Page Not Found
-        </h1>
-        <p className="text-gray-600 mb-8">
-          The page you're looking for doesn't exist or has been moved.
-        </p>
-        <a href="/dashboard" className="btn btn-primary">
-          Go to Dashboard
-        </a>
-      </div>
+    <div className="max-w-md mx-auto text-center py-16">
+      <div className="text-6xl font-bold text-gray-300 mb-4">404</div>
+      <h1 className="text-2xl font-bold text-gray-900 mb-4">
+        Page Not Found
+      </h1>
+      <p className="text-gray-600 mb-8">
+        The page you're looking for doesn't exist or has been moved.
+      </p>
+      <Link to="/dashboard" className="bg-blue-600 text-white px-6 py-3 rounded-md font-medium hover:bg-blue-700 transition-colors">
+        Go to Dashboard
+      </Link>
     </div>
   );
 }
