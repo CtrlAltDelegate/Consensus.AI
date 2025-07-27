@@ -1,14 +1,9 @@
 import React from 'react';
 import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
-import { loadStripe } from '@stripe/stripe-js';
-import { Elements } from '@stripe/react-stripe-js';
 
 // Components
 import TokenDashboard from './components/TokenDashboard';
 import EnhancedConsensusForm from './components/EnhancedConsensusForm';
-
-// Initialize Stripe
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 function App() {
   return (
@@ -36,14 +31,12 @@ function App() {
 
       {/* Main Content */}
       <main className="py-8">
-        <Elements stripe={stripePromise}>
-          <Routes>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/dashboard" element={<TokenDashboard />} />
-            <Route path="/consensus" element={<EnhancedConsensusForm />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </Elements>
+        <Routes>
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/dashboard" element={<TokenDashboard />} />
+          <Route path="/consensus" element={<EnhancedConsensusForm />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
       </main>
 
       {/* Footer */}
