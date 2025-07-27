@@ -3,14 +3,14 @@ const { calculateTokenUsage } = require('../utils/tokenCalculator');
 
 class ConsensusEngine {
   constructor() {
-    // Define the 3+1 LLM architecture
-    this.initialAnalysisLLMs = [
-      { provider: 'openai', model: 'gpt-4', name: 'GPT-4' },
-      { provider: 'anthropic', model: 'claude-3-sonnet-20240229', name: 'Claude-3-Sonnet' },
+    // Define the LLM architecture for 3-phase workflow
+    this.draftingLLMs = [
+      { provider: 'openai', model: 'gpt-4o', name: 'GPT-4o' },
+      { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet' },
       { provider: 'google', model: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro' }
     ];
     
-    this.consensusReviewer = {
+    this.arbiterLLM = {
       provider: 'cohere',
       model: 'command-r-plus',
       name: 'Command R+'
@@ -19,31 +19,45 @@ class ConsensusEngine {
 
   async generateConsensus(topic, sources, options = {}) {
     try {
-      console.log('🚀 Starting 4-LLM consensus generation...');
+      console.log('🚀 Starting 3-phase consensus generation...');
       
-      // Step 1: Generate initial reports from 3 LLMs
-      const initialReports = await this.generateInitialReports(topic, sources);
-      console.log(`✅ Generated ${initialReports.length} initial reports`);
+      // Phase 1: Independent Drafting
+      console.log('📝 Phase 1: Independent Drafting...');
+      const initialDrafts = await this.phase1_IndependentDrafting(topic, sources);
+      console.log(`✅ Phase 1 Complete: ${initialDrafts.length} independent drafts generated`);
       
-      // Step 2: Use Command R+ to review all reports and generate final consensus
-      const finalConsensus = await this.generateFinalConsensus(topic, sources, initialReports);
-      console.log('✅ Generated final consensus with Command R+');
+      // Phase 2: Peer Review
+      console.log('🔍 Phase 2: Peer Review...');
+      const peerReviews = await this.phase2_PeerReview(topic, initialDrafts);
+      console.log(`✅ Phase 2 Complete: ${peerReviews.length} peer reviews generated`);
+      
+      // Phase 3: Final Arbitration
+      console.log('⚖️ Phase 3: Final Arbitration...');
+      const finalConsensus = await this.phase3_FinalArbitration(topic, sources, initialDrafts, peerReviews);
+      console.log('✅ Phase 3 Complete: Final consensus report generated');
       
       // Calculate total token usage
-      const totalTokens = [...initialReports, finalConsensus].reduce((sum, report) => sum + (report.tokenUsage?.total || 0), 0);
+      const allResponses = [...initialDrafts, ...peerReviews, finalConsensus];
+      const totalTokens = allResponses.reduce((sum, response) => sum + (response.tokenUsage?.total || 0), 0);
       
       return {
         consensus: finalConsensus.content,
-        confidence: this.calculateConfidence(initialReports, finalConsensus),
-        reports: {
-          initial: initialReports.map(r => ({
-            provider: r.provider,
-            model: r.model,
-            name: r.name,
+        confidence: this.calculateConfidence(initialDrafts, peerReviews, finalConsensus),
+        phases: {
+          phase1_drafts: initialDrafts.map(d => ({
+            provider: d.provider,
+            model: d.model,
+            name: d.name,
+            content: d.content,
+            tokenUsage: d.tokenUsage
+          })),
+          phase2_reviews: peerReviews.map(r => ({
+            reviewer: r.reviewer,
+            reviewedModel: r.reviewedModel,
             content: r.content,
             tokenUsage: r.tokenUsage
           })),
-          final: {
+          phase3_consensus: {
             provider: finalConsensus.provider,
             model: finalConsensus.model,
             name: finalConsensus.name,
@@ -56,7 +70,8 @@ class ConsensusEngine {
           topic,
           sourcesCount: sources.length,
           processingTime: Date.now(),
-          llmsUsed: [...this.initialAnalysisLLMs, this.consensusReviewer].map(llm => llm.name)
+          llmsUsed: [...this.draftingLLMs, this.arbiterLLM].map(llm => llm.name),
+          workflow: '3-phase'
         }
       };
     } catch (error) {
@@ -65,29 +80,30 @@ class ConsensusEngine {
     }
   }
 
-  async generateInitialReports(topic, sources) {
-    const prompt = this.buildInitialAnalysisPrompt(topic, sources);
+  // PHASE 1: Independent Drafting
+  async phase1_IndependentDrafting(topic, sources) {
+    const prompt = this.buildDraftingPrompt(topic, sources);
     
-    const queries = this.initialAnalysisLLMs.map(llm => ({
+    const queries = this.draftingLLMs.map(llm => ({
       provider: llm.provider,
       model: llm.model,
       prompt,
-      options: { maxTokens: 1500, temperature: 0.7 }
+      options: { maxTokens: 2000, temperature: 0.7 }
     }));
 
     try {
       const responses = await llmOrchestrator.runParallelQueries(queries);
       
       return responses.map((response, index) => {
-        const llm = this.initialAnalysisLLMs[index];
+        const llm = this.draftingLLMs[index];
         
         if (response.error) {
-          console.warn(`⚠️ ${llm.name} failed:`, response.error);
+          console.warn(`⚠️ ${llm.name} drafting failed:`, response.error);
           return {
             provider: llm.provider,
             model: llm.model,
             name: llm.name,
-            content: `Error: ${response.error}`,
+            content: `Error in drafting phase: ${response.error}`,
             tokenUsage: { total: 0 },
             error: true
           };
@@ -102,126 +118,218 @@ class ConsensusEngine {
         };
       });
     } catch (error) {
-      throw new Error(`Initial reports generation failed: ${error.message}`);
+      throw new Error(`Phase 1 (Independent Drafting) failed: ${error.message}`);
     }
   }
 
-  async generateFinalConsensus(topic, sources, initialReports) {
-    const prompt = this.buildConsensusReviewPrompt(topic, sources, initialReports);
+  // PHASE 2: Peer Review
+  async phase2_PeerReview(topic, initialDrafts) {
+    const successfulDrafts = initialDrafts.filter(draft => !draft.error);
+    const allReviews = [];
+
+    // Each model reviews the other models' drafts
+    for (const reviewer of successfulDrafts) {
+      const otherDrafts = successfulDrafts.filter(draft => draft.name !== reviewer.name);
+      
+      for (const draftToReview of otherDrafts) {
+        const reviewPrompt = this.buildPeerReviewPrompt(topic, draftToReview, reviewer.name);
+        
+        try {
+          const response = await llmOrchestrator.executeQuery(
+            reviewer.provider,
+            reviewer.model,
+            reviewPrompt,
+            { maxTokens: 1000, temperature: 0.6 }
+          );
+          
+          allReviews.push({
+            reviewer: reviewer.name,
+            reviewedModel: draftToReview.name,
+            content: response.content,
+            tokenUsage: response.tokenUsage
+          });
+        } catch (error) {
+          console.warn(`⚠️ ${reviewer.name} failed to review ${draftToReview.name}:`, error.message);
+          allReviews.push({
+            reviewer: reviewer.name,
+            reviewedModel: draftToReview.name,
+            content: `Review failed: ${error.message}`,
+            tokenUsage: { total: 0 },
+            error: true
+          });
+        }
+      }
+    }
+
+    return allReviews;
+  }
+
+  // PHASE 3: Final Arbitration
+  async phase3_FinalArbitration(topic, sources, initialDrafts, peerReviews) {
+    const arbitrationPrompt = this.buildArbitrationPrompt(topic, sources, initialDrafts, peerReviews);
     
     try {
       const response = await llmOrchestrator.executeQuery(
-        this.consensusReviewer.provider,
-        this.consensusReviewer.model,
-        prompt,
-        { maxTokens: 2000, temperature: 0.5 }
+        this.arbiterLLM.provider,
+        this.arbiterLLM.model,
+        arbitrationPrompt,
+        { maxTokens: 3000, temperature: 0.5 }
       );
       
       return {
-        provider: this.consensusReviewer.provider,
-        model: this.consensusReviewer.model,
-        name: this.consensusReviewer.name,
+        provider: this.arbiterLLM.provider,
+        model: this.arbiterLLM.model,
+        name: this.arbiterLLM.name,
         content: response.content,
         tokenUsage: response.tokenUsage
       };
     } catch (error) {
-      throw new Error(`Final consensus generation failed: ${error.message}`);
+      throw new Error(`Phase 3 (Final Arbitration) failed: ${error.message}`);
     }
   }
 
-  buildInitialAnalysisPrompt(topic, sources) {
-    return `
-You are an expert analyst tasked with providing a comprehensive analysis of the given topic and sources.
+  buildDraftingPrompt(topic, sources) {
+    return `You are an expert analyst providing an independent, comprehensive response to a complex question.
 
-**Topic:** ${topic}
+**Question/Topic:** ${topic}
 
-**Sources to analyze:**
+**Sources to consider:**
 ${sources.map((source, index) => `${index + 1}. ${source}`).join('\n')}
 
 **Instructions:**
-1. Carefully analyze all provided sources
-2. Identify key themes, arguments, and perspectives
-3. Note any contradictions or agreements between sources
-4. Provide your independent analysis and insights
-5. Be objective and evidence-based in your assessment
-6. Structure your response clearly with main points and supporting evidence
+- Provide a thorough, well-reasoned response to the question
+- Draw insights from the provided sources where relevant
+- Use your expertise to add context and analysis beyond the sources
+- Be clear, logical, and evidence-based
+- Structure your response with clear sections and arguments
+- Aim for 1000-1500 words
 
-**Your analysis should be thorough but concise (aim for 800-1200 words).**
-
-Please provide your analysis:
-`;
+**Your independent analysis:**`;
   }
 
-  buildConsensusReviewPrompt(topic, sources, initialReports) {
-    const reportsSection = initialReports.map((report, index) => {
-      if (report.error) {
-        return `**${report.name}:** [Analysis unavailable due to error: ${report.content}]`;
-      }
-      return `**${report.name} Analysis:**\n${report.content}`;
-    }).join('\n\n---\n\n');
+  buildPeerReviewPrompt(topic, draftToReview, reviewerName) {
+    return `You are ${reviewerName}, conducting a peer review of another AI model's response to the same question.
 
-    return `
-You are a senior analyst tasked with reviewing multiple AI analyses and creating a comprehensive consensus report.
+**Original Question:** ${topic}
 
-**Topic:** ${topic}
+**Response to Review:**
+${draftToReview.content}
+
+**Your task is to provide a structured critique using this format:**
+
+**SUMMARY:** (2-3 sentences summarizing the peer's response)
+
+**STRENGTHS:**
+- Clarity and organization
+- Depth of analysis  
+- Use of evidence/citations
+- Logical reasoning
+- Coverage of key points
+
+**WEAKNESSES/BLIND SPOTS:**
+- Missing perspectives or considerations
+- Logical gaps or inconsistencies
+- Areas lacking sufficient evidence
+- Unclear or confusing sections
+
+**SUGGESTIONS FOR IMPROVEMENT:**
+- Specific recommendations to strengthen the response
+- Additional angles or perspectives to consider
+- Ways to better structure or present the information
+
+Keep your review constructive, specific, and focused on improving the quality of analysis.`;
+  }
+
+  buildArbitrationPrompt(topic, sources, initialDrafts, peerReviews) {
+    const draftsSection = initialDrafts.filter(d => !d.error).map(draft => 
+      `**${draft.name} Response:**\n${draft.content}`
+    ).join('\n\n---\n\n');
+
+    const reviewsSection = peerReviews.filter(r => !r.error).map(review =>
+      `**${review.reviewer} reviewing ${review.reviewedModel}:**\n${review.content}`
+    ).join('\n\n---\n\n');
+
+    return `You are Command R+, the final arbiter in a multi-LLM consensus process. Your task is to synthesize all previous responses and reviews into a definitive, high-quality consensus report.
+
+**Original Question:** ${topic}
 
 **Original Sources:**
 ${sources.map((source, index) => `${index + 1}. ${source}`).join('\n')}
 
-**AI Analyses to Review:**
+**PHASE 1 - INDEPENDENT RESPONSES:**
+${draftsSection}
 
-${reportsSection}
+**PHASE 2 - PEER REVIEWS:**
+${reviewsSection}
 
-**Your Task:**
-As the final reviewer, create a comprehensive consensus report that:
+**Your task as the arbiter:**
+Create a comprehensive, authoritative consensus report that synthesizes the best insights from all responses while addressing the critiques raised in the peer reviews.
 
-1. **Synthesizes** the key insights from all analyses
-2. **Identifies** areas of agreement and disagreement between the analyses
-3. **Evaluates** the strength of evidence and arguments presented
-4. **Provides** your own expert assessment of the topic
-5. **Concludes** with clear, actionable insights
+**Required structure:**
+## Summary
+(3-4 sentences capturing the essence of the consensus)
 
-**Structure your consensus report as follows:**
-- **Executive Summary** (2-3 sentences)
-- **Key Findings** (main points with evidence)
-- **Areas of Consensus** (where analyses agree)
-- **Conflicting Perspectives** (where analyses differ, with your assessment)
-- **Expert Conclusion** (your synthesized judgment)
-- **Recommendations** (if applicable)
+## Key Findings  
+(Main insights with supporting evidence)
 
-**Aim for 1000-1500 words. Be authoritative, balanced, and evidence-based.**
+## Reasoning Process
+(How you arrived at these conclusions, considering all perspectives)
 
-Your consensus report:
-`;
+## Final Answer
+(Clear, definitive response to the original question)
+
+## Confidence Assessment
+(Your confidence level in this consensus and why)
+
+**Guidelines:**
+- Be authoritative and definitive while acknowledging uncertainty where appropriate
+- Integrate the strongest points from each response
+- Address weaknesses identified in peer reviews
+- Provide a cohesive, well-structured final answer
+- Aim for 1500-2000 words
+- Focus on delivering maximum value to the user
+
+**Consensus Report:**`;
   }
 
-  calculateConfidence(initialReports, finalConsensus) {
-    // Base confidence on successful reports and consensus quality
-    const successfulReports = initialReports.filter(report => !report.error).length;
-    const baseConfidence = successfulReports / this.initialAnalysisLLMs.length;
+  calculateConfidence(initialDrafts, peerReviews, finalConsensus) {
+    const successfulDrafts = initialDrafts.filter(d => !d.error).length;
+    const successfulReviews = peerReviews.filter(r => !r.error).length;
+    const maxPossibleReviews = successfulDrafts * (successfulDrafts - 1); // Each reviews all others
     
-    // Boost confidence if final consensus was generated successfully
-    const finalBoost = finalConsensus && !finalConsensus.error ? 0.2 : 0;
+    // Base confidence on successful completions
+    const draftingSuccess = successfulDrafts / this.draftingLLMs.length;
+    const reviewSuccess = maxPossibleReviews > 0 ? successfulReviews / maxPossibleReviews : 0;
+    const arbitrationSuccess = finalConsensus && !finalConsensus.error ? 1 : 0;
     
-    // Calculate final confidence (cap at 0.95)
-    return Math.min(0.95, baseConfidence * 0.8 + finalBoost);
+    // Weighted confidence score
+    const confidence = (draftingSuccess * 0.4) + (reviewSuccess * 0.3) + (arbitrationSuccess * 0.3);
+    
+    return Math.min(0.98, Math.max(0.1, confidence));
   }
 
   async estimateTokenUsage(topic, sources) {
-    // Estimate tokens for the full 4-LLM process
-    const initialPrompt = this.buildInitialAnalysisPrompt(topic, sources);
-    const estimatedInitialTokens = calculateTokenUsage(initialPrompt, '') * 3; // 3 LLMs
+    // Estimate tokens for the complete 3-phase process
+    const draftingPrompt = this.buildDraftingPrompt(topic, sources);
+    const estimatedDraftingTokens = calculateTokenUsage(draftingPrompt, '') * 3; // 3 LLMs
     
-    // Estimate final consensus tokens (including initial reports in prompt)
-    const estimatedReportsLength = 1000 * 3; // ~1000 words per report
-    const finalPromptEstimate = this.buildConsensusReviewPrompt(topic, sources, []).length + estimatedReportsLength;
-    const estimatedFinalTokens = Math.ceil(finalPromptEstimate / 4); // Rough token estimate
+    // Estimate peer review tokens (each model reviews 2 others)
+    const avgDraftLength = 1500; // words
+    const reviewPrompt = this.buildPeerReviewPrompt(topic, { content: 'x'.repeat(avgDraftLength) }, 'Reviewer');
+    const estimatedReviewTokens = calculateTokenUsage(reviewPrompt, '') * 6; // 3 models × 2 reviews each
+    
+    // Estimate final arbitration tokens
+    const arbitrationPrompt = this.buildArbitrationPrompt(topic, sources, [], []);
+    const estimatedArbitrationTokens = calculateTokenUsage(arbitrationPrompt, '') + (avgDraftLength * 3) + (500 * 6); // Include content
+    
+    const total = estimatedDraftingTokens + estimatedReviewTokens + estimatedArbitrationTokens;
     
     return {
-      estimated: estimatedInitialTokens + estimatedFinalTokens,
+      estimated: total,
       breakdown: {
-        initial: estimatedInitialTokens,
-        final: estimatedFinalTokens
+        phase1_drafting: estimatedDraftingTokens,
+        phase2_reviews: estimatedReviewTokens,
+        phase3_arbitration: estimatedArbitrationTokens
       }
     };
   }
