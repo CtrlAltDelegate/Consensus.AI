@@ -13,31 +13,8 @@ import {
   Clock
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { apiHelpers } from '../config/api';
 import OverageModal from './OverageModal';
-
-// Mock API functions
-const generateConsensus = async (data) => {
-  await new Promise(resolve => setTimeout(resolve, 3000));
-  return {
-    consensus: `Based on the analysis of "${data.topic}", the consensus indicates a strong correlation between the provided sources. The analysis reveals that there is substantial agreement across multiple perspectives, with key themes emerging around innovation, sustainability, and market dynamics.
-
-The comprehensive review suggests that stakeholders are aligned on fundamental principles while maintaining healthy debate on implementation strategies. This consensus provides a solid foundation for decision-making processes.`,
-    confidence: 0.87,
-    sources: [
-      { provider: 'OpenAI', model: 'GPT-4', tokenUsage: 1250 },
-      { provider: 'Anthropic', model: 'Claude-3', tokenUsage: 1180 }
-    ],
-    totalTokens: 2430
-  };
-};
-
-const estimateTokens = async (data) => {
-  await new Promise(resolve => setTimeout(resolve, 500));
-  const baseTokens = 500;
-  const topicTokens = Math.ceil(data.topic.length / 4);
-  const sourceTokens = data.sources.reduce((sum, source) => sum + Math.ceil(source.length / 4), 0);
-  return baseTokens + topicTokens + sourceTokens;
-};
 
 function EnhancedConsensusForm() {
   const [sources, setSources] = useState(['', '']);
@@ -56,14 +33,14 @@ function EnhancedConsensusForm() {
   const watchedValues = watch();
 
   // Estimate tokens mutation
-  const estimateMutation = useMutation(estimateTokens, {
+  const estimateMutation = useMutation(apiHelpers.estimateTokens, {
     onSuccess: (estimate) => {
       setTokenEstimate(estimate);
     }
   });
 
   // Generate consensus mutation
-  const generateMutation = useMutation(generateConsensus, {
+  const generateMutation = useMutation(apiHelpers.generateConsensus, {
     onSuccess: (result) => {
       setLastResult(result);
       toast.success('Consensus generated successfully!');
