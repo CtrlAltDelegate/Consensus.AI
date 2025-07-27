@@ -6,7 +6,8 @@ const App = () => {
     { style: { padding: '20px', fontFamily: 'Arial, sans-serif' } },
     React.createElement('h1', null, 'Consensus.AI'),
     React.createElement('p', null, 'Frontend successfully deployed!'),
-    React.createElement('p', null, 'Backend URL: ' + (process.env.REACT_APP_API_URL || 'Not configured'))
+    React.createElement('p', null, 'Backend URL: ' + (process.env.REACT_APP_API_URL || 'Not configured')),
+    React.createElement('small', null, 'Build time: ' + new Date().toISOString())
   );
 };
 
