@@ -4,7 +4,7 @@ import axios from 'axios';
 const API_CONFIG = {
   // Use environment variable for Railway backend URL
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3001',
-  timeout: 30000, // 30 seconds for consensus generation
+  timeout: 120000, // 2 minutes for 4-LLM consensus generation
   headers: {
     'Content-Type': 'application/json',
   },
