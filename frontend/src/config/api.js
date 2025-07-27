@@ -3,7 +3,7 @@ import axios from 'axios';
 // API Configuration
 const API_CONFIG = {
   // Use environment variable for Railway backend URL
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:3001',
+  baseURL: import.meta.env.REACT_APP_API_URL || 'http://localhost:3001',
   timeout: 30000, // 30 seconds for consensus generation
   headers: {
     'Content-Type': 'application/json',
