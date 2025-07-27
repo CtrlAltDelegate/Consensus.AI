@@ -16,56 +16,271 @@ function ReportHistory({ onViewReport, onExportReport }) {
       id: 'rep_001',
       title: 'Analysis: Climate Policy Impact on Economic Growth',
       createdAt: '2024-01-29T14:30:00Z',
+      generatedAt: '2024-01-29T14:30:00Z', // Add this for ProfessionalReportViewer
       confidence: 0.87,
       tokenUsage: 8540,
+      totalTokens: 8540, // Add this alias for consistency
       status: 'completed',
       tags: ['climate', 'economics', 'policy'],
-      models: ['GPT-4o', 'Claude 3.5', 'Gemini 1.5', 'Command R+'],
-      summary: 'Comprehensive analysis of climate policy impacts reveals complex relationships between environmental regulations and economic indicators...'
+      models: ['GPT-4o', 'Claude 3.5 Sonnet', 'Gemini 1.5 Pro', 'Command R+'],
+      llmsUsed: ['GPT-4o', 'Claude 3.5 Sonnet', 'Gemini 1.5 Pro', 'Command R+'], // Add this alias
+      summary: 'Comprehensive analysis of climate policy impacts reveals complex relationships between environmental regulations and economic indicators...',
+      consensus: `# Climate Policy Impact Analysis
+
+## Executive Summary
+
+Climate policy initiatives have demonstrated a complex relationship with economic growth patterns across multiple sectors. Our analysis of current policy frameworks reveals both opportunities and challenges for sustainable economic development.
+
+## Key Findings
+
+**Environmental Regulations and Economic Growth:**
+- Short-term costs of implementation are offset by long-term economic benefits
+- Green technology sectors show accelerated growth in regions with stronger climate policies
+- Traditional industries face transition challenges but benefit from innovation incentives
+
+**Sector-Specific Impacts:**
+- Energy sector: Significant transformation with job losses in fossil fuels offset by renewable energy job creation
+- Manufacturing: Increased compliance costs balanced by efficiency gains and export opportunities
+- Financial services: New markets emerging in green finance and sustainable investment
+
+## Policy Recommendations
+
+1. **Graduated Implementation:** Phase in regulations to allow industry adaptation
+2. **Innovation Incentives:** Provide tax benefits for clean technology development
+3. **Worker Transition Programs:** Support retraining in affected industries
+4. **International Coordination:** Align policies with global climate commitments
+
+## Conclusion
+
+Evidence suggests that well-designed climate policies can drive economic growth while achieving environmental objectives. Success depends on careful policy design, stakeholder engagement, and adaptive implementation strategies.`,
+      phases: {
+        phase1_drafts: [
+          { model: 'GPT-4o', content: 'Initial analysis focusing on economic indicators...' },
+          { model: 'Claude 3.5 Sonnet', content: 'Comprehensive review of policy frameworks...' },
+          { model: 'Gemini 1.5 Pro', content: 'Data-driven assessment of growth patterns...' },
+          { model: 'Command R+', content: 'Synthesis of environmental and economic factors...' }
+        ],
+        phase2_reviews: [
+          { reviewer: 'Claude 3.5 Sonnet', content: 'Cross-validation of economic projections...' },
+          { reviewer: 'Gemini 1.5 Pro', content: 'Assessment of policy implementation feasibility...' },
+          { reviewer: 'Command R+', content: 'Review of stakeholder impact analysis...' }
+        ],
+        phase3_consensus: {
+          name: 'Command R+',
+          content: 'Final arbitration and consensus synthesis...'
+        }
+      }
     },
     {
       id: 'rep_002', 
       title: 'Research: AI Ethics Framework for Healthcare',
       createdAt: '2024-01-28T09:15:00Z',
+      generatedAt: '2024-01-28T09:15:00Z',
       confidence: 0.92,
       tokenUsage: 7230,
+      totalTokens: 7230,
       status: 'completed',
       tags: ['ai', 'ethics', 'healthcare'],
-      models: ['GPT-4o', 'Claude 3.5', 'Gemini 1.5', 'Command R+'],
-      summary: 'Ethical considerations for AI implementation in healthcare systems require balanced approaches between innovation and patient safety...'
+      models: ['GPT-4o', 'Claude 3.5 Sonnet', 'Gemini 1.5 Pro', 'Command R+'],
+      llmsUsed: ['GPT-4o', 'Claude 3.5 Sonnet', 'Gemini 1.5 Pro', 'Command R+'],
+      summary: 'Ethical considerations for AI implementation in healthcare systems require balanced approaches between innovation and patient safety...',
+      consensus: `# AI Ethics Framework for Healthcare
+
+## Introduction
+
+As artificial intelligence becomes increasingly integrated into healthcare systems, establishing robust ethical frameworks is essential to ensure patient safety, privacy, and equitable care delivery.
+
+## Ethical Principles
+
+**Beneficence and Non-maleficence:**
+- AI systems must demonstrate clear patient benefit
+- Risk mitigation strategies must be comprehensive
+- Continuous monitoring and improvement protocols required
+
+**Autonomy and Informed Consent:**
+- Patients must understand AI involvement in their care
+- Opt-out mechanisms should be available where feasible
+- Healthcare providers must maintain decision-making authority
+
+**Justice and Fairness:**
+- AI systems must not perpetuate or amplify healthcare disparities
+- Equal access to AI-enhanced care across diverse populations
+- Transparent algorithms and bias detection mechanisms
+
+## Implementation Guidelines
+
+1. **Governance Structures:** Establish AI ethics committees in healthcare institutions
+2. **Training Programs:** Educate healthcare professionals on AI ethics and limitations
+3. **Patient Communication:** Develop clear protocols for AI disclosure to patients
+4. **Regulatory Compliance:** Align with emerging AI healthcare regulations
+
+## Conclusion
+
+Successful AI integration in healthcare requires proactive ethical frameworks that balance innovation with patient protection and equitable care delivery.`
     },
     {
       id: 'rep_003',
       title: 'Legal Brief: Contract Analysis and Risk Assessment',
       createdAt: '2024-01-27T16:45:00Z',
+      generatedAt: '2024-01-27T16:45:00Z',
       confidence: 0.79,
       tokenUsage: 9120,
+      totalTokens: 9120,
       status: 'completed',
       tags: ['legal', 'contracts', 'risk'],
-      models: ['GPT-4o', 'Claude 3.5', 'Gemini 1.5', 'Command R+'],
-      summary: 'Contract risk analysis identifies several key areas of concern requiring immediate attention and strategic modifications...'
+      models: ['GPT-4o', 'Claude 3.5 Sonnet', 'Gemini 1.5 Pro', 'Command R+'],
+      llmsUsed: ['GPT-4o', 'Claude 3.5 Sonnet', 'Gemini 1.5 Pro', 'Command R+'],
+      summary: 'Contract risk analysis identifies several key areas of concern requiring immediate attention and strategic modifications...',
+      consensus: `# Contract Risk Analysis
+
+## Executive Summary
+
+This analysis identifies critical risk factors in the current contract portfolio and provides recommendations for risk mitigation and strategic contract modifications.
+
+## Risk Assessment Matrix
+
+**High-Risk Areas:**
+- Liability clauses with unlimited exposure
+- Force majeure provisions lacking pandemic language
+- Intellectual property assignment ambiguities
+- Termination clauses with inadequate notice periods
+
+**Medium-Risk Areas:**
+- Payment terms exceeding industry standards
+- Dispute resolution mechanisms
+- Confidentiality scope and duration
+- Performance metrics and penalties
+
+**Mitigation Strategies:**
+1. Implement liability caps and mutual limitations
+2. Update force majeure language for modern risks
+3. Clarify IP ownership and licensing terms
+4. Standardize termination notice requirements
+
+## Recommendations
+
+**Immediate Actions:**
+- Review and amend high-risk contracts within 30 days
+- Establish contract review protocols for new agreements
+- Train negotiation teams on identified risk factors
+
+**Long-term Strategy:**
+- Develop standardized contract templates
+- Implement contract management technology
+- Regular portfolio risk assessments
+
+This analysis provides a foundation for more strategic and risk-aware contract management practices.`
     },
     {
       id: 'rep_004',
       title: 'Market Analysis: Emerging Tech Investment Trends',
       createdAt: '2024-01-26T11:20:00Z',
+      generatedAt: '2024-01-26T11:20:00Z',
       confidence: 0.84,
       tokenUsage: 6890,
+      totalTokens: 6890,
       status: 'completed',
       tags: ['finance', 'technology', 'investment'],
-      models: ['GPT-4o', 'Claude 3.5', 'Gemini 1.5', 'Command R+'],
-      summary: 'Investment patterns in emerging technologies show strong preference for AI and quantum computing sectors...'
+      models: ['GPT-4o', 'Claude 3.5 Sonnet', 'Gemini 1.5 Pro', 'Command R+'],
+      llmsUsed: ['GPT-4o', 'Claude 3.5 Sonnet', 'Gemini 1.5 Pro', 'Command R+'],
+      summary: 'Investment patterns in emerging technologies show strong preference for AI and quantum computing sectors...',
+      consensus: `# Emerging Technology Investment Trends
+
+## Market Overview
+
+The emerging technology investment landscape continues to evolve rapidly, with significant capital flows concentrated in artificial intelligence, quantum computing, and biotechnology sectors.
+
+## Investment Patterns
+
+**Artificial Intelligence (41% of total funding):**
+- Enterprise AI solutions leading investment volume
+- Generative AI platforms attracting premium valuations
+- AI infrastructure and chip development receiving strategic funding
+
+**Quantum Computing (23% of total funding):**
+- Government and enterprise contracts driving growth
+- Hardware development requiring substantial capital investment
+- Software and algorithm development showing accelerated progress
+
+**Biotechnology (19% of total funding):**
+- Personalized medicine and gene therapy expansion
+- AI-driven drug discovery platforms
+- Regulatory approval pathways becoming more predictable
+
+## Investment Recommendations
+
+**Short-term (6-12 months):**
+- Focus on AI companies with proven enterprise adoption
+- Consider quantum computing firms with government contracts
+- Evaluate biotech companies approaching clinical milestones
+
+**Long-term (2-5 years):**
+- Build positions in quantum computing infrastructure
+- Invest in AI companies developing fundamental technologies
+- Target biotech platforms with broad therapeutic applications
+
+The current investment environment favors companies with clear commercial pathways and strong intellectual property portfolios.`
     },
     {
       id: 'rep_005',
       title: 'Policy Review: Remote Work Impact on Urban Development',
       createdAt: '2024-01-25T13:10:00Z',
+      generatedAt: '2024-01-25T13:10:00Z',
       confidence: 0.88,
       tokenUsage: 7650,
+      totalTokens: 7650,
       status: 'completed',
       tags: ['policy', 'remote-work', 'urban-planning'],
-      models: ['GPT-4o', 'Claude 3.5', 'Gemini 1.5', 'Command R+'],
-      summary: 'Remote work policies significantly influence urban development patterns with implications for housing and infrastructure...'
+      models: ['GPT-4o', 'Claude 3.5 Sonnet', 'Gemini 1.5 Pro', 'Command R+'],
+      llmsUsed: ['GPT-4o', 'Claude 3.5 Sonnet', 'Gemini 1.5 Pro', 'Command R+'],
+      summary: 'Remote work policies significantly influence urban development patterns with implications for housing and infrastructure...',
+      consensus: `# Remote Work Impact on Urban Development
+
+## Executive Summary
+
+The widespread adoption of remote work policies has created significant shifts in urban development patterns, requiring adaptive planning strategies and policy responses.
+
+## Key Impacts
+
+**Housing Market Transformation:**
+- Decreased demand for urban core housing
+- Increased demand in suburban and rural areas
+- Shifts in housing size and feature preferences
+- Geographic arbitrage opportunities
+
+**Commercial Real Estate:**
+- Reduced office space demand in central business districts
+- Conversion opportunities for mixed-use development
+- Co-working space evolution and distribution
+- Retail pattern changes in urban cores
+
+**Infrastructure Implications:**
+- Reduced peak-hour transportation demand
+- Increased residential utility and broadband requirements
+- Changes in public service distribution needs
+- Environmental impact variations
+
+## Policy Recommendations
+
+**Urban Planning Adaptations:**
+1. Flexible zoning for residential/commercial conversions
+2. Distributed infrastructure investment strategies
+3. Public space repurposing in business districts
+4. Transportation system optimization
+
+**Economic Development:**
+- Support for distributed economic activity
+- Small business incentives in suburban areas
+- Technology infrastructure investment
+- Workforce development program adjustments
+
+**Long-term Strategic Planning:**
+- Scenario planning for various remote work adoption levels
+- Adaptive regulatory frameworks
+- Regional coordination mechanisms
+- Sustainability integration in development patterns
+
+The transition requires coordinated policy responses that balance urban vitality with distributed economic opportunity.`
     }
   ];
 
@@ -154,6 +369,22 @@ function ReportHistory({ onViewReport, onExportReport }) {
   const handleDeleteSelected = () => {
     setReports(reports.filter(r => !selectedReports.has(r.id)));
     setSelectedReports(new Set());
+  };
+
+  // Enhanced view report handler with debugging
+  const handleViewReportClick = (report) => {
+    console.log('🔍 Report clicked in ReportHistory:', {
+      id: report.id,
+      title: report.title,
+      hasConsensus: !!report.consensus,
+      dataStructure: Object.keys(report)
+    });
+    
+    if (onViewReport) {
+      onViewReport(report);
+    } else {
+      console.warn('⚠️ No onViewReport handler provided to ReportHistory');
+    }
   };
 
   if (isLoading) {
@@ -291,7 +522,7 @@ function ReportHistory({ onViewReport, onExportReport }) {
                   report, 
                   isSelected: selectedReports.has(report.id),
                   onSelect: () => toggleSelectReport(report.id),
-                  onView: () => onViewReport && onViewReport(report),
+                  onView: () => handleViewReportClick(report),
                   onExport: () => onExportReport && onExportReport([report]),
                   formatDate,
                   getConfidenceColor
@@ -301,7 +532,7 @@ function ReportHistory({ onViewReport, onExportReport }) {
                   report,
                   isSelected: selectedReports.has(report.id),
                   onSelect: () => toggleSelectReport(report.id),
-                  onView: () => onViewReport && onViewReport(report),
+                  onView: () => handleViewReportClick(report),
                   onExport: () => onExportReport && onExportReport([report]),
                   formatDate,
                   getConfidenceColor

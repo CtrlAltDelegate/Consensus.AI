@@ -3,16 +3,41 @@ import React, { useState } from 'react';
 function ProfessionalReportViewer({ report, onClose, onExport, onSave }) {
   const [exportFormat, setExportFormat] = useState('pdf');
   
-  if (!report) return null;
+  // Debug logging
+  React.useEffect(() => {
+    if (report) {
+      console.log('📊 ProfessionalReportViewer received report:', {
+        id: report.id,
+        title: report.title,
+        hasConsensus: !!report.consensus,
+        consensusLength: report.consensus?.length || 0,
+        confidence: report.confidence,
+        totalTokens: report.totalTokens || report.tokenUsage,
+        generatedAt: report.generatedAt || report.createdAt
+      });
+    } else {
+      console.log('⚠️ ProfessionalReportViewer received null/undefined report');
+    }
+  }, [report]);
+  
+  if (!report) {
+    console.log('🚫 ProfessionalReportViewer: No report provided, not rendering');
+    return null;
+  }
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    try {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      console.warn('Error formatting date:', dateString, error);
+      return 'Date unavailable';
+    }
   };
 
   const getConfidenceLevel = (confidence) => {
@@ -21,7 +46,16 @@ function ProfessionalReportViewer({ report, onClose, onExport, onSave }) {
     return { label: 'Low', color: 'red' };
   };
 
-  const confidenceLevel = getConfidenceLevel(report.confidence);
+  const confidenceLevel = getConfidenceLevel(report.confidence || 0);
+  const reportDate = report.generatedAt || report.createdAt || new Date().toISOString();
+  const reportTokens = report.totalTokens || report.tokenUsage || 0;
+
+  console.log('🎨 ProfessionalReportViewer rendering with data:', {
+    confidenceLevel,
+    reportDate,
+    reportTokens,
+    consensusPreview: report.consensus?.substring(0, 100) + '...'
+  });
 
   return React.createElement('div', { className: 'fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4' },
     React.createElement('div', { className: 'bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden' },
@@ -31,7 +65,7 @@ function ProfessionalReportViewer({ report, onClose, onExport, onSave }) {
         React.createElement('div', { className: 'flex items-center justify-between' },
           React.createElement('div', { className: 'flex-1' },
             React.createElement('h1', { className: 'text-2xl font-bold text-slate-900 mb-2' }, 'Consensus Analysis Report'),
-            React.createElement('p', { className: 'text-slate-600' }, formatDate(report.generatedAt))
+            React.createElement('p', { className: 'text-slate-600' }, formatDate(reportDate))
           ),
           React.createElement('div', { className: 'flex items-center space-x-3' },
             // Export Dropdown
@@ -52,7 +86,7 @@ function ProfessionalReportViewer({ report, onClose, onExport, onSave }) {
             }, 'Export'),
             React.createElement('button', {
               onClick: onClose,
-              className: 'p-2 text-slate-400 hover:text-slate-600 transition-colors duration-200'
+              className: 'p-2 text-slate-400 hover:text-slate-600 transition-colors duration-200 text-xl'
             }, '×')
           )
         )
@@ -71,7 +105,7 @@ function ProfessionalReportViewer({ report, onClose, onExport, onSave }) {
                   React.createElement('div', { className: 'text-sm text-slate-600' }, 'Confidence Level'),
                   React.createElement('span', { 
                     className: `inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-${confidenceLevel.color}-100 text-${confidenceLevel.color}-800`
-                  }, `${confidenceLevel.label} (${(report.confidence * 100).toFixed(1)}%)`)
+                  }, `${confidenceLevel.label} (${((report.confidence || 0) * 100).toFixed(1)}%)`)
                 )
               )
             ),
@@ -82,7 +116,8 @@ function ProfessionalReportViewer({ report, onClose, onExport, onSave }) {
               React.createElement('h3', { className: 'font-semibold text-slate-900 mb-2' }, 'Key Findings'),
               React.createElement('div', { className: 'prose prose-slate max-w-none' },
                 React.createElement('p', { className: 'text-slate-700 leading-relaxed whitespace-pre-wrap' }, 
-                  report.consensus.substring(0, 300) + (report.consensus.length > 300 ? '...' : '')
+                  (report.consensus || 'Analysis content not available.').substring(0, 300) + 
+                  ((report.consensus || '').length > 300 ? '...' : '')
                 )
               )
             )
@@ -116,7 +151,7 @@ function ProfessionalReportViewer({ report, onClose, onExport, onSave }) {
               React.createElement('div', { className: 'bg-white border border-slate-200 rounded-lg p-6' },
                 React.createElement('h3', { className: 'font-semibold text-slate-900 mb-3' }, 'AI Models Utilized'),
                 React.createElement('div', { className: 'space-y-3' },
-                  ['GPT-4o', 'Claude 3.5 Sonnet', 'Gemini 1.5 Pro', 'Command R+'].map(model =>
+                  (report.llmsUsed || report.models || ['GPT-4o', 'Claude 3.5 Sonnet', 'Gemini 1.5 Pro', 'Command R+']).map(model =>
                     React.createElement('div', { key: model, className: 'flex items-center justify-between' },
                       React.createElement('span', { className: 'text-sm text-slate-700' }, model),
                       React.createElement('span', { className: 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800' }, '✓')
@@ -126,7 +161,7 @@ function ProfessionalReportViewer({ report, onClose, onExport, onSave }) {
                 React.createElement('div', { className: 'mt-4 pt-4 border-t border-slate-100' },
                   React.createElement('div', { className: 'flex justify-between text-sm' },
                     React.createElement('span', { className: 'text-slate-600' }, 'Total Tokens'),
-                    React.createElement('span', { className: 'font-medium text-slate-900' }, report.totalTokens?.toLocaleString() || 'N/A')
+                    React.createElement('span', { className: 'font-medium text-slate-900' }, reportTokens?.toLocaleString() || 'N/A')
                   )
                 )
               )
@@ -177,7 +212,10 @@ function ProfessionalReportViewer({ report, onClose, onExport, onSave }) {
               React.createElement('div', { className: 'bg-gradient-to-r from-indigo-50 to-violet-50 border border-indigo-200 rounded-lg p-6' },
                 React.createElement('h4', { className: 'font-semibold text-slate-900 mb-3' }, 'Synthesized Conclusion'),
                 React.createElement('div', { className: 'prose prose-slate max-w-none' },
-                  React.createElement('p', { className: 'text-slate-800 leading-relaxed whitespace-pre-wrap' }, report.consensus)
+                  React.createElement('div', { 
+                    className: 'text-slate-800 leading-relaxed whitespace-pre-wrap max-h-96 overflow-y-auto',
+                    style: { fontSize: '15px', lineHeight: '1.6' }
+                  }, report.consensus || 'Analysis content not available.')
                 )
               )
             )
@@ -189,15 +227,15 @@ function ProfessionalReportViewer({ report, onClose, onExport, onSave }) {
             React.createElement('div', { className: 'bg-slate-50 border border-slate-200 rounded-lg p-6' },
               React.createElement('div', { className: 'grid grid-cols-2 md:grid-cols-4 gap-6' },
                 React.createElement('div', { className: 'text-center' },
-                  React.createElement('div', { className: 'text-2xl font-bold text-slate-900' }, report.llmsUsed?.length || 4),
+                  React.createElement('div', { className: 'text-2xl font-bold text-slate-900' }, (report.llmsUsed || report.models || []).length || 4),
                   React.createElement('div', { className: 'text-sm text-slate-600' }, 'AI Models')
                 ),
                 React.createElement('div', { className: 'text-center' },
-                  React.createElement('div', { className: 'text-2xl font-bold text-slate-900' }, report.totalTokens?.toLocaleString() || 'N/A'),
+                  React.createElement('div', { className: 'text-2xl font-bold text-slate-900' }, reportTokens?.toLocaleString() || 'N/A'),
                   React.createElement('div', { className: 'text-sm text-slate-600' }, 'Tokens Processed')
                 ),
                 React.createElement('div', { className: 'text-center' },
-                  React.createElement('div', { className: 'text-2xl font-bold text-slate-900' }, `${(report.confidence * 100).toFixed(1)}%`),
+                  React.createElement('div', { className: 'text-2xl font-bold text-slate-900' }, `${((report.confidence || 0) * 100).toFixed(1)}%`),
                   React.createElement('div', { className: 'text-sm text-slate-600' }, 'Confidence Score')
                 ),
                 React.createElement('div', { className: 'text-center' },
@@ -214,14 +252,12 @@ function ProfessionalReportViewer({ report, onClose, onExport, onSave }) {
       React.createElement('div', { className: 'bg-slate-50 border-t border-slate-200 px-8 py-4' },
         React.createElement('div', { className: 'flex items-center justify-between' },
           React.createElement('div', { className: 'flex items-center space-x-4' },
-            React.createElement('img', { 
-              src: '/api/placeholder/24/24', 
-              alt: 'Consensus.AI', 
-              className: 'w-6 h-6'
-            }),
+            React.createElement('div', { className: 'w-6 h-6 bg-gradient-to-br from-indigo-600 to-violet-600 rounded flex items-center justify-center' },
+              React.createElement('span', { className: 'text-white font-bold text-xs' }, 'C')
+            ),
             React.createElement('span', { className: 'text-sm text-slate-600' }, 'Generated by Consensus.AI'),
             React.createElement('span', { className: 'text-sm text-slate-400' }, '•'),
-            React.createElement('span', { className: 'text-sm text-slate-600' }, formatDate(report.generatedAt))
+            React.createElement('span', { className: 'text-sm text-slate-600' }, formatDate(reportDate))
           ),
           React.createElement('div', { className: 'flex items-center space-x-3' },
             React.createElement('button', {

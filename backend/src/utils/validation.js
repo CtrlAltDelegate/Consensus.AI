@@ -30,8 +30,8 @@ const validateConsensusRequest = (data) => {
   const schema = Joi.object({
     topic: Joi.string().min(10).max(1000).required(),
     sources: Joi.array()
-      .items(Joi.string().min(10).max(5000))
-      .min(0)  // Allow empty sources for testing
+      .items(Joi.string().min(1).max(5000))  // Reduced min from 10 to 1 for flexibility
+      .min(0)  // Allow empty sources
       .max(10)
       .optional()
       .default([]),
@@ -39,9 +39,10 @@ const validateConsensusRequest = (data) => {
       generatePdf: Joi.boolean().default(false),
       emailReport: Joi.boolean().default(false),
       includeMetadata: Joi.boolean().default(true),
+      priority: Joi.string().valid('standard', 'detailed').default('standard'), // Add priority support
       confidenceThreshold: Joi.number().min(0).max(1).default(0.5),
       maxResponseLength: Joi.number().min(100).max(5000).default(2000)
-    }).optional()
+    }).optional().default({})
   });
 
   return schema.validate(data);

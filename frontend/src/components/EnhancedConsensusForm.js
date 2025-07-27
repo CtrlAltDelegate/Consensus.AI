@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { apiHelpers } from '../config/api';
 
-function EnhancedConsensusForm() {
+function EnhancedConsensusForm({ onReportGeneration }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState(null);
   const [sources, setSources] = useState(['']);
@@ -11,8 +11,7 @@ function EnhancedConsensusForm() {
     defaultValues: {
       topic: '',
       sources: [''],
-      priority: 'standard',
-      includeMetadata: true
+      priority: 'standard'
     }
   });
 
@@ -27,19 +26,78 @@ function EnhancedConsensusForm() {
     }
   };
 
+  // Enhanced token estimation for 4-LLM consensus process
+  const calculateTokenEstimate = () => {
+    const topic = watch('topic') || '';
+    const priority = watch('priority') || 'standard';
+    const sourcesWithContent = sources.filter(s => s && s.trim() !== '');
+    
+    // Base calculation
+    const topicTokens = Math.ceil(topic.length / 4); // ~4 chars per token
+    const sourceTokens = sourcesWithContent.reduce((total, source) => {
+      return total + Math.ceil(source.length / 4);
+    }, 0);
+    
+    // Input tokens (what we send to each model)
+    const inputTokens = topicTokens + sourceTokens;
+    
+    // 4-LLM Consensus Process Token Calculation
+    let totalTokens = 0;
+    
+    // Phase 1: Independent Drafting (4 models)
+    // Each model processes input + generates ~1500-2500 tokens output
+    const phase1OutputPerModel = priority === 'detailed' ? 2500 : 1500;
+    const phase1Tokens = 4 * (inputTokens + phase1OutputPerModel);
+    totalTokens += phase1Tokens;
+    
+    // Phase 2: Peer Review (3 cross-reviews per model)
+    // Each model reviews others' drafts + generates ~800-1200 tokens
+    const phase2OutputPerReview = priority === 'detailed' ? 1200 : 800;
+    const phase2InputPerReview = phase1OutputPerModel; // Reading other drafts
+    const phase2Tokens = 12 * (phase2InputPerReview + phase2OutputPerReview); // 3 reviews × 4 models
+    totalTokens += phase2Tokens;
+    
+    // Phase 3: Final Arbitration (1 arbitrator model)
+    // Processes all drafts + reviews + generates final consensus
+    const phase3Input = (4 * phase1OutputPerModel) + (12 * phase2OutputPerReview);
+    const phase3Output = priority === 'detailed' ? 3000 : 2000;
+    const phase3Tokens = phase3Input + phase3Output;
+    totalTokens += phase3Tokens;
+    
+    // Add processing overhead (10%)
+    totalTokens = Math.ceil(totalTokens * 1.1);
+    
+    // Minimum baseline for short inputs
+    const minimumTokens = priority === 'detailed' ? 15000 : 10000;
+    
+    return Math.max(totalTokens, minimumTokens);
+  };
+
+  const estimatedTokens = calculateTokenEstimate();
+
   const onSubmit = async (data) => {
     setIsGenerating(true);
+    
+    // Show progress modal if available
+    if (onReportGeneration) {
+      try {
+        await onReportGeneration(data);
+      } catch (error) {
+        console.log('Progress modal error (non-critical):', error);
+      }
+    }
+
     try {
       console.log('🚀 Starting consensus generation...', data);
       
-      // Prepare the request data
+      // Prepare the request data with output options always included
       const requestData = {
         topic: data.topic,
         sources: sources.filter(source => source && source.trim() !== ''),
         options: {
-          includeMetadata: data.includeMetadata || true,
-          generatePdf: false,
-          emailReport: false,
+          includeMetadata: true,  // Always include
+          generatePdf: true,      // Always include
+          emailReport: false,     // Could be made configurable later
           priority: data.priority
         }
       };
@@ -52,30 +110,41 @@ function EnhancedConsensusForm() {
       setResult({
         consensus: response.data.consensus,
         confidence: response.data.confidence,
-        totalTokens: response.data.metadata?.totalTokens || 0,
-        llmsUsed: response.data.metadata?.llmsUsed || [],
+        totalTokens: response.data.metadata?.totalTokens || estimatedTokens,
+        llmsUsed: response.data.metadata?.llmsUsed || ['GPT-4o', 'Claude 3.5 Sonnet', 'Gemini 1.5 Pro', 'Command R+'],
         phases: response.data.phases,
         generatedAt: new Date().toISOString(),
-        title: data.topic.substring(0, 100) + (data.topic.length > 100 ? '...' : '')
+        title: data.topic.substring(0, 100) + (data.topic.length > 100 ? '...' : ''),
+        id: `rep_${Date.now()}`
       });
       
     } catch (error) {
       console.error('❌ Error generating consensus:', error);
       
-      // Show user-friendly error
+      // Show user-friendly error with more details
+      let errorMessage = 'Failed to generate consensus. Please try again.';
+      
+      if (error.response?.status === 400) {
+        errorMessage = 'Invalid request data. Please check your input and try again.';
+      } else if (error.response?.status === 401) {
+        errorMessage = 'Authentication required. Please sign in and try again.';
+      } else if (error.response?.status === 429) {
+        errorMessage = 'Rate limit exceeded. Please wait a moment and try again.';
+      } else if (error.response?.status >= 500) {
+        errorMessage = 'Server error. Our team has been notified. Please try again later.';
+      }
+      
       setResult({
-        consensus: `Error: ${error.response?.data?.message || error.message || 'Failed to generate consensus. Please try again.'}`,
+        consensus: `Error: ${errorMessage}`,
         confidence: 0,
         totalTokens: 0,
-        error: true
+        error: true,
+        errorDetails: error.response?.data || error.message
       });
     } finally {
       setIsGenerating(false);
     }
   };
-
-  const estimatedTokens = watch('topic')?.length ? Math.ceil((watch('topic').length / 4) * 12) : 8000;
-  const estimatedCost = (estimatedTokens * 0.001).toFixed(3);
 
   return React.createElement('div', { className: 'min-h-screen bg-slate-50/50' },
     React.createElement('div', { className: 'max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8' },
@@ -167,78 +236,81 @@ function EnhancedConsensusForm() {
             }, '+ Add Another Source')
           ),
 
-          // Options Section
+          // Analysis Priority Section
           React.createElement('div', { className: 'mb-8' },
-            React.createElement('h3', { className: 'text-lg font-semibold text-slate-900 mb-4' }, 'Analysis Options'),
-            React.createElement('div', { className: 'grid grid-cols-1 md:grid-cols-2 gap-6' },
-              
-              // Priority Level
-              React.createElement('div', null,
-                React.createElement('label', { className: 'block text-sm font-medium text-slate-700 mb-3' }, 'Priority Level'),
-                React.createElement('div', { className: 'space-y-2' },
-                  React.createElement('label', { className: 'flex items-center' },
-                    React.createElement('input', {
-                      ...register('priority'),
-                      type: 'radio',
-                      value: 'standard',
-                      className: 'h-4 w-4 text-indigo-600 focus:ring-indigo-500'
-                    }),
-                    React.createElement('span', { className: 'ml-3 text-sm text-slate-700' },
-                      React.createElement('span', { className: 'font-medium' }, 'Standard'),
-                      ' (60-90 seconds)'
-                    )
-                  ),
-                  React.createElement('label', { className: 'flex items-center' },
-                    React.createElement('input', {
-                      ...register('priority'),
-                      type: 'radio',
-                      value: 'detailed',
-                      className: 'h-4 w-4 text-indigo-600 focus:ring-indigo-500'
-                    }),
-                    React.createElement('span', { className: 'ml-3 text-sm text-slate-700' },
-                      React.createElement('span', { className: 'font-medium' }, 'Detailed'),
-                      ' (2-3 minutes)'
-                    )
+            React.createElement('h3', { className: 'text-lg font-semibold text-slate-900 mb-4' }, 'Analysis Depth'),
+            React.createElement('div', { className: 'space-y-3' },
+              React.createElement('label', { className: 'flex items-start space-x-3 p-4 border border-slate-200 rounded-lg hover:border-indigo-200 hover:bg-indigo-50/30 transition-all duration-200 cursor-pointer' },
+                React.createElement('input', {
+                  ...register('priority'),
+                  type: 'radio',
+                  value: 'standard',
+                  className: 'h-4 w-4 text-indigo-600 focus:ring-indigo-500 mt-1'
+                }),
+                React.createElement('div', null,
+                  React.createElement('div', { className: 'font-medium text-slate-900' }, 'Standard Analysis'),
+                  React.createElement('div', { className: 'text-sm text-slate-600 mt-1' }, 
+                    '60-90 seconds • ~10,000-12,000 tokens • Comprehensive consensus report'
                   )
                 )
               ),
-
-              // Include Metadata
-              React.createElement('div', null,
-                React.createElement('label', { className: 'block text-sm font-medium text-slate-700 mb-3' }, 'Output Options'),
-                React.createElement('div', { className: 'space-y-2' },
-                  React.createElement('label', { className: 'flex items-center' },
-                    React.createElement('input', {
-                      ...register('includeMetadata'),
-                      type: 'checkbox',
-                      className: 'h-4 w-4 text-indigo-600 focus:ring-indigo-500 rounded'
-                    }),
-                    React.createElement('span', { className: 'ml-3 text-sm text-slate-700' }, 'Include detailed metadata')
-                  ),
-                  React.createElement('label', { className: 'flex items-center' },
-                    React.createElement('input', {
-                      type: 'checkbox',
-                      className: 'h-4 w-4 text-indigo-600 focus:ring-indigo-500 rounded'
-                    }),
-                    React.createElement('span', { className: 'ml-3 text-sm text-slate-700' }, 'Generate PDF export')
+              React.createElement('label', { className: 'flex items-start space-x-3 p-4 border border-slate-200 rounded-lg hover:border-indigo-200 hover:bg-indigo-50/30 transition-all duration-200 cursor-pointer' },
+                React.createElement('input', {
+                  ...register('priority'),
+                  type: 'radio',
+                  value: 'detailed',
+                  className: 'h-4 w-4 text-indigo-600 focus:ring-indigo-500 mt-1'
+                }),
+                React.createElement('div', null,
+                  React.createElement('div', { className: 'font-medium text-slate-900' }, 'Detailed Analysis'),
+                  React.createElement('div', { className: 'text-sm text-slate-600 mt-1' }, 
+                    '2-3 minutes • ~15,000-18,000 tokens • In-depth analysis with extended reasoning'
                   )
                 )
               )
             )
           ),
 
-          // Cost Estimation
+          // Token Usage Estimation
           React.createElement('div', { className: 'mb-8 p-4 bg-slate-50 rounded-lg border border-slate-200' },
             React.createElement('div', { className: 'flex items-center justify-between' },
               React.createElement('div', null,
-                React.createElement('h4', { className: 'text-sm font-semibold text-slate-700 mb-1' }, 'Estimated Usage'),
+                React.createElement('h4', { className: 'text-sm font-semibold text-slate-700 mb-1' }, 'Estimated Token Usage'),
                 React.createElement('p', { className: 'text-sm text-slate-600' }, 
-                  `~${estimatedTokens.toLocaleString()} tokens • $${estimatedCost} cost`
+                  `~${estimatedTokens.toLocaleString()} tokens for 4-LLM consensus analysis`
                 )
               ),
               React.createElement('div', { className: 'text-right' },
                 React.createElement('div', { className: 'text-sm font-medium text-slate-900' }, '4 AI Models'),
                 React.createElement('div', { className: 'text-xs text-slate-500' }, 'GPT-4o • Claude • Gemini • Command R+')
+              )
+            ),
+            React.createElement('div', { className: 'mt-3 text-xs text-slate-500' },
+              React.createElement('div', null, '• Phase 1: Independent drafting by each model'),
+              React.createElement('div', null, '• Phase 2: Cross-model peer review process'),
+              React.createElement('div', null, '• Phase 3: Final arbitration and consensus synthesis')
+            )
+          ),
+
+          // Included Features
+          React.createElement('div', { className: 'mb-8 p-4 bg-emerald-50 rounded-lg border border-emerald-200' },
+            React.createElement('h4', { className: 'text-sm font-semibold text-emerald-800 mb-3' }, 'Included with Every Report'),
+            React.createElement('div', { className: 'grid grid-cols-1 sm:grid-cols-2 gap-2' },
+              React.createElement('div', { className: 'flex items-center text-sm text-emerald-700' },
+                React.createElement('span', { className: 'mr-2' }, '✓'),
+                'Detailed metadata & analysis breakdown'
+              ),
+              React.createElement('div', { className: 'flex items-center text-sm text-emerald-700' },
+                React.createElement('span', { className: 'mr-2' }, '✓'),
+                'Professional PDF export'
+              ),
+              React.createElement('div', { className: 'flex items-center text-sm text-emerald-700' },
+                React.createElement('span', { className: 'mr-2' }, '✓'),
+                'Token usage analytics'
+              ),
+              React.createElement('div', { className: 'flex items-center text-sm text-emerald-700' },
+                React.createElement('span', { className: 'mr-2' }, '✓'),
+                'Confidence scoring & methodology notes'
               )
             )
           ),

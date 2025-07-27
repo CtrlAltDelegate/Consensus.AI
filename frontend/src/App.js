@@ -51,13 +51,23 @@ function App() {
 
   // Handle viewing a report in the professional viewer
   const handleViewReport = (report) => {
+    console.log('📖 Opening report viewer for:', report.title);
     setCurrentReport(report);
     setShowReportViewer(true);
+  };
+
+  // Handle closing the report viewer
+  const handleCloseReportViewer = () => {
+    console.log('❌ Closing report viewer');
+    setShowReportViewer(false);
+    setCurrentReport(null);
   };
 
   // Handle exporting reports
   const handleExportReport = async (reports, format = 'pdf') => {
     try {
+      console.log('📤 Exporting reports:', reports.length > 1 ? `${reports.length} reports` : reports[0]?.title);
+      
       if (Array.isArray(reports) && reports.length > 1) {
         await exportService.exportMultipleReports(reports, format);
       } else {
@@ -72,8 +82,9 @@ function App() {
 
   // Handle saving report to library
   const handleSaveReport = (report) => {
-    console.log('Saving report to library:', report.title);
+    console.log('💾 Saving report to library:', report.title);
     // Would integrate with backend API
+    handleCloseReportViewer();
   };
 
   return React.createElement('div', { className: 'min-h-screen bg-slate-50/50' },
@@ -142,10 +153,10 @@ function App() {
       )
     ),
 
-    // Professional Report Viewer Modal
-    React.createElement(ProfessionalReportViewer, {
+    // Professional Report Viewer Modal (only show when both conditions are met)
+    showReportViewer && currentReport && React.createElement(ProfessionalReportViewer, {
       report: currentReport,
-      onClose: () => setShowReportViewer(false),
+      onClose: handleCloseReportViewer,
       onExport: (format) => handleExportReport(currentReport, format),
       onSave: handleSaveReport
     }),
