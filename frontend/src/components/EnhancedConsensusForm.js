@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { apiHelpers } from '../config/api';
 
 function EnhancedConsensusForm() {
   const [isGenerating, setIsGenerating] = useState(false);
@@ -14,15 +15,41 @@ function EnhancedConsensusForm() {
   const onSubmit = async (data) => {
     setIsGenerating(true);
     try {
-      // Simulate API call for now
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      console.log('🚀 Starting consensus generation...', data);
+      
+      // Prepare the request data
+      const requestData = {
+        topic: data.topic,
+        sources: data.sources.filter(source => source && source.trim() !== ''),
+        options: {
+          includeConfidence: true,
+          includeSources: true
+        }
+      };
+      
+      // Make real API call to Railway backend
+      const response = await apiHelpers.generateConsensus(requestData);
+      console.log('✅ Consensus generated successfully:', response.data);
+      
+      // Set the real result from the 4-LLM system
       setResult({
-        consensus: "This is a sample consensus report. The backend is connected and ready for LLM integration.",
-        confidence: 0.85,
-        totalTokens: 2400
+        consensus: response.data.consensus,
+        confidence: response.data.confidence,
+        totalTokens: response.data.metadata?.totalTokens || 0,
+        llmsUsed: response.data.metadata?.llmsUsed || [],
+        phases: response.data.phases
       });
+      
     } catch (error) {
-      console.error('Error generating consensus:', error);
+      console.error('❌ Error generating consensus:', error);
+      
+      // Show user-friendly error
+      setResult({
+        consensus: `Error: ${error.response?.data?.message || error.message || 'Failed to generate consensus. Please try again.'}`,
+        confidence: 0,
+        totalTokens: 0,
+        error: true
+      });
     } finally {
       setIsGenerating(false);
     }
@@ -65,14 +92,47 @@ function EnhancedConsensusForm() {
         }, isGenerating ? 'Generating Consensus...' : 'Generate Consensus Report')
       ),
 
-      result && React.createElement('div', { className: 'mt-8 p-6 bg-gray-50 rounded-lg' },
-        React.createElement('h3', { className: 'text-xl font-semibold mb-4' }, 'Consensus Report'),
-        React.createElement('p', { className: 'text-gray-700 mb-4' }, result.consensus),
-        React.createElement('div', { className: 'flex justify-between text-sm text-gray-600' },
-          React.createElement('span', null, `Confidence: ${(result.confidence * 100).toFixed(1)}%`),
-          React.createElement('span', null, `Tokens Used: ${result.totalTokens}`)
-        )
-      )
+             result && React.createElement('div', { 
+         className: `mt-8 p-6 rounded-lg ${result.error ? 'bg-red-50 border border-red-200' : 'bg-gray-50'}` 
+       },
+         React.createElement('h3', { 
+           className: `text-xl font-semibold mb-4 ${result.error ? 'text-red-800' : 'text-gray-900'}` 
+         }, result.error ? 'Error' : 'Consensus Report'),
+         
+         React.createElement('p', { 
+           className: `mb-4 ${result.error ? 'text-red-700' : 'text-gray-700'}` 
+         }, result.consensus),
+         
+         !result.error && React.createElement('div', { className: 'space-y-3' },
+           // Main stats
+           React.createElement('div', { className: 'flex justify-between text-sm text-gray-600' },
+             React.createElement('span', null, `Confidence: ${(result.confidence * 100).toFixed(1)}%`),
+             React.createElement('span', null, `Tokens Used: ${result.totalTokens}`)
+           ),
+           
+           // LLMs used
+           result.llmsUsed && result.llmsUsed.length > 0 && React.createElement('div', { className: 'text-sm text-gray-600' },
+             React.createElement('span', { className: 'font-medium' }, 'LLMs Used: '),
+             React.createElement('span', null, result.llmsUsed.join(', '))
+           ),
+           
+           // Phases summary (if available)
+           result.phases && React.createElement('div', { className: 'mt-4 pt-4 border-t border-gray-200' },
+             React.createElement('h4', { className: 'text-sm font-medium text-gray-700 mb-2' }, '3-Phase Process Summary:'),
+             React.createElement('div', { className: 'text-xs text-gray-600 space-y-1' },
+               result.phases.phase1_drafts && React.createElement('div', null, 
+                 `✓ Phase 1: ${result.phases.phase1_drafts.length} independent drafts generated`
+               ),
+               result.phases.phase2_reviews && React.createElement('div', null, 
+                 `✓ Phase 2: ${result.phases.phase2_reviews.length} peer reviews completed`
+               ),
+               result.phases.phase3_consensus && React.createElement('div', null, 
+                 `✓ Phase 3: Final arbitration by ${result.phases.phase3_consensus.name || 'Command R+'}`
+               )
+             )
+           )
+         )
+       )
     )
   );
 }
