@@ -18,37 +18,6 @@ function App() {
   
   const progressModal = useProgressModal();
 
-  // Handle report generation with progress tracking
-  const handleReportGeneration = async (data) => {
-    setIsGeneratingReport(true);
-    progressModal.showProgress('phase1', 90);
-
-    try {
-      // Phase 1: Independent Drafting
-      progressModal.updateStage('phase1');
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Phase 2: Peer Review
-      progressModal.updateStage('phase2');
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Phase 3: Final Arbitration
-      progressModal.updateStage('phase3');
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Complete generation
-      progressModal.hideProgress();
-      setIsGeneratingReport(false);
-      
-      // Show results (this would be handled by the actual form component)
-      return true;
-    } catch (error) {
-      progressModal.hideProgress();
-      setIsGeneratingReport(false);
-      throw error;
-    }
-  };
-
   // Handle viewing a report in the professional viewer
   const handleViewReport = (report) => {
     console.log('📖 Opening report viewer for:', report.title);
@@ -147,7 +116,7 @@ function App() {
         React.createElement(Route, { 
           path: '/consensus', 
           element: React.createElement(EnhancedConsensusForm, {
-            onReportGeneration: handleReportGeneration
+            progressModal: progressModal
           })
         }),
         React.createElement(Route, { 

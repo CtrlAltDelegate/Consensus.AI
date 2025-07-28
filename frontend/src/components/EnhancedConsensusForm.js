@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { apiHelpers } from '../config/api';
 
-function EnhancedConsensusForm({ onReportGeneration }) {
+function EnhancedConsensusForm({ progressModal }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState(null);
   const [sources, setSources] = useState(['']);
@@ -77,18 +77,15 @@ function EnhancedConsensusForm({ onReportGeneration }) {
 
   const onSubmit = async (data) => {
     setIsGenerating(true);
-    
-    // Show progress modal if available
-    if (onReportGeneration) {
-      try {
-        await onReportGeneration(data);
-      } catch (error) {
-        console.log('Progress modal error (non-critical):', error);
-      }
-    }
 
     try {
       console.log('🚀 Starting consensus generation...', data);
+      
+      // Show progress modal and start with phase 1
+      if (progressModal) {
+        progressModal.showProgress('phase1', 120); // More realistic time estimate
+        progressModal.updateStage('phase1');
+      }
       
       // Prepare the request data with output options always included
       const requestData = {
@@ -102,9 +99,27 @@ function EnhancedConsensusForm({ onReportGeneration }) {
         }
       };
       
-      // Make real API call to Railway backend
+      // Update to phase 2 after preparing request
+      if (progressModal) {
+        progressModal.updateStage('phase2');
+      }
+      
+      // Make real API call to Railway backend (this is the actual time-consuming process)
       const response = await apiHelpers.generateConsensus(requestData);
       console.log('✅ Consensus generated successfully:', response.data);
+      
+      // Update to phase 3 (synthesis)
+      if (progressModal) {
+        progressModal.updateStage('phase3');
+      }
+      
+      // Small delay to show final phase
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Hide progress modal only after real API completes
+      if (progressModal) {
+        progressModal.hideProgress();
+      }
       
       // Set the real result from the 4-LLM system
       setResult({
@@ -120,6 +135,11 @@ function EnhancedConsensusForm({ onReportGeneration }) {
       
     } catch (error) {
       console.error('❌ Error generating consensus:', error);
+      
+      // Hide progress modal on error
+      if (progressModal) {
+        progressModal.hideProgress();
+      }
       
       // Show user-friendly error with more details
       let errorMessage = 'Failed to generate consensus. Please try again.';
