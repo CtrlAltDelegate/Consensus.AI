@@ -51,7 +51,7 @@ class LLMOrchestrator {
       this.providers.set('cohere', {
         name: 'Cohere',
         models: ['command-r-plus', 'command-r', 'command'],
-        endpoint: 'https://api.cohere.ai/v1/generate',
+        endpoint: 'https://api.cohere.ai/v1/chat',
         headers: {
           'Authorization': `Bearer ${process.env.COHERE_API_KEY}`,
           'Content-Type': 'application/json'
@@ -178,9 +178,9 @@ class LLMOrchestrator {
         return {
           content: responseData.text,
           tokenUsage: {
-            prompt: responseData.meta?.tokens?.input_tokens || 0,
-            completion: responseData.meta?.tokens?.output_tokens || 0,
-            total: (responseData.meta?.tokens?.input_tokens || 0) + (responseData.meta?.tokens?.output_tokens || 0)
+            prompt: responseData.meta?.billed_units?.input_tokens || 0,
+            completion: responseData.meta?.billed_units?.output_tokens || 0,
+            total: (responseData.meta?.billed_units?.input_tokens || 0) + (responseData.meta?.billed_units?.output_tokens || 0)
           }
         };
       
