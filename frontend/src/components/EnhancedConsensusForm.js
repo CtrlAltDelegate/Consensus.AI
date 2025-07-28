@@ -105,8 +105,15 @@ function EnhancedConsensusForm({ progressModal }) {
       }
       
       // Make real API call to Railway backend (this is the actual time-consuming process)
+      console.log('📡 Sending request to backend:', requestData);
       const response = await apiHelpers.generateConsensus(requestData);
       console.log('✅ Consensus generated successfully:', response.data);
+      console.log('📊 Response structure:', {
+        success: !!response.data,
+        hasConsensus: !!response.data?.consensus,
+        hasPhases: !!response.data?.phases,
+        totalTokens: response.data?.totalTokens
+      });
       
       // Update to phase 3 (synthesis)
       if (progressModal) {
@@ -135,6 +142,13 @@ function EnhancedConsensusForm({ progressModal }) {
       
     } catch (error) {
       console.error('❌ Error generating consensus:', error);
+      console.error('❌ Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        stack: error.stack
+      });
       
       // Hide progress modal on error
       if (progressModal) {
