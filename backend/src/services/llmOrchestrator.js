@@ -131,10 +131,11 @@ class LLMOrchestrator {
       
       case 'cohere':
         return {
-          model,
           message: prompt,
+          model,
+          max_tokens: options.maxTokens || 1000,
           temperature: options.temperature || 0.7,
-          max_tokens: options.maxTokens || 1000
+          stream: false
         };
       
       default:
