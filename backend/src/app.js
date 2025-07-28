@@ -22,44 +22,13 @@ app.use(helmet({
 }));
 
 // CORS configuration for Railway + Netlify
-const corsOptions = {
-  origin: [
-    'http://localhost:3000',
-    'http://localhost:3001', 
-    'https://localhost:3000',
-    'https://localhost:3001',
-    'https://consensusai.netlify.app',
-    process.env.FRONTEND_URL
-  ].filter(Boolean),
+app.use(cors({
+  origin: true, // Allow all origins for now to test
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: [
-    'Content-Type', 
-    'Authorization', 
-    'X-Requested-With',
-    'Accept',
-    'Origin'
-  ],
-  exposedHeaders: ['Content-Length', 'X-Request-ID'],
-  optionsSuccessStatus: 200,
-  preflightContinue: false
-};
-
-app.use(cors(corsOptions));
-
-// Additional CORS headers for preflight requests
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', req.headers.origin);
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-  
-  if (req.method === 'OPTIONS') {
-    res.sendStatus(200);
-  } else {
-    next();
-  }
-});
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  optionsSuccessStatus: 200
+}));
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
