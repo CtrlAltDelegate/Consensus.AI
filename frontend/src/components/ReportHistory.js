@@ -546,6 +546,12 @@ The transition requires coordinated policy responses that balance urban vitality
 
 // Report Card Component (Grid View)
 function ReportCard({ report, isSelected, onSelect, onView, onExport, formatDate, getConfidenceColor }) {
+  const estimateReadingTime = (tokenUsage) => {
+    // Rough estimate: ~2-3 minutes for 6k-12k tokens
+    const minutes = Math.max(1, Math.round(tokenUsage / 3000));
+    return `~${minutes}m`;
+  };
+
   return React.createElement('div', { 
     className: `bg-white rounded-xl border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden ${
       isSelected ? 'ring-2 ring-indigo-500 border-indigo-200' : ''
@@ -586,9 +592,25 @@ function ReportCard({ report, isSelected, onSelect, onView, onExport, formatDate
         }, `+${report.tags.length - 3}`)
       ),
       
-      React.createElement('div', { className: 'flex items-center justify-between text-sm text-slate-500 mb-4' },
-        React.createElement('span', null, `${report.tokenUsage.toLocaleString()} tokens`),
-        React.createElement('span', null, `${report.models.length} models`)
+      // Enhanced Token Usage Metadata
+      React.createElement('div', { className: 'space-y-2 mb-4' },
+        React.createElement('div', { className: 'flex items-center justify-between' },
+          React.createElement('div', { className: 'flex items-center text-sm text-emerald-700' },
+            React.createElement('span', { className: 'mr-2' }, '🟢'),
+            React.createElement('span', { className: 'font-medium' }, 'Tokens used:'),
+            React.createElement('span', { className: 'ml-1 font-semibold' }, report.tokenUsage?.toLocaleString() || '0')
+          ),
+          React.createElement('div', { className: 'flex items-center text-sm text-indigo-700' },
+            React.createElement('span', { className: 'mr-2' }, '🧠'),
+            React.createElement('span', { className: 'font-medium' }, 'LLMs used:'),
+            React.createElement('span', { className: 'ml-1 font-semibold' }, report.models?.length || 4)
+          )
+        ),
+        React.createElement('div', { className: 'flex items-center text-sm text-amber-700' },
+          React.createElement('span', { className: 'mr-2' }, '🕒'),
+          React.createElement('span', { className: 'font-medium' }, 'Time generated:'),
+          React.createElement('span', { className: 'ml-1 font-semibold' }, estimateReadingTime(report.tokenUsage || 8000))
+        )
       )
     ),
     
@@ -614,6 +636,12 @@ function ReportCard({ report, isSelected, onSelect, onView, onExport, formatDate
 
 // Report List Item Component (List View)
 function ReportListItem({ report, isSelected, onSelect, onView, onExport, formatDate, getConfidenceColor }) {
+  const estimateReadingTime = (tokenUsage) => {
+    // Rough estimate: ~2-3 minutes for 6k-12k tokens
+    const minutes = Math.max(1, Math.round(tokenUsage / 3000));
+    return `~${minutes}m`;
+  };
+
   return React.createElement('div', { 
     className: `bg-white rounded-lg border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-300 ${
       isSelected ? 'ring-2 ring-indigo-500 border-indigo-200' : ''
@@ -637,13 +665,26 @@ function ReportListItem({ report, isSelected, onSelect, onView, onExport, format
               }, report.title),
               React.createElement('p', { className: 'text-sm text-slate-600 mb-3' }, report.summary),
               
-              React.createElement('div', { className: 'flex items-center space-x-6 text-sm text-slate-500' },
-                React.createElement('span', null, formatDate(report.createdAt)),
+              // Enhanced metadata with icons
+              React.createElement('div', { className: 'flex items-center space-x-6 text-sm mb-2' },
+                React.createElement('span', { className: 'text-slate-500' }, formatDate(report.createdAt)),
                 React.createElement('span', { 
                   className: `inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getConfidenceColor(report.confidence)}`
-                }, `${(report.confidence * 100).toFixed(0)}% confidence`),
-                React.createElement('span', null, `${report.tokenUsage.toLocaleString()} tokens`),
-                React.createElement('span', null, `${report.models.length} models`)
+                }, `${(report.confidence * 100).toFixed(0)}% confidence`)
+              ),
+              React.createElement('div', { className: 'flex items-center space-x-6 text-sm' },
+                React.createElement('div', { className: 'flex items-center text-emerald-700' },
+                  React.createElement('span', { className: 'mr-1' }, '🟢'),
+                  React.createElement('span', { className: 'font-medium' }, `${report.tokenUsage?.toLocaleString() || '0'} tokens`)
+                ),
+                React.createElement('div', { className: 'flex items-center text-indigo-700' },
+                  React.createElement('span', { className: 'mr-1' }, '🧠'),
+                  React.createElement('span', { className: 'font-medium' }, `${report.models?.length || 4} LLMs`)
+                ),
+                React.createElement('div', { className: 'flex items-center text-amber-700' },
+                  React.createElement('span', { className: 'mr-1' }, '🕒'),
+                  React.createElement('span', { className: 'font-medium' }, estimateReadingTime(report.tokenUsage || 8000))
+                )
               )
             ),
             

@@ -284,11 +284,6 @@ function EnhancedConsensusForm({ onReportGeneration }) {
                 React.createElement('div', { className: 'text-sm font-medium text-slate-900' }, '4 AI Models'),
                 React.createElement('div', { className: 'text-xs text-slate-500' }, 'GPT-4o • Claude • Gemini • Command R+')
               )
-            ),
-            React.createElement('div', { className: 'mt-3 text-xs text-slate-500' },
-              React.createElement('div', null, '• Phase 1: Independent drafting by each model (~3,200-4,800 tokens)'),
-              React.createElement('div', null, '• Phase 2: Cross-model peer review process (~1,800-2,400 tokens)'),
-              React.createElement('div', null, '• Phase 3: Final arbitration and synthesis (~2,000-3,000 tokens)')
             )
           ),
 
