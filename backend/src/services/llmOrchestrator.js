@@ -66,6 +66,18 @@ class LLMOrchestrator {
       throw new Error(`Provider ${provider} not configured`);
     }
 
+    // ENHANCED DEBUG: Log Cohere config specifically
+    if (provider === 'cohere') {
+      console.log('🔍 COHERE DEBUG:', {
+        provider,
+        model,
+        hasConfig: !!providerConfig,
+        configEndpoint: providerConfig.endpoint,
+        envKeyExists: !!process.env.COHERE_API_KEY,
+        envKeyLength: process.env.COHERE_API_KEY ? process.env.COHERE_API_KEY.length : 0
+      });
+    }
+
     const requestBody = this.buildRequestBody(provider, model, prompt, options);
     
     try {
@@ -73,6 +85,11 @@ class LLMOrchestrator {
       const endpoint = provider === 'google' 
         ? `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GOOGLE_API_KEY}`
         : providerConfig.endpoint;
+
+      // ENHANCED DEBUG: Verify endpoint is defined
+      if (!endpoint) {
+        throw new Error(`Endpoint is undefined for provider ${provider}. Config endpoint: ${providerConfig.endpoint}`);
+      }
 
       console.log(`🌐 Calling ${provider} with model ${model} at endpoint: ${endpoint.replace(process.env.GOOGLE_API_KEY || '', '[API_KEY]')}`);
 
@@ -91,7 +108,7 @@ class LLMOrchestrator {
         status: error.response?.status,
         statusText: error.response?.statusText,
         data: error.response?.data,
-        endpoint,
+        endpoint: endpoint || 'UNDEFINED',
         requestBodyPreview: JSON.stringify(requestBody).substring(0, 200) + '...'
       });
       throw new Error(`${provider} (${model}) API failed: ${error.message}`);
