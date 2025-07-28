@@ -276,5 +276,4 @@ export function useProgressModal() {
   };
 }
 
-export { useProgressModal };
 export default ProgressLoadingModal; 
