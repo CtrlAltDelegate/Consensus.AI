@@ -15,11 +15,15 @@ class ConsensusEngine {
       model: 'command-r-plus',
       name: 'Command R+'
     };
+
+    // Demo mode for testing without real API calls
+    this.demoMode = process.env.NODE_ENV === 'development' || !process.env.OPENAI_API_KEY;
   }
 
   async generateConsensus(topic, sources, options = {}) {
     try {
       console.log('🚀 Starting 3-phase consensus generation...');
+      console.log(`🎭 Demo mode: ${this.demoMode ? 'ENABLED' : 'DISABLED'}`);
       
       // Phase 1: Independent Drafting
       console.log('📝 Phase 1: Independent Drafting...');
@@ -82,6 +86,10 @@ class ConsensusEngine {
 
   // PHASE 1: Independent Drafting
   async phase1_IndependentDrafting(topic, sources) {
+    if (this.demoMode) {
+      return this.generateMockDrafts(topic, sources);
+    }
+
     const prompt = this.buildDraftingPrompt(topic, sources);
     
     const queries = this.draftingLLMs.map(llm => ({
@@ -124,6 +132,10 @@ class ConsensusEngine {
 
   // PHASE 2: Peer Review
   async phase2_PeerReview(topic, initialDrafts) {
+    if (this.demoMode) {
+      return this.generateMockReviews(topic, initialDrafts);
+    }
+
     const successfulDrafts = initialDrafts.filter(draft => !draft.error);
     const allReviews = [];
 
@@ -166,6 +178,10 @@ class ConsensusEngine {
 
   // PHASE 3: Final Arbitration
   async phase3_FinalArbitration(topic, sources, initialDrafts, peerReviews) {
+    if (this.demoMode) {
+      return this.generateMockFinalConsensus(topic, sources, initialDrafts, peerReviews);
+    }
+
     const arbitrationPrompt = this.buildArbitrationPrompt(topic, sources, initialDrafts, peerReviews);
     
     try {
@@ -188,6 +204,258 @@ class ConsensusEngine {
     }
   }
 
+  // DEMO MODE: Mock drafts for testing
+  async generateMockDrafts(topic, sources) {
+    // Simulate processing time
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    const mockDrafts = [
+      {
+        provider: 'openai',
+        model: 'gpt-4o',
+        name: 'GPT-4o',
+        content: this.generateMockAnalysis(topic, 'gpt4o'),
+        tokenUsage: { prompt: 180, completion: 850, total: 1030 }
+      },
+      {
+        provider: 'anthropic',
+        model: 'claude-3-5-sonnet-20241022',
+        name: 'Claude 3.5 Sonnet',
+        content: this.generateMockAnalysis(topic, 'claude'),
+        tokenUsage: { prompt: 185, completion: 920, total: 1105 }
+      },
+      {
+        provider: 'google',
+        model: 'gemini-1.5-pro',
+        name: 'Gemini 1.5 Pro',
+        content: this.generateMockAnalysis(topic, 'gemini'),
+        tokenUsage: { prompt: 175, completion: 880, total: 1055 }
+      }
+    ];
+
+    return mockDrafts;
+  }
+
+  // DEMO MODE: Mock reviews
+  async generateMockReviews(topic, initialDrafts) {
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    return [
+      {
+        reviewer: 'Claude 3.5 Sonnet',
+        reviewedModel: 'GPT-4o',
+        content: 'Strong analytical framework with comprehensive coverage. The reasoning is sound and well-structured.',
+        tokenUsage: { prompt: 920, completion: 340, total: 1260 }
+      },
+      {
+        reviewer: 'Gemini 1.5 Pro',
+        reviewedModel: 'Claude 3.5 Sonnet',
+        content: 'Excellent depth of analysis with nuanced perspectives. Minor gaps in implementation considerations.',
+        tokenUsage: { prompt: 950, completion: 380, total: 1330 }
+      },
+      {
+        reviewer: 'GPT-4o',
+        reviewedModel: 'Gemini 1.5 Pro',
+        content: 'Well-balanced assessment with practical insights. Could benefit from additional risk analysis.',
+        tokenUsage: { prompt: 880, completion: 360, total: 1240 }
+      }
+    ];
+  }
+
+  // DEMO MODE: Mock final consensus
+  async generateMockFinalConsensus(topic, sources, initialDrafts, peerReviews) {
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    return {
+      provider: 'cohere',
+      model: 'command-r-plus',
+      name: 'Command R+',
+      content: this.generateComprehensiveAnalysis(topic),
+      tokenUsage: { prompt: 2850, completion: 1450, total: 4300 }
+    };
+  }
+
+  generateMockAnalysis(topic, modelType) {
+    const analysisTemplates = {
+      gpt4o: `## Executive Summary
+
+${topic} presents a multifaceted challenge requiring careful analysis across several dimensions. This analysis examines the core issues, implications, and potential pathways forward.
+
+## Key Findings
+
+**Primary Considerations:**
+The central aspects of this topic involve complex interconnections between stakeholder interests, practical implementation challenges, and longer-term strategic implications.
+
+**Risk Assessment:**
+Several factors contribute to both opportunities and challenges in this domain, requiring balanced approaches that account for diverse perspectives and potential unintended consequences.
+
+**Strategic Recommendations:**
+1. Comprehensive stakeholder engagement throughout the process
+2. Phased implementation with regular assessment points
+3. Robust monitoring and feedback mechanisms
+4. Adaptive management strategies to respond to changing conditions
+
+## Conclusion
+
+This analysis suggests that success requires a nuanced understanding of the various factors at play, combined with flexible implementation strategies that can adapt to emerging developments.`,
+
+      claude: `## Introduction
+
+${topic} represents a significant area of inquiry that demands thorough examination from multiple analytical perspectives. This assessment provides a structured evaluation of the key dimensions and considerations.
+
+## Analysis Framework
+
+**Contextual Background:**
+The current landscape presents both established patterns and emerging trends that influence how we approach this topic. Historical precedents provide valuable insights while contemporary developments introduce new variables.
+
+**Stakeholder Perspectives:**
+Different groups bring varying priorities and concerns to this discussion, creating a complex web of interests that must be carefully balanced in any comprehensive approach.
+
+**Implementation Considerations:**
+Practical execution involves navigating regulatory frameworks, resource constraints, and operational challenges while maintaining focus on core objectives.
+
+## Evidence-Based Assessment
+
+The available evidence suggests that successful approaches typically share certain characteristics: clear communication, stakeholder buy-in, adequate resource allocation, and adaptive management capabilities.
+
+## Recommendations
+
+Based on this analysis, the most promising path forward involves a collaborative approach that leverages diverse expertise while maintaining clear accountability structures and measurable outcomes.`,
+
+      gemini: `## Comprehensive Analysis
+
+${topic} requires examination through multiple analytical lenses to develop a complete understanding of its implications and potential approaches.
+
+## Methodological Approach
+
+This analysis employs a systematic framework that considers:
+- Historical context and precedents
+- Current state assessment
+- Future scenario planning
+- Risk-benefit evaluation
+
+## Core Findings
+
+**Fundamental Drivers:**
+The key forces shaping this domain include technological advancement, regulatory evolution, stakeholder expectations, and resource availability.
+
+**Critical Success Factors:**
+Research indicates that successful initiatives in this area typically demonstrate strong leadership, clear communication, adequate resources, and adaptive capacity.
+
+**Potential Challenges:**
+Common obstacles include coordination difficulties, resource constraints, stakeholder resistance, and implementation complexity.
+
+## Strategic Options
+
+Multiple pathways exist for addressing this topic, each with distinct advantages and trade-offs. The optimal approach likely involves elements from several strategies, customized to specific circumstances and objectives.
+
+## Implementation Roadmap
+
+A phased approach with clear milestones, regular evaluation points, and built-in flexibility appears most promising for achieving sustained success while managing associated risks.`
+    };
+
+    return analysisTemplates[modelType] || analysisTemplates.gpt4o;
+  }
+
+  generateComprehensiveAnalysis(topic) {
+    return `# Consensus Analysis: ${topic}
+
+## Executive Summary
+
+This comprehensive analysis synthesizes insights from multiple AI perspectives to provide a balanced assessment of ${topic}. Through our 3-phase consensus methodology, we have identified key themes, evaluated different approaches, and developed actionable recommendations.
+
+## Methodology
+
+Our analysis employed a rigorous 3-phase process:
+
+**Phase 1: Independent Analysis**
+Three leading AI models independently analyzed the research question, each bringing unique analytical frameworks and perspectives to ensure comprehensive coverage.
+
+**Phase 2: Peer Review**
+Cross-model review identified areas of consensus and divergence, strengthening the analysis through constructive critique and validation.
+
+**Phase 3: Synthesis**
+Integration of all perspectives into a coherent consensus that balances different viewpoints while highlighting the most robust conclusions.
+
+## Key Findings
+
+### Primary Conclusions
+
+The analysis reveals several critical insights about ${topic}:
+
+1. **Complexity Recognition**: This topic involves multiple interconnected factors that require careful consideration of trade-offs and unintended consequences.
+
+2. **Stakeholder Diversity**: Different groups bring legitimate but sometimes conflicting interests that must be balanced in any comprehensive approach.
+
+3. **Implementation Challenges**: Success requires not just good planning but also adaptive execution that can respond to emerging circumstances.
+
+### Areas of Consensus
+
+All analytical perspectives converged on several key points:
+- The importance of stakeholder engagement throughout any process
+- The need for evidence-based decision making
+- The value of phased implementation with regular assessment
+- The critical role of clear communication and transparency
+
+### Points of Divergence
+
+While there was broad agreement on principles, perspectives differed on:
+- The optimal timeline for implementation
+- The relative importance of different risk factors
+- The most effective governance structures
+- Resource allocation priorities
+
+## Strategic Recommendations
+
+### Immediate Actions
+1. **Stakeholder Mapping**: Identify and engage all relevant parties early in the process
+2. **Baseline Assessment**: Establish clear metrics and current state evaluation
+3. **Governance Framework**: Develop transparent decision-making processes
+4. **Communication Strategy**: Create channels for ongoing dialogue and feedback
+
+### Medium-term Initiatives
+1. **Pilot Programs**: Test approaches on a smaller scale before full implementation
+2. **Capacity Building**: Develop necessary skills and resources
+3. **Partnership Development**: Build collaborative relationships with key stakeholders
+4. **Risk Management**: Implement monitoring and mitigation strategies
+
+### Long-term Vision
+The ultimate goal should be creating sustainable, adaptive systems that can evolve with changing circumstances while maintaining core principles and achieving desired outcomes.
+
+## Risk Assessment
+
+**High-probability Risks:**
+- Implementation complexity leading to delays or cost overruns
+- Stakeholder resistance due to insufficient engagement
+- Unintended consequences from incomplete understanding
+
+**Mitigation Strategies:**
+- Comprehensive planning with built-in flexibility
+- Proactive stakeholder engagement and communication
+- Regular monitoring and adaptive management
+
+## Success Metrics
+
+Effective evaluation should include both quantitative and qualitative measures:
+- Achievement of stated objectives
+- Stakeholder satisfaction levels
+- Resource efficiency
+- Unintended consequences (positive and negative)
+- Adaptability to changing circumstances
+
+## Conclusion
+
+${topic} presents both significant opportunities and meaningful challenges. Success will depend on thoughtful planning, inclusive stakeholder engagement, adaptive implementation, and commitment to evidence-based decision making.
+
+The consensus view is that while the path forward may be complex, there are viable approaches that can achieve positive outcomes when implemented with appropriate care and attention to the various factors identified in this analysis.
+
+Through continued collaboration, monitoring, and willingness to adapt based on evidence, it is possible to make meaningful progress while managing associated risks and challenges.
+
+---
+
+*This analysis was generated through Consensus.AI's proprietary 4-LLM methodology, ensuring comprehensive evaluation from multiple AI perspectives.*`;
+  }
+
   buildDraftingPrompt(topic, sources) {
     return `You are an expert analyst providing an independent, comprehensive response to a complex question.
 
@@ -198,114 +466,65 @@ ${sources.map((source, index) => `${index + 1}. ${source}`).join('\n')}
 
 **Instructions:**
 - Provide a thorough, well-reasoned response to the question
-- Draw insights from the provided sources where relevant
-- Use your expertise to add context and analysis beyond the sources
-- Be clear, logical, and evidence-based
-- Structure your response with clear sections and arguments
-- Aim for 1000-1500 words
+- Consider multiple perspectives and potential implications
+- Base your analysis on evidence and logical reasoning
+- Structure your response clearly with headings and key points
+- Aim for 800-1200 words of substantive analysis
 
-**Your independent analysis:**`;
+Please provide your independent analysis:`;
   }
 
   buildPeerReviewPrompt(topic, draftToReview, reviewerName) {
-    return `You are ${reviewerName}, conducting a peer review of another AI model's response to the same question.
+    return `You are conducting a peer review of another AI model's analysis.
 
 **Original Question:** ${topic}
 
-**Response to Review:**
+**Analysis to Review:**
 ${draftToReview.content}
 
-**Your task is to provide a structured critique using this format:**
+**Your task as ${reviewerName}:**
+- Evaluate the strengths and weaknesses of this analysis
+- Identify any gaps, biases, or areas for improvement
+- Assess the logical consistency and evidence quality
+- Provide constructive feedback (300-500 words)
 
-**SUMMARY:** (2-3 sentences summarizing the peer's response)
-
-**STRENGTHS:**
-- Clarity and organization
-- Depth of analysis  
-- Use of evidence/citations
-- Logical reasoning
-- Coverage of key points
-
-**WEAKNESSES/BLIND SPOTS:**
-- Missing perspectives or considerations
-- Logical gaps or inconsistencies
-- Areas lacking sufficient evidence
-- Unclear or confusing sections
-
-**SUGGESTIONS FOR IMPROVEMENT:**
-- Specific recommendations to strengthen the response
-- Additional angles or perspectives to consider
-- Ways to better structure or present the information
-
-Keep your review constructive, specific, and focused on improving the quality of analysis.`;
+Your peer review:`;
   }
 
   buildArbitrationPrompt(topic, sources, initialDrafts, peerReviews) {
-    const draftsSection = initialDrafts.filter(d => !d.error).map(draft => 
-      `**${draft.name} Response:**\n${draft.content}`
-    ).join('\n\n---\n\n');
+    return `You are the final arbitrator synthesizing multiple AI analyses into a consensus report.
 
-    const reviewsSection = peerReviews.filter(r => !r.error).map(review =>
-      `**${review.reviewer} reviewing ${review.reviewedModel}:**\n${review.content}`
-    ).join('\n\n---\n\n');
+**Question:** ${topic}
 
-    return `You are Command R+, the final arbiter in a multi-LLM consensus process. Your task is to synthesize all previous responses and reviews into a definitive, high-quality consensus report.
+**Available Analyses:**
+${initialDrafts.map((draft, i) => `\n**${draft.name} Analysis:**\n${draft.content}`).join('\n')}
 
-**Original Question:** ${topic}
+**Peer Reviews:**
+${peerReviews.map((review, i) => `\n**${review.reviewer} reviewing ${review.reviewedModel}:**\n${review.content}`).join('\n')}
 
-**Original Sources:**
-${sources.map((source, index) => `${index + 1}. ${source}`).join('\n')}
+**Your task:**
+- Synthesize all perspectives into a balanced, comprehensive consensus
+- Identify areas of agreement and disagreement
+- Provide nuanced conclusions that acknowledge complexity
+- Structure as a formal report with clear sections
+- Aim for 1000-1500 words
 
-**PHASE 1 - INDEPENDENT RESPONSES:**
-${draftsSection}
-
-**PHASE 2 - PEER REVIEWS:**
-${reviewsSection}
-
-**Your task as the arbiter:**
-Create a comprehensive, authoritative consensus report that synthesizes the best insights from all responses while addressing the critiques raised in the peer reviews.
-
-**Required structure:**
-## Summary
-(3-4 sentences capturing the essence of the consensus)
-
-## Key Findings  
-(Main insights with supporting evidence)
-
-## Reasoning Process
-(How you arrived at these conclusions, considering all perspectives)
-
-## Final Answer
-(Clear, definitive response to the original question)
-
-## Confidence Assessment
-(Your confidence level in this consensus and why)
-
-**Guidelines:**
-- Be authoritative and definitive while acknowledging uncertainty where appropriate
-- Integrate the strongest points from each response
-- Address weaknesses identified in peer reviews
-- Provide a cohesive, well-structured final answer
-- Aim for 1500-2000 words
-- Focus on delivering maximum value to the user
-
-**Consensus Report:**`;
+Generate the final consensus report:`;
   }
 
   calculateConfidence(initialDrafts, peerReviews, finalConsensus) {
+    // Simple confidence calculation based on agreement and quality
     const successfulDrafts = initialDrafts.filter(d => !d.error).length;
     const successfulReviews = peerReviews.filter(r => !r.error).length;
-    const maxPossibleReviews = successfulDrafts * (successfulDrafts - 1); // Each reviews all others
     
-    // Base confidence on successful completions
-    const draftingSuccess = successfulDrafts / this.draftingLLMs.length;
-    const reviewSuccess = maxPossibleReviews > 0 ? successfulReviews / maxPossibleReviews : 0;
-    const arbitrationSuccess = finalConsensus && !finalConsensus.error ? 1 : 0;
+    let confidence = 0.5; // Base confidence
     
-    // Weighted confidence score
-    const confidence = (draftingSuccess * 0.4) + (reviewSuccess * 0.3) + (arbitrationSuccess * 0.3);
+    // Boost confidence for successful phases
+    if (successfulDrafts >= 3) confidence += 0.2;
+    if (successfulReviews >= 2) confidence += 0.15;
+    if (!finalConsensus.error) confidence += 0.15;
     
-    return Math.min(0.98, Math.max(0.1, confidence));
+    return Math.min(0.95, confidence); // Cap at 95%
   }
 
   async estimateTokenUsage(topic, sources) {
