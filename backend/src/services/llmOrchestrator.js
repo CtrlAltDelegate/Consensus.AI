@@ -11,7 +11,7 @@ class LLMOrchestrator {
     if (process.env.OPENAI_API_KEY) {
       this.providers.set('openai', {
         name: 'OpenAI',
-        models: ['gpt-4', 'gpt-3.5-turbo'],
+        models: ['gpt-4o', 'gpt-4', 'gpt-3.5-turbo'],
         endpoint: 'https://api.openai.com/v1/chat/completions',
         headers: {
           'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
@@ -24,7 +24,7 @@ class LLMOrchestrator {
     if (process.env.ANTHROPIC_API_KEY) {
       this.providers.set('anthropic', {
         name: 'Anthropic',
-        models: ['claude-3-sonnet-20240229', 'claude-3-haiku-20240307'],
+        models: ['claude-3-5-sonnet-20241022', 'claude-3-sonnet-20240229', 'claude-3-haiku-20240307'],
         endpoint: 'https://api.anthropic.com/v1/messages',
         headers: {
           'x-api-key': process.env.ANTHROPIC_API_KEY,
@@ -51,7 +51,7 @@ class LLMOrchestrator {
       this.providers.set('cohere', {
         name: 'Cohere',
         models: ['command-r-plus', 'command-r', 'command'],
-        endpoint: 'https://api.cohere.ai/v1/chat',
+        endpoint: 'https://api.cohere.ai/v1/generate',
         headers: {
           'Authorization': `Bearer ${process.env.COHERE_API_KEY}`,
           'Content-Type': 'application/json'
