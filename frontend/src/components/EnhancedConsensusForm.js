@@ -144,7 +144,9 @@ function EnhancedConsensusForm({ progressModal }) {
       // Show user-friendly error with more details
       let errorMessage = 'Failed to generate consensus. Please try again.';
       
-      if (error.response?.status === 400) {
+      if (error.message?.includes('CORS')) {
+        errorMessage = 'Connection blocked by browser security. Please contact support.';
+      } else if (error.response?.status === 400) {
         errorMessage = 'Invalid request data. Please check your input and try again.';
       } else if (error.response?.status === 401) {
         errorMessage = 'Authentication required. Please sign in and try again.';
@@ -152,6 +154,8 @@ function EnhancedConsensusForm({ progressModal }) {
         errorMessage = 'Rate limit exceeded. Please wait a moment and try again.';
       } else if (error.response?.status >= 500) {
         errorMessage = 'Server error. Our team has been notified. Please try again later.';
+      } else if (error.code === 'NETWORK_ERROR' || error.message?.includes('Network Error')) {
+        errorMessage = 'Network connection failed. Please check your internet and try again.';
       }
       
       setResult({
