@@ -38,6 +38,53 @@ class ExportService {
     }
   }
 
+  // Enhanced PDF Export with Professional Formatting
+  async exportToPDF(report) {
+    try {
+      console.log('🖨️ Generating professional PDF report...');
+      
+      const htmlContent = this.generateProfessionalHTML(report);
+      
+      // Create a new window for printing
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        throw new Error('Popup blocked - please allow popups for PDF export');
+      }
+      
+      // Write the HTML content
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+      
+      // Wait for content to load then trigger print
+      printWindow.onload = () => {
+        setTimeout(() => {
+          printWindow.print();
+        }, 500);
+      };
+      
+      // Return success message
+      return {
+        success: true,
+        message: 'PDF export initiated - use your browser\'s print dialog to save as PDF',
+        filename: this.generateFilename(report, 'pdf')
+      };
+    } catch (error) {
+      console.error('PDF export failed:', error);
+      throw new Error(`PDF export failed: ${error.message}`);
+    }
+  }
+
+  // Generate filename for exports
+  generateFilename(report, format) {
+    const title = (report.title || 'Consensus_Report')
+      .replace(/[^a-zA-Z0-9]/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_|_$/g, '');
+    
+    const date = new Date().toISOString().split('T')[0];
+    return `${title}_${date}.${format}`;
+  }
+
   // Clean markdown formatting from text
   cleanMarkdown(text) {
     if (!text) return '';
