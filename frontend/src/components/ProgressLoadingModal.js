@@ -3,7 +3,8 @@ import React, { useState, useEffect } from 'react';
 function ProgressLoadingModal({ isVisible, onClose, stages, currentStage, estimatedTime }) {
   const [progress, setProgress] = useState(0);
   const [timeRemaining, setTimeRemaining] = useState(estimatedTime || 90);
-  const [startTime, setStartTime] = useState(Date.now());
+  const [startTime, setStartTime] = useState(null);
+  const [elapsedTime, setElapsedTime] = useState(0);
 
   // Default stages if none provided
   const defaultStages = [
@@ -31,29 +32,65 @@ function ProgressLoadingModal({ isVisible, onClose, stages, currentStage, estima
   ];
 
   const processStages = stages || defaultStages;
-  const currentStageIndex = processStages.findIndex(stage => stage.id === currentStage) || 0;
+  const currentStageIndex = processStages.findIndex(stage => stage.id === currentStage);
+  const validStageIndex = Math.max(0, currentStageIndex);
 
-  // Update progress based on current stage
+  // Initialize when modal becomes visible
   useEffect(() => {
-    if (isVisible) {
-      const stageProgress = (currentStageIndex / processStages.length) * 100;
-      setProgress(stageProgress);
+    if (isVisible && !startTime) {
+      console.log('🚀 Progress modal initialized');
       setStartTime(Date.now());
+      setProgress(0);
+      setElapsedTime(0);
+      setTimeRemaining(estimatedTime || 90);
+    } else if (!isVisible && startTime) {
+      console.log('❌ Progress modal hidden, resetting state');
+      setStartTime(null);
+      setProgress(0);
+      setElapsedTime(0);
     }
-  }, [currentStage, isVisible, currentStageIndex, processStages.length]);
+  }, [isVisible, startTime, estimatedTime]);
 
-  // Update time remaining
+  // Update progress based on current stage and elapsed time
   useEffect(() => {
-    if (!isVisible) return;
+    if (!isVisible || !startTime) return;
 
     const interval = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - startTime) / 1000);
-      const remaining = Math.max(0, (estimatedTime || 90) - elapsed);
+      const now = Date.now();
+      const elapsed = Math.floor((now - startTime) / 1000);
+      setElapsedTime(elapsed);
+      
+      // Calculate progress based on stage and time
+      let calculatedProgress = 0;
+      
+      if (currentStageIndex >= 0) {
+        // Base progress from completed stages
+        const completedStages = validStageIndex;
+        calculatedProgress = (completedStages / processStages.length) * 100;
+        
+        // Add progress within current stage based on time
+        const currentStageDuration = processStages[validStageIndex]?.duration || 30;
+        const stageElapsed = Math.min(elapsed, currentStageDuration);
+        const stageProgress = (stageElapsed / currentStageDuration) * (100 / processStages.length);
+        calculatedProgress += stageProgress;
+      } else {
+        // If no specific stage, base on elapsed time
+        const totalEstimated = estimatedTime || 90;
+        calculatedProgress = Math.min(95, (elapsed / totalEstimated) * 100);
+      }
+      
+      setProgress(Math.min(99, calculatedProgress));
+      
+      // Update time remaining
+      const totalEstimated = estimatedTime || 90;
+      const remaining = Math.max(0, totalEstimated - elapsed);
       setTimeRemaining(remaining);
+      
+      console.log(`⏱️ Progress update: ${Math.round(calculatedProgress)}%, Stage: ${currentStage || 'unknown'}, Elapsed: ${elapsed}s`);
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isVisible, startTime, estimatedTime]);
+  }, [isVisible, startTime, currentStage, currentStageIndex, validStageIndex, estimatedTime, processStages]);
 
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
@@ -61,7 +98,19 @@ function ProgressLoadingModal({ isVisible, onClose, stages, currentStage, estima
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  if (!isVisible) return null;
+  // Don't render if not visible
+  if (!isVisible) {
+    return null;
+  }
+
+  console.log('🎨 Rendering ProgressLoadingModal:', {
+    isVisible,
+    currentStage,
+    currentStageIndex: validStageIndex,
+    progress: Math.round(progress),
+    timeRemaining,
+    elapsedTime
+  });
 
   return React.createElement('div', { className: 'fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4' },
     React.createElement('div', { className: 'bg-white rounded-xl shadow-2xl max-w-lg w-full overflow-hidden' },
@@ -77,20 +126,23 @@ function ProgressLoadingModal({ isVisible, onClose, stages, currentStage, estima
         ),
         React.createElement('div', { className: 'mt-4 flex items-center justify-center space-x-4 text-sm' },
           React.createElement('span', { className: 'text-slate-500' }, 'Time remaining:'),
-          React.createElement('span', { className: 'font-mono font-semibold text-indigo-600' }, formatTime(timeRemaining))
+          React.createElement('span', { className: 'font-mono font-semibold text-indigo-600' }, formatTime(timeRemaining)),
+          React.createElement('span', { className: 'text-slate-400' }, '•'),
+          React.createElement('span', { className: 'text-slate-500' }, 'Elapsed:'),
+          React.createElement('span', { className: 'font-mono font-semibold text-slate-700' }, formatTime(elapsedTime))
         )
       ),
 
       // Progress Bar
       React.createElement('div', { className: 'px-6 py-4 bg-slate-50' },
         React.createElement('div', { className: 'flex justify-between text-xs text-slate-600 mb-2' },
-          React.createElement('span', null, `Step ${currentStageIndex + 1} of ${processStages.length}`),
+          React.createElement('span', null, `Step ${validStageIndex + 1} of ${processStages.length}`),
           React.createElement('span', null, `${Math.round(progress)}% complete`)
         ),
-        React.createElement('div', { className: 'w-full bg-slate-200 rounded-full h-2' },
+        React.createElement('div', { className: 'w-full bg-slate-200 rounded-full h-3' },
           React.createElement('div', { 
-            className: 'h-2 bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full transition-all duration-1000 ease-out',
-            style: { width: `${progress}%` }
+            className: 'h-3 bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full transition-all duration-1000 ease-out',
+            style: { width: `${Math.max(5, progress)}%` }
           })
         )
       ),
@@ -99,9 +151,9 @@ function ProgressLoadingModal({ isVisible, onClose, stages, currentStage, estima
       React.createElement('div', { className: 'px-6 py-6' },
         React.createElement('div', { className: 'space-y-4' },
           ...processStages.map((stage, index) => {
-            const isCompleted = index < currentStageIndex;
-            const isCurrent = index === currentStageIndex;
-            const isPending = index > currentStageIndex;
+            const isCompleted = index < validStageIndex;
+            const isCurrent = index === validStageIndex;
+            const isPending = index > validStageIndex;
 
             return React.createElement('div', { 
               key: stage.id, 
@@ -152,8 +204,8 @@ function ProgressLoadingModal({ isVisible, onClose, stages, currentStage, estima
                 isCurrent && React.createElement('div', { className: 'mt-2' },
                   React.createElement('div', { className: 'w-full bg-slate-200 rounded-full h-1' },
                     React.createElement('div', { 
-                      className: 'h-1 bg-indigo-500 rounded-full transition-all duration-500 ease-out animate-pulse',
-                      style: { width: '60%' }
+                      className: 'h-1 bg-indigo-500 rounded-full transition-all duration-500 ease-out',
+                      style: { width: `${Math.min(90, (elapsedTime % 30) * 3)}%` }
                     })
                   )
                 )
@@ -170,70 +222,47 @@ function ProgressLoadingModal({ isVisible, onClose, stages, currentStage, estima
             React.createElement('h4', { className: 'text-sm font-semibold text-slate-700 mb-1' }, 'AI Models Active'),
             React.createElement('div', { className: 'flex items-center space-x-2' },
               ['GPT-4o', 'Claude 3.5', 'Gemini 1.5', 'Command R+'].map((model, index) =>
-                React.createElement('span', { 
+                React.createElement('span', {
                   key: model,
-                  className: `text-xs px-2 py-1 rounded-full transition-all duration-300 ${
-                    index <= currentStageIndex ? 
-                    'bg-emerald-100 text-emerald-700' : 
-                    'bg-slate-200 text-slate-500'
-                  }`
+                  className: 'inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-indigo-100 text-indigo-700'
                 }, model)
               )
             )
           ),
           React.createElement('div', { className: 'text-right' },
-            React.createElement('div', { className: 'text-sm font-semibold text-slate-700' }, '4 Models'),
-            React.createElement('div', { className: 'text-xs text-slate-500' }, 'Working in parallel')
+            React.createElement('h4', { className: 'text-sm font-semibold text-slate-700 mb-1' }, 'Quality Indicators'),
+            React.createElement('div', { className: 'text-xs text-slate-600' },
+              React.createElement('div', null, 'Est. 6,000-12,000 tokens'),
+              React.createElement('div', null, '3 analysis phases'),
+              React.createElement('div', null, '95%+ accuracy target')
+            )
           )
         )
-      ),
-
-      // Quality Indicators
-      React.createElement('div', { className: 'px-6 py-4 bg-gradient-to-r from-indigo-50 to-violet-50' },
-        React.createElement('div', { className: 'grid grid-cols-3 gap-4 text-center' },
-          React.createElement('div', null,
-            React.createElement('div', { className: 'text-lg font-bold text-indigo-600' }, '~8-12K'),
-            React.createElement('div', { className: 'text-xs text-slate-600' }, 'Tokens')
-          ),
-          React.createElement('div', null,
-            React.createElement('div', { className: 'text-lg font-bold text-indigo-600' }, '3'),
-            React.createElement('div', { className: 'text-xs text-slate-600' }, 'Phases')
-          ),
-          React.createElement('div', null,
-            React.createElement('div', { className: 'text-lg font-bold text-indigo-600' }, '85%+'),
-            React.createElement('div', { className: 'text-xs text-slate-600' }, 'Accuracy')
-          )
-        )
-      ),
-
-      // Cancel Button (Optional)
-      onClose && React.createElement('div', { className: 'px-6 py-4 border-t border-slate-200 text-center' },
-        React.createElement('button', {
-          onClick: onClose,
-          className: 'text-sm text-slate-500 hover:text-slate-700 transition-colors duration-200'
-        }, 'Cancel Generation')
       )
     )
   );
 }
 
-// Hook for using the progress modal
-export const useProgressModal = () => {
+// Enhanced hook for better progress management
+export function useProgressModal() {
   const [isVisible, setIsVisible] = useState(false);
   const [currentStage, setCurrentStage] = useState('phase1');
   const [estimatedTime, setEstimatedTime] = useState(90);
 
-  const showProgress = (initialStage = 'phase1', duration = 90) => {
-    setCurrentStage(initialStage);
-    setEstimatedTime(duration);
+  const showProgress = (stage = 'phase1', time = 90) => {
+    console.log('📋 Progress modal requested:', { stage, time });
+    setCurrentStage(stage);
+    setEstimatedTime(time);
     setIsVisible(true);
   };
 
   const updateStage = (stage) => {
+    console.log('🔄 Progress stage updated:', stage);
     setCurrentStage(stage);
   };
 
   const hideProgress = () => {
+    console.log('❌ Progress modal hide requested');
     setIsVisible(false);
   };
 
@@ -245,6 +274,6 @@ export const useProgressModal = () => {
     updateStage,
     hideProgress
   };
-};
+}
 
 export default ProgressLoadingModal; 

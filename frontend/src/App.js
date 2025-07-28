@@ -102,29 +102,37 @@ function App() {
             ),
             
             // Navigation Links
-            React.createElement('div', { className: 'hidden md:flex items-center space-x-1' },
+            React.createElement('div', { className: 'hidden md:flex items-center space-x-2' },
               React.createElement(NavLink, { to: '/dashboard' }, 'Dashboard'),
               React.createElement(NavLink, { to: '/consensus' }, 'Generate Report'),
               React.createElement(NavLink, { to: '/reports' }, 'Report Library')
             )
           ),
           
-          // User Actions
-          React.createElement('div', { className: 'flex items-center space-x-3' },
-            React.createElement('div', { className: 'hidden sm:flex items-center text-sm text-slate-600' },
-              React.createElement('span', { className: 'mr-2' }, '22,570 tokens remaining'),
+          // User Actions - Better spacing and layout
+          React.createElement('div', { className: 'flex items-center space-x-6' },
+            // Token Display - Better formatted with spacing
+            React.createElement('div', { className: 'hidden sm:flex items-center space-x-3 px-3 py-2 bg-slate-50 rounded-lg border border-slate-200' },
+              React.createElement('div', { className: 'flex flex-col' },
+                React.createElement('span', { className: 'text-xs text-slate-500 font-medium' }, 'Tokens Remaining'),
+                React.createElement('span', { className: 'text-sm text-slate-900 font-semibold' }, '22,570')
+              ),
               React.createElement('div', { className: 'w-16 h-2 bg-slate-200 rounded-full' },
                 React.createElement('div', { className: 'w-3/4 h-2 bg-emerald-500 rounded-full' })
               )
             ),
-            React.createElement('button', { 
-              className: 'p-2 text-slate-500 hover:text-slate-700 transition-colors duration-200'
-            }, '🔔'),
-            React.createElement('button', { 
-              className: 'flex items-center space-x-2 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 transition-colors duration-200'
-            }, 
-              React.createElement('div', { className: 'w-6 h-6 bg-indigo-500 rounded-full' }),
-              React.createElement('span', { className: 'hidden sm:inline' }, 'User')
+            
+            // Action Buttons
+            React.createElement('div', { className: 'flex items-center space-x-3' },
+              React.createElement('button', { 
+                className: 'p-2 text-slate-500 hover:text-slate-700 transition-colors duration-200 rounded-lg hover:bg-slate-100'
+              }, '🔔'),
+              React.createElement('button', { 
+                className: 'flex items-center space-x-2 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 transition-colors duration-200'
+              }, 
+                React.createElement('div', { className: 'w-6 h-6 bg-indigo-500 rounded-full' }),
+                React.createElement('span', { className: 'hidden sm:inline' }, 'User')
+              )
             )
           )
         )

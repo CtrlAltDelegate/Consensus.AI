@@ -1,583 +1,472 @@
 // Export Service for Consensus Reports
-// Handles PDF, TXT, and DOCX export with professional formatting
-
 class ExportService {
   constructor() {
-    this.brandName = 'Consensus.AI';
-    this.brandLogo = '/api/placeholder/120/40'; // Would be actual logo
-    this.reportVersion = '1.0';
+    this.formatters = {
+      pdf: this.exportToPDF.bind(this),
+      txt: this.exportToTXT.bind(this),
+      docx: this.exportToWord.bind(this)
+    };
   }
 
-  // Main export function
-  async exportReport(report, format = 'pdf', options = {}) {
+  // Main export method
+  async exportReport(report, format = 'pdf') {
     try {
-      console.log(`🚀 Exporting report "${report.title}" as ${format.toUpperCase()}`);
+      console.log(`📤 Exporting report as ${format.toUpperCase()}:`, report.title);
       
-      switch (format.toLowerCase()) {
-        case 'pdf':
-          return await this.exportToPDF(report, options);
-        case 'txt':
-          return await this.exportToTXT(report, options);
-        case 'docx':
-          return await this.exportToDOCX(report, options);
-        default:
-          throw new Error(`Unsupported export format: ${format}`);
+      if (!this.formatters[format]) {
+        throw new Error(`Unsupported export format: ${format}`);
       }
+      
+      return await this.formatters[format](report);
     } catch (error) {
-      console.error('❌ Export failed:', error);
-      throw error;
+      console.error(`Export failed (${format}):`, error);
+      throw new Error(`Failed to export as ${format.toUpperCase()}: ${error.message}`);
     }
   }
 
-  // Export multiple reports as ZIP
-  async exportMultipleReports(reports, format = 'pdf', options = {}) {
+  // Export multiple reports
+  async exportMultipleReports(reports, format = 'pdf') {
     try {
-      console.log(`📦 Bulk exporting ${reports.length} reports as ${format.toUpperCase()}`);
+      console.log(`📤 Exporting ${reports.length} reports as ${format.toUpperCase()}`);
       
-      const exportedFiles = [];
-      
-      for (const report of reports) {
-        const exportedContent = await this.exportReport(report, format, options);
-        exportedFiles.push({
-          filename: this.generateFilename(report, format),
-          content: exportedContent,
-          report: report
-        });
-      }
-
-      // Create ZIP file (mock implementation)
-      const zipContent = await this.createZipFile(exportedFiles, format);
-      this.downloadFile(zipContent, `consensus-reports-${Date.now()}.zip`, 'application/zip');
-      
-      return { success: true, fileCount: exportedFiles.length };
+      // For multiple reports, create a combined document
+      const combinedReport = this.combineReports(reports);
+      return await this.exportReport(combinedReport, format);
     } catch (error) {
-      console.error('❌ Bulk export failed:', error);
-      throw error;
+      console.error(`Bulk export failed (${format}):`, error);
+      throw new Error(`Failed to export multiple reports: ${error.message}`);
     }
   }
 
-  // PDF Export (using HTML to PDF conversion)
-  async exportToPDF(report, options = {}) {
-    const htmlContent = this.generateHTMLReport(report, options);
+  // Clean markdown formatting from text
+  cleanMarkdown(text) {
+    if (!text) return '';
     
-    // In a real implementation, this would use a library like jsPDF, Puppeteer, or a server-side service
-    // For now, we'll create a mock PDF and trigger download
-    const pdfBlob = await this.htmlToPDF(htmlContent, {
-      filename: this.generateFilename(report, 'pdf'),
-      margins: { top: 20, bottom: 20, left: 20, right: 20 },
-      format: 'A4',
-      printBackground: true,
-      displayHeaderFooter: true,
-      headerTemplate: this.generatePDFHeader(report),
-      footerTemplate: this.generatePDFFooter(report)
-    });
-    
-    this.downloadFile(pdfBlob, this.generateFilename(report, 'pdf'), 'application/pdf');
-    return pdfBlob;
+    return text
+      // Remove heading markers
+      .replace(/^#{1,6}\s+/gm, '')
+      // Remove bold/italic markers
+      .replace(/\*\*(.*?)\*\*/g, '$1')
+      .replace(/\*(.*?)\*/g, '$1')
+      // Convert bullet points
+      .replace(/^[-\*]\s+/gm, '• ')
+      // Remove numbered list markers
+      .replace(/^\d+\.\s+/gm, '')
+      // Clean up excessive whitespace
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
   }
 
-  // TXT Export
-  async exportToTXT(report, options = {}) {
-    const txtContent = this.generateTXTReport(report, options);
-    const blob = new Blob([txtContent], { type: 'text/plain;charset=utf-8' });
+  // Parse content into structured sections
+  parseContentSections(content) {
+    if (!content) return [{ title: 'Analysis', content: 'Content not available.' }];
+
+    const cleanContent = this.cleanMarkdown(content);
+    const lines = cleanContent.split('\n').filter(line => line.trim());
+    const sections = [];
     
-    this.downloadFile(blob, this.generateFilename(report, 'txt'), 'text/plain');
-    return blob;
+    let currentSection = { title: 'Executive Summary', content: [] };
+    
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      
+      // Check if this line looks like a section header
+      if (trimmedLine.length < 100 && (
+        trimmedLine.includes('Summary') ||
+        trimmedLine.includes('Introduction') ||
+        trimmedLine.includes('Analysis') ||
+        trimmedLine.includes('Findings') ||
+        trimmedLine.includes('Recommendations') ||
+        trimmedLine.includes('Conclusion') ||
+        trimmedLine.includes('Background') ||
+        trimmedLine.includes('Methodology') ||
+        trimmedLine.includes('Results')
+      )) {
+        // Save previous section if it has content
+        if (currentSection.content.length > 0) {
+          sections.push({
+            title: currentSection.title,
+            content: currentSection.content.join('\n\n')
+          });
+        }
+        // Start new section
+        currentSection = { title: trimmedLine, content: [] };
+      } else if (trimmedLine.length > 0) {
+        currentSection.content.push(trimmedLine);
+      }
+    }
+    
+    // Add the last section
+    if (currentSection.content.length > 0) {
+      sections.push({
+        title: currentSection.title,
+        content: currentSection.content.join('\n\n')
+      });
+    }
+
+    // If no clear sections found, create default structure
+    if (sections.length === 0) {
+      sections.push({
+        title: 'Analysis',
+        content: cleanContent
+      });
+    }
+
+    return sections;
   }
 
-  // DOCX Export (mock implementation)
-  async exportToDOCX(report, options = {}) {
-    // In a real implementation, this would use a library like docx or mammoth
-    const docContent = this.generateDOCXContent(report, options);
-    const blob = new Blob([docContent], { 
-      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' 
-    });
-    
-    this.downloadFile(blob, this.generateFilename(report, 'docx'), 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-    return blob;
+  // Format date for display
+  formatDate(dateString) {
+    try {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      return 'Date unavailable';
+    }
   }
 
-  // Generate HTML for PDF conversion
-  generateHTMLReport(report, options = {}) {
-    const createdDate = new Date(report.generatedAt || report.createdAt);
-    const confidence = report.confidence || 0;
-    const confidenceLevel = confidence >= 0.8 ? 'High' : confidence >= 0.6 ? 'Moderate' : 'Low';
+  // Generate professional HTML for PDF conversion
+  generateProfessionalHTML(report) {
+    const sections = this.parseContentSections(report.consensus);
+    const models = report.llmsUsed || report.models || ['GPT-4o', 'Claude 3.5 Sonnet', 'Gemini 1.5 Pro', 'Command R+'];
+    const tokens = report.totalTokens || report.tokenUsage || 0;
+    const confidence = ((report.confidence || 0) * 100).toFixed(1);
+    const reportDate = this.formatDate(report.generatedAt || report.createdAt);
 
     return `
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Consensus Analysis Report - ${report.title}</title>
+    <title>Consensus Analysis Report</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            line-height: 1.6; 
-            color: #1e293b; 
-            max-width: 210mm; 
-            margin: 0 auto; 
-            padding: 20mm;
+        body {
+            font-family: 'Georgia', 'Times New Roman', serif;
+            line-height: 1.6;
+            color: #2c3e50;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
             background: white;
         }
-        .header { 
-            border-bottom: 3px solid #4f46e5; 
-            padding-bottom: 20px; 
-            margin-bottom: 30px; 
+        .header {
             text-align: center;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 30px;
+            margin-bottom: 40px;
         }
-        .logo { 
-            font-size: 24px; 
-            font-weight: bold; 
-            color: #4f46e5; 
-            margin-bottom: 10px;
+        .header h1 {
+            font-size: 28px;
+            color: #2c3e50;
+            margin: 0 0 10px 0;
+            font-weight: bold;
         }
-        .report-title { 
-            font-size: 28px; 
-            font-weight: bold; 
-            margin: 20px 0 10px;
-            color: #0f172a;
+        .header .subtitle {
+            font-size: 16px;
+            color: #7f8c8d;
+            margin: 0;
         }
-        .report-meta { 
-            color: #64748b; 
+        .metadata {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            border-left: 4px solid #3498db;
+        }
+        .metadata h2 {
+            margin: 0 0 15px 0;
+            font-size: 18px;
+            color: #2c3e50;
+        }
+        .metadata-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        .metadata-item {
+            display: flex;
+            justify-content: space-between;
             font-size: 14px;
-            margin-bottom: 20px;
         }
-        .section { 
-            margin: 30px 0; 
+        .metadata-label {
+            font-weight: bold;
+            color: #34495e;
+        }
+        .metadata-value {
+            color: #7f8c8d;
+        }
+        .question-section {
+            background: #e3f2fd;
+            padding: 25px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            border-left: 4px solid #2196f3;
+        }
+        .question-section h2 {
+            margin: 0 0 15px 0;
+            font-size: 20px;
+            color: #1976d2;
+        }
+        .question-text {
+            font-size: 16px;
+            font-style: italic;
+            color: #37474f;
+            line-height: 1.5;
+        }
+        .section {
+            margin-bottom: 35px;
             page-break-inside: avoid;
         }
-        .section-title { 
-            font-size: 20px; 
-            font-weight: bold; 
-            margin-bottom: 15px; 
-            color: #1e293b;
-            border-bottom: 2px solid #e2e8f0;
-            padding-bottom: 5px;
+        .section h2 {
+            font-size: 22px;
+            color: #2c3e50;
+            border-bottom: 2px solid #ecf0f1;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
         }
-        .subsection-title { 
-            font-size: 16px; 
-            font-weight: 600; 
-            margin: 20px 0 10px; 
-            color: #374151;
-        }
-        .content { 
-            margin-bottom: 15px; 
+        .section-content {
+            font-size: 15px;
+            line-height: 1.7;
             text-align: justify;
+            color: #34495e;
         }
-        .metadata-grid { 
-            display: grid; 
-            grid-template-columns: repeat(2, 1fr); 
-            gap: 20px; 
+        .models-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
             margin: 20px 0;
         }
-        .metadata-item { 
-            background: #f8fafc; 
-            padding: 15px; 
-            border-radius: 8px; 
-            border-left: 4px solid #4f46e5;
+        .model-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+            border: 1px solid #e9ecef;
         }
-        .metadata-label { 
-            font-size: 12px; 
-            color: #64748b; 
-            text-transform: uppercase; 
-            letter-spacing: 0.5px; 
-            margin-bottom: 5px;
+        .model-name {
+            font-weight: bold;
+            color: #495057;
+            font-size: 13px;
         }
-        .metadata-value { 
-            font-size: 18px; 
-            font-weight: bold; 
-            color: #1e293b;
+        .model-status {
+            color: #28a745;
+            font-size: 12px;
+            margin-top: 5px;
         }
-        .confidence-high { color: #059669; }
-        .confidence-moderate { color: #d97706; }
-        .confidence-low { color: #dc2626; }
-        .model-list { 
-            display: grid; 
-            grid-template-columns: repeat(2, 1fr); 
-            gap: 10px; 
-            margin: 15px 0;
-        }
-        .model-item { 
-            background: #f1f5f9; 
-            padding: 10px; 
-            border-radius: 6px; 
-            text-align: center; 
-            font-weight: 500;
-        }
-        .phase-section { 
-            background: #f8fafc; 
-            padding: 20px; 
-            border-radius: 8px; 
-            margin: 20px 0;
-            border-left: 4px solid #8b5cf6;
-        }
-        .footer { 
-            margin-top: 50px; 
-            padding-top: 20px; 
-            border-top: 1px solid #e2e8f0; 
-            text-align: center; 
-            color: #64748b; 
+        .footer {
+            margin-top: 50px;
+            padding-top: 30px;
+            border-top: 2px solid #ecf0f1;
+            text-align: center;
+            color: #7f8c8d;
             font-size: 12px;
         }
-        .page-break { page-break-before: always; }
+        .confidence-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            color: white;
+            background: ${confidence >= 80 ? '#28a745' : confidence >= 60 ? '#ffc107' : '#dc3545'};
+        }
         @media print {
-            body { margin: 0; padding: 15mm; }
-            .no-print { display: none; }
+            body { padding: 20px; }
+            .header { page-break-after: avoid; }
+            .section { page-break-inside: avoid; }
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <div class="logo">${this.brandName}</div>
-        <h1 class="report-title">${report.title}</h1>
-        <div class="report-meta">
-            Generated on ${createdDate.toLocaleDateString('en-US', { 
-              year: 'numeric', month: 'long', day: 'numeric', 
-              hour: '2-digit', minute: '2-digit' 
-            })} | Report Version ${this.reportVersion}
-        </div>
+        <h1>Consensus Analysis Report</h1>
+        <p class="subtitle">Generated by Consensus.AI • ${reportDate}</p>
     </div>
 
-    <div class="section">
-        <h2 class="section-title">Executive Summary</h2>
+    <div class="metadata">
+        <h2>Report Summary</h2>
         <div class="metadata-grid">
             <div class="metadata-item">
-                <div class="metadata-label">Confidence Level</div>
-                <div class="metadata-value confidence-${confidenceLevel.toLowerCase()}">
-                    ${confidenceLevel} (${(confidence * 100).toFixed(1)}%)
-                </div>
+                <span class="metadata-label">Confidence Level:</span>
+                <span class="metadata-value">${confidence}% <span class="confidence-badge">${confidence >= 80 ? 'High' : confidence >= 60 ? 'Moderate' : 'Low'}</span></span>
             </div>
             <div class="metadata-item">
-                <div class="metadata-label">Analysis Scope</div>
-                <div class="metadata-value">${report.llmsUsed?.length || 4} AI Models</div>
+                <span class="metadata-label">Tokens Processed:</span>
+                <span class="metadata-value">${tokens.toLocaleString()}</span>
             </div>
             <div class="metadata-item">
-                <div class="metadata-label">Token Usage</div>
-                <div class="metadata-value">${(report.totalTokens || 0).toLocaleString()}</div>
+                <span class="metadata-label">AI Models Used:</span>
+                <span class="metadata-value">${models.length}</span>
             </div>
             <div class="metadata-item">
-                <div class="metadata-label">Processing Time</div>
-                <div class="metadata-value">~90 seconds</div>
+                <span class="metadata-label">Analysis Phases:</span>
+                <span class="metadata-value">3 (Drafting, Review, Synthesis)</span>
             </div>
         </div>
-        
-        <h3 class="subsection-title">Research Question</h3>
-        <div class="content">${report.title}</div>
     </div>
+
+    <div class="question-section">
+        <h2>Research Question</h2>
+        <p class="question-text">${report.title || 'Analysis Topic'}</p>
+    </div>
+
+    ${sections.map(section => `
+        <div class="section">
+            <h2>${section.title}</h2>
+            <div class="section-content">${section.content.replace(/\n/g, '</p><p>')}</div>
+        </div>
+    `).join('')}
 
     <div class="section">
-        <h2 class="section-title">Methodology</h2>
-        <div class="content">
-            This analysis was conducted using our proprietary 3-phase consensus methodology, 
-            ensuring comprehensive evaluation through multiple AI perspectives:
-        </div>
-        
-        <div class="phase-section">
-            <h3 class="subsection-title">Phase 1: Independent Drafting</h3>
-            <div class="content">
-                Multiple AI models independently analyzed the research question to provide 
-                diverse perspectives and comprehensive coverage of the topic.
-            </div>
-        </div>
-        
-        <div class="phase-section">
-            <h3 class="subsection-title">Phase 2: Peer Review</h3>
-            <div class="content">
-                Each initial analysis was cross-reviewed by other AI models to identify 
-                strengths, weaknesses, and areas of consensus or disagreement.
-            </div>
-        </div>
-        
-        <div class="phase-section">
-            <h3 class="subsection-title">Phase 3: Final Arbitration</h3>
-            <div class="content">
-                A specialized arbitrator model synthesized all perspectives and reviews 
-                to produce the final consensus analysis.
-            </div>
-        </div>
-
-        <h3 class="subsection-title">AI Models Utilized</h3>
-        <div class="model-list">
-            ${(report.llmsUsed || ['GPT-4o', 'Claude 3.5 Sonnet', 'Gemini 1.5 Pro', 'Command R+'])
-              .map(model => `<div class="model-item">${model}</div>`).join('')}
-        </div>
-    </div>
-
-    <div class="section page-break">
-        <h2 class="section-title">Consensus Analysis</h2>
-        <div class="content" style="white-space: pre-wrap; font-size: 16px; line-height: 1.8;">
-${report.consensus || 'Analysis content not available.'}
-        </div>
-    </div>
-
-    <div class="section">
-        <h2 class="section-title">Technical Details</h2>
-        <div class="metadata-grid">
-            <div class="metadata-item">
-                <div class="metadata-label">Total Tokens Processed</div>
-                <div class="metadata-value">${(report.totalTokens || 0).toLocaleString()}</div>
-            </div>
-            <div class="metadata-item">
-                <div class="metadata-label">Models Utilized</div>
-                <div class="metadata-value">${report.llmsUsed?.length || 4}</div>
-            </div>
-            <div class="metadata-item">
-                <div class="metadata-label">Analysis Phases</div>
-                <div class="metadata-value">3</div>
-            </div>
-            <div class="metadata-item">
-                <div class="metadata-label">Report ID</div>
-                <div class="metadata-value" style="font-size: 12px; font-family: monospace;">
-                    ${report.id || 'N/A'}
+        <h2>AI Models Consulted</h2>
+        <div class="models-grid">
+            ${models.map(model => `
+                <div class="model-card">
+                    <div class="model-name">${model}</div>
+                    <div class="model-status">✓ Participated</div>
                 </div>
-            </div>
+            `).join('')}
         </div>
     </div>
 
     <div class="footer">
-        <div>Generated by ${this.brandName} | Advanced AI Consensus Analysis Platform</div>
-        <div style="margin-top: 5px;">
-            This report was generated using proprietary multi-model consensus methodology.
-        </div>
-        <div style="margin-top: 10px; font-size: 10px;">
-            © ${new Date().getFullYear()} Consensus.AI. All rights reserved.
-        </div>
+        <p>This report was generated using Consensus.AI's proprietary 4-LLM methodology.</p>
+        <p>© 2024 Consensus.AI. All rights reserved.</p>
     </div>
 </body>
 </html>`;
   }
 
-  // Generate TXT format
-  generateTXTReport(report, options = {}) {
-    const createdDate = new Date(report.generatedAt || report.createdAt);
-    const confidence = report.confidence || 0;
-    const confidenceLevel = confidence >= 0.8 ? 'High' : confidence >= 0.6 ? 'Moderate' : 'Low';
+  // Export to PDF using browser's print functionality
+  async exportToPDF(report) {
+    try {
+      const htmlContent = this.generateProfessionalHTML(report);
+      
+      // Create a new window with the formatted content
+      const printWindow = window.open('', '_blank');
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+      
+      // Wait for content to load, then trigger print
+      printWindow.onload = () => {
+        setTimeout(() => {
+          printWindow.print();
+          printWindow.close();
+        }, 250);
+      };
+      
+      return { success: true, format: 'pdf' };
+    } catch (error) {
+      throw new Error(`PDF export failed: ${error.message}`);
+    }
+  }
 
-    return `
-================================================================================
+  // Export to plain text
+  async exportToTXT(report) {
+    try {
+      const sections = this.parseContentSections(report.consensus);
+      const models = report.llmsUsed || report.models || ['GPT-4o', 'Claude 3.5 Sonnet', 'Gemini 1.5 Pro', 'Command R+'];
+      const tokens = report.totalTokens || report.tokenUsage || 0;
+      const confidence = ((report.confidence || 0) * 100).toFixed(1);
+      const reportDate = this.formatDate(report.generatedAt || report.createdAt);
+
+      const textContent = `
 CONSENSUS ANALYSIS REPORT
-${this.brandName} - Advanced AI Consensus Analysis Platform
-================================================================================
+Generated by Consensus.AI
+${reportDate}
 
-TITLE: ${report.title}
+${'='.repeat(80)}
 
-GENERATED: ${createdDate.toLocaleDateString('en-US', { 
-  year: 'numeric', month: 'long', day: 'numeric', 
-  hour: '2-digit', minute: '2-digit' 
-})}
+RESEARCH QUESTION:
+${report.title || 'Analysis Topic'}
 
-REPORT ID: ${report.id || 'N/A'}
+REPORT SUMMARY:
+• Confidence Level: ${confidence}%
+• Tokens Processed: ${tokens.toLocaleString()}
+• AI Models Used: ${models.length}
+• Analysis Phases: 3 (Drafting, Review, Synthesis)
 
-================================================================================
-EXECUTIVE SUMMARY
-================================================================================
+${'='.repeat(80)}
 
-Research Question: ${report.title}
+${sections.map(section => `
+${section.title.toUpperCase()}:
+${'-'.repeat(section.title.length + 1)}
+${section.content}
+`).join('\n')}
 
-Confidence Level: ${confidenceLevel} (${(confidence * 100).toFixed(1)}%)
-AI Models Used: ${report.llmsUsed?.length || 4}
-Token Usage: ${(report.totalTokens || 0).toLocaleString()}
-Processing Method: 3-Phase Consensus Analysis
+AI MODELS CONSULTED:
+${'-'.repeat(20)}
+${models.map(model => `• ${model} - Participated`).join('\n')}
 
-================================================================================
-METHODOLOGY
-================================================================================
+${'='.repeat(80)}
 
-This analysis was conducted using our proprietary 3-phase consensus methodology:
+This report was generated using Consensus.AI's proprietary 4-LLM methodology.
+© 2024 Consensus.AI. All rights reserved.
+      `.trim();
 
-PHASE 1: INDEPENDENT DRAFTING
-Multiple AI models independently analyzed the research question to provide 
-diverse perspectives and comprehensive coverage of the topic.
-
-PHASE 2: PEER REVIEW  
-Each initial analysis was cross-reviewed by other AI models to identify 
-strengths, weaknesses, and areas of consensus or disagreement.
-
-PHASE 3: FINAL ARBITRATION
-A specialized arbitrator model synthesized all perspectives and reviews 
-to produce the final consensus analysis.
-
-AI MODELS UTILIZED:
-${(report.llmsUsed || ['GPT-4o', 'Claude 3.5 Sonnet', 'Gemini 1.5 Pro', 'Command R+'])
-  .map(model => `- ${model}`).join('\n')}
-
-================================================================================
-CONSENSUS ANALYSIS
-================================================================================
-
-${report.consensus || 'Analysis content not available.'}
-
-================================================================================
-TECHNICAL DETAILS
-================================================================================
-
-Total Tokens Processed: ${(report.totalTokens || 0).toLocaleString()}
-Models Utilized: ${report.llmsUsed?.length || 4}
-Analysis Phases: 3
-Report Version: ${this.reportVersion}
-
-================================================================================
-FOOTER
-================================================================================
-
-Generated by ${this.brandName}
-© ${new Date().getFullYear()} Consensus.AI. All rights reserved.
-
-This report was generated using proprietary multi-model consensus methodology.
-For questions or support, please contact our team.
-
-================================================================================
-    `.trim();
-  }
-
-  // Generate DOCX content (simplified)
-  generateDOCXContent(report, options = {}) {
-    // This would use a proper DOCX library in production
-    return this.generateTXTReport(report, options);
-  }
-
-  // Mock PDF conversion
-  async htmlToPDF(htmlContent, options = {}) {
-    // In production, this would use:
-    // - jsPDF for client-side PDF generation
-    // - Puppeteer for server-side HTML to PDF
-    // - A PDF generation service API
-    
-    // For now, create a simple PDF-like blob
-    const pdfContent = `%PDF-1.4
-1 0 obj
-<<
-/Type /Catalog
-/Pages 2 0 R
->>
-endobj
-
-2 0 obj
-<<
-/Type /Pages
-/Kids [3 0 R]
-/Count 1
->>
-endobj
-
-3 0 obj
-<<
-/Type /Page
-/Parent 2 0 R
-/MediaBox [0 0 612 792]
-/Contents 4 0 R
->>
-endobj
-
-4 0 obj
-<<
-/Length 44
->>
-stream
-BT
-/F1 12 Tf
-100 700 Td
-(Consensus Report - ${options.filename || 'report'}) Tj
-ET
-endstream
-endobj
-
-xref
-0 5
-0000000000 65535 f 
-0000000009 00000 n 
-0000000058 00000 n 
-0000000115 00000 n 
-0000000206 00000 n 
-trailer
-<<
-/Size 5
-/Root 1 0 R
->>
-startxref
-299
-%%EOF`;
-
-    return new Blob([pdfContent], { type: 'application/pdf' });
-  }
-
-  // Create ZIP file for multiple exports
-  async createZipFile(files, format) {
-    // In production, use a ZIP library like JSZip
-    const mockZipContent = `PK\x03\x04Mock ZIP file containing ${files.length} ${format} reports`;
-    return new Blob([mockZipContent], { type: 'application/zip' });
-  }
-
-  // Generate filename
-  generateFilename(report, format) {
-    const date = new Date(report.generatedAt || report.createdAt);
-    const dateStr = date.toISOString().slice(0, 10);
-    const title = report.title
-      .replace(/[^a-zA-Z0-9\s]/g, '')
-      .replace(/\s+/g, '-')
-      .substring(0, 50);
-    
-    return `consensus-report-${dateStr}-${title}.${format}`;
-  }
-
-  // PDF Header
-  generatePDFHeader(report) {
-    return `
-      <div style="font-size: 10px; text-align: center; color: #666; padding: 10px;">
-        ${this.brandName} | Consensus Analysis Report
-      </div>
-    `;
-  }
-
-  // PDF Footer
-  generatePDFFooter(report) {
-    return `
-      <div style="font-size: 10px; text-align: center; color: #666; padding: 10px;">
-        <span class="pageNumber"></span> | Generated on ${new Date().toLocaleDateString()}
-      </div>
-    `;
-  }
-
-  // Download file helper
-  downloadFile(blob, filename, mimeType) {
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    link.style.display = 'none';
-    
-    document.body.appendChild(link);
-    link.click();
-    
-    // Cleanup
-    setTimeout(() => {
+      // Create and download text file
+      const blob = new Blob([textContent], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `consensus-report-${new Date().toISOString().split('T')[0]}-${report.title?.replace(/[^a-zA-Z0-9]/g, '-').substring(0, 30) || 'analysis'}.txt`;
+      document.body.appendChild(link);
+      link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-    }, 100);
-    
-    console.log(`✅ Downloaded: ${filename} (${mimeType})`);
+
+      return { success: true, format: 'txt' };
+    } catch (error) {
+      throw new Error(`TXT export failed: ${error.message}`);
+    }
   }
 
-  // Get export options for UI
-  getExportFormats() {
-    return [
-      { value: 'pdf', label: 'PDF Document', icon: '📄', description: 'Professional PDF report' },
-      { value: 'txt', label: 'Text File', icon: '📝', description: 'Plain text format' },
-      { value: 'docx', label: 'Word Document', icon: '📘', description: 'Microsoft Word format' }
-    ];
+  // Export to Word document (simplified)
+  async exportToWord(report) {
+    try {
+      // For now, export as HTML file that can be opened in Word
+      const htmlContent = this.generateProfessionalHTML(report);
+      
+      const blob = new Blob([htmlContent], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `consensus-report-${new Date().toISOString().split('T')[0]}-${report.title?.replace(/[^a-zA-Z0-9]/g, '-').substring(0, 30) || 'analysis'}.doc`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      return { success: true, format: 'docx' };
+    } catch (error) {
+      throw new Error(`DOCX export failed: ${error.message}`);
+    }
   }
 
-  // Validate report before export
-  validateReport(report) {
-    if (!report) throw new Error('Report data is required');
-    if (!report.title) throw new Error('Report title is required');
-    if (!report.consensus) throw new Error('Report consensus content is required');
-    return true;
+  // Combine multiple reports for bulk export
+  combineReports(reports) {
+    const combinedContent = reports.map((report, index) => {
+      const sections = this.parseContentSections(report.consensus);
+      return `Report ${index + 1}: ${report.title}\n\n${sections.map(s => `${s.title}:\n${s.content}`).join('\n\n')}`;
+    }).join('\n\n' + '='.repeat(80) + '\n\n');
+
+    return {
+      id: 'combined-reports',
+      title: `Combined Analysis Report (${reports.length} reports)`,
+      consensus: combinedContent,
+      confidence: reports.reduce((avg, r) => avg + (r.confidence || 0), 0) / reports.length,
+      totalTokens: reports.reduce((sum, r) => sum + (r.totalTokens || r.tokenUsage || 0), 0),
+      llmsUsed: ['GPT-4o', 'Claude 3.5 Sonnet', 'Gemini 1.5 Pro', 'Command R+'],
+      generatedAt: new Date().toISOString()
+    };
   }
 }
 
 // Export singleton instance
-export const exportService = new ExportService();
+const exportService = new ExportService();
 export default exportService; 

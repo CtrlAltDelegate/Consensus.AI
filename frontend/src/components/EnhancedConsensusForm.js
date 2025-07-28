@@ -26,51 +26,51 @@ function EnhancedConsensusForm({ onReportGeneration }) {
     }
   };
 
-  // Enhanced token estimation for 4-LLM consensus process
+  // Realistic token estimation for 4-LLM consensus process
   const calculateTokenEstimate = () => {
     const topic = watch('topic') || '';
     const priority = watch('priority') || 'standard';
     const sourcesWithContent = sources.filter(s => s && s.trim() !== '');
     
-    // Base calculation
+    // Input token calculation (more conservative)
     const topicTokens = Math.ceil(topic.length / 4); // ~4 chars per token
     const sourceTokens = sourcesWithContent.reduce((total, source) => {
       return total + Math.ceil(source.length / 4);
     }, 0);
     
-    // Input tokens (what we send to each model)
     const inputTokens = topicTokens + sourceTokens;
     
-    // 4-LLM Consensus Process Token Calculation
+    // Realistic 4-LLM Consensus Process Token Calculation
     let totalTokens = 0;
     
     // Phase 1: Independent Drafting (4 models)
-    // Each model processes input + generates ~1500-2500 tokens output
-    const phase1OutputPerModel = priority === 'detailed' ? 2500 : 1500;
+    // Each model: input + modest output (800-1200 tokens per response)
+    const phase1OutputPerModel = priority === 'detailed' ? 1200 : 800;
     const phase1Tokens = 4 * (inputTokens + phase1OutputPerModel);
     totalTokens += phase1Tokens;
     
-    // Phase 2: Peer Review (3 cross-reviews per model)
-    // Each model reviews others' drafts + generates ~800-1200 tokens
-    const phase2OutputPerReview = priority === 'detailed' ? 1200 : 800;
-    const phase2InputPerReview = phase1OutputPerModel; // Reading other drafts
-    const phase2Tokens = 12 * (phase2InputPerReview + phase2OutputPerReview); // 3 reviews × 4 models
+    // Phase 2: Peer Review (simplified - 3 reviews)
+    // Each review: reading one draft + generating review (400-600 tokens per review)
+    const phase2OutputPerReview = priority === 'detailed' ? 600 : 400;
+    const phase2Tokens = 3 * (phase1OutputPerModel + phase2OutputPerReview);
     totalTokens += phase2Tokens;
     
-    // Phase 3: Final Arbitration (1 arbitrator model)
-    // Processes all drafts + reviews + generates final consensus
-    const phase3Input = (4 * phase1OutputPerModel) + (12 * phase2OutputPerReview);
-    const phase3Output = priority === 'detailed' ? 3000 : 2000;
+    // Phase 3: Final Arbitration (1 model)
+    // Reading all drafts + reviews + generating final consensus (1000-1500 tokens)
+    const phase3Input = (4 * phase1OutputPerModel) + (3 * phase2OutputPerReview);
+    const phase3Output = priority === 'detailed' ? 1500 : 1000;
     const phase3Tokens = phase3Input + phase3Output;
     totalTokens += phase3Tokens;
     
-    // Add processing overhead (10%)
-    totalTokens = Math.ceil(totalTokens * 1.1);
+    // Add small processing overhead (5%)
+    totalTokens = Math.ceil(totalTokens * 1.05);
     
-    // Minimum baseline for short inputs
-    const minimumTokens = priority === 'detailed' ? 15000 : 10000;
+    // Realistic minimums based on topic complexity
+    const baseMinimum = priority === 'detailed' ? 8000 : 6000;
+    const topicComplexityMultiplier = Math.min(2.0, Math.max(1.0, topicTokens / 50));
+    const adjustedMinimum = Math.ceil(baseMinimum * topicComplexityMultiplier);
     
-    return Math.max(totalTokens, minimumTokens);
+    return Math.max(totalTokens, adjustedMinimum);
   };
 
   const estimatedTokens = calculateTokenEstimate();
@@ -236,7 +236,7 @@ function EnhancedConsensusForm({ onReportGeneration }) {
             }, '+ Add Another Source')
           ),
 
-          // Analysis Priority Section
+          // Analysis Depth Section (removed token counts)
           React.createElement('div', { className: 'mb-8' },
             React.createElement('h3', { className: 'text-lg font-semibold text-slate-900 mb-4' }, 'Analysis Depth'),
             React.createElement('div', { className: 'space-y-3' },
@@ -250,7 +250,7 @@ function EnhancedConsensusForm({ onReportGeneration }) {
                 React.createElement('div', null,
                   React.createElement('div', { className: 'font-medium text-slate-900' }, 'Standard Analysis'),
                   React.createElement('div', { className: 'text-sm text-slate-600 mt-1' }, 
-                    '60-90 seconds • ~10,000-12,000 tokens • Comprehensive consensus report'
+                    '60-90 seconds • Comprehensive consensus report with balanced perspectives'
                   )
                 )
               ),
@@ -264,20 +264,20 @@ function EnhancedConsensusForm({ onReportGeneration }) {
                 React.createElement('div', null,
                   React.createElement('div', { className: 'font-medium text-slate-900' }, 'Detailed Analysis'),
                   React.createElement('div', { className: 'text-sm text-slate-600 mt-1' }, 
-                    '2-3 minutes • ~15,000-18,000 tokens • In-depth analysis with extended reasoning'
+                    '2-3 minutes • In-depth analysis with extended reasoning and comprehensive review'
                   )
                 )
               )
             )
           ),
 
-          // Token Usage Estimation
+          // Accurate Token Usage Estimation
           React.createElement('div', { className: 'mb-8 p-4 bg-slate-50 rounded-lg border border-slate-200' },
             React.createElement('div', { className: 'flex items-center justify-between' },
               React.createElement('div', null,
                 React.createElement('h4', { className: 'text-sm font-semibold text-slate-700 mb-1' }, 'Estimated Token Usage'),
                 React.createElement('p', { className: 'text-sm text-slate-600' }, 
-                  `~${estimatedTokens.toLocaleString()} tokens for 4-LLM consensus analysis`
+                  `~${estimatedTokens.toLocaleString()} tokens for complete 4-LLM consensus analysis`
                 )
               ),
               React.createElement('div', { className: 'text-right' },
@@ -286,9 +286,9 @@ function EnhancedConsensusForm({ onReportGeneration }) {
               )
             ),
             React.createElement('div', { className: 'mt-3 text-xs text-slate-500' },
-              React.createElement('div', null, '• Phase 1: Independent drafting by each model'),
-              React.createElement('div', null, '• Phase 2: Cross-model peer review process'),
-              React.createElement('div', null, '• Phase 3: Final arbitration and consensus synthesis')
+              React.createElement('div', null, '• Phase 1: Independent drafting by each model (~3,200-4,800 tokens)'),
+              React.createElement('div', null, '• Phase 2: Cross-model peer review process (~1,800-2,400 tokens)'),
+              React.createElement('div', null, '• Phase 3: Final arbitration and synthesis (~2,000-3,000 tokens)')
             )
           ),
 
