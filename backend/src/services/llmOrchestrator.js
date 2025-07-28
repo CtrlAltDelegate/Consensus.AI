@@ -85,12 +85,16 @@ class LLMOrchestrator {
       return this.parseResponse(provider, response.data);
     } catch (error) {
       console.error(`❌ ${provider} API call failed:`, {
+        provider,
+        model,
         error: error.message,
         status: error.response?.status,
         statusText: error.response?.statusText,
-        data: error.response?.data
+        data: error.response?.data,
+        endpoint,
+        requestBodyPreview: JSON.stringify(requestBody).substring(0, 200) + '...'
       });
-      throw new Error(`LLM query failed for ${provider}: ${error.message}`);
+      throw new Error(`${provider} (${model}) API failed: ${error.message}`);
     }
   }
 
