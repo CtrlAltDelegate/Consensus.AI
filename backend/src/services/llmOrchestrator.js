@@ -39,7 +39,7 @@ class LLMOrchestrator {
       this.providers.set('google', {
         name: 'Google',
         models: ['gemini-1.5-pro', 'gemini-1.5-flash'],
-        endpoint: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${process.env.GOOGLE_API_KEY}`,
+        endpoint: 'https://generativelanguage.googleapis.com/v1beta/models', // Base endpoint only
         headers: {
           'Content-Type': 'application/json'
         }
@@ -74,13 +74,22 @@ class LLMOrchestrator {
         ? `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GOOGLE_API_KEY}`
         : providerConfig.endpoint;
 
+      console.log(`🌐 Calling ${provider} with model ${model} at endpoint: ${endpoint.replace(process.env.GOOGLE_API_KEY || '', '[API_KEY]')}`);
+
       const response = await axios.post(endpoint, requestBody, {
         headers: providerConfig.headers,
         timeout: options.timeout || 30000
       });
 
+      console.log(`✅ ${provider} response received successfully`);
       return this.parseResponse(provider, response.data);
     } catch (error) {
+      console.error(`❌ ${provider} API call failed:`, {
+        error: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data
+      });
       throw new Error(`LLM query failed for ${provider}: ${error.message}`);
     }
   }
