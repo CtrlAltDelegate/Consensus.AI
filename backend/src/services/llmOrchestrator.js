@@ -86,9 +86,18 @@ class LLMOrchestrator {
         ? `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GOOGLE_API_KEY}`
         : providerConfig.endpoint;
 
+      // ENHANCED DEBUG: Log endpoint assignment process
+      console.log('🔍 ENDPOINT DEBUG:', {
+        provider,
+        isGoogle: provider === 'google',
+        configEndpoint: providerConfig.endpoint,
+        finalEndpoint: endpoint,
+        configKeys: Object.keys(providerConfig)
+      });
+
       // ENHANCED DEBUG: Verify endpoint is defined
       if (!endpoint) {
-        throw new Error(`Endpoint is undefined for provider ${provider}. Config endpoint: ${providerConfig.endpoint}`);
+        throw new Error(`Endpoint is undefined for provider ${provider}. Config endpoint: ${providerConfig.endpoint}. Provider config: ${JSON.stringify(providerConfig, null, 2)}`);
       }
 
       console.log(`🌐 Calling ${provider} with model ${model} at endpoint: ${endpoint.replace(process.env.GOOGLE_API_KEY || '', '[API_KEY]')}`);
