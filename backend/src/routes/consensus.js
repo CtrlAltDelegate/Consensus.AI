@@ -70,32 +70,40 @@ router.post('/generate', async (req, res) => {
     // TESTING: Skip token consumption for demo
     // await tokenManager.consumeTokens(req.user.id, consensus.totalTokens);
 
-    // Generate PDF if requested
+    // TEMPORARILY DISABLE PDF generation to focus on core consensus functionality
     let pdfBuffer = null;
-    if (options.generatePdf) {
-      try {
-        pdfBuffer = await pdfGenerator.generateConsensusReport({
-          topic,
-          ...consensus
-        });
-      } catch (pdfError) {
-        console.warn('⚠️ PDF generation failed (non-critical):', pdfError.message);
-      }
-    }
+    console.log('📄 PDF generation temporarily disabled for debugging');
+    // if (options.generatePdf) {
+    //   try {
+    //     console.log('📄 Attempting PDF generation...');
+    //     pdfBuffer = await pdfGenerator.generateConsensusReport({
+    //       topic,
+    //       ...consensus
+    //     });
+    //     console.log('✅ PDF generated successfully');
+    //   } catch (pdfError) {
+    //     console.warn('⚠️ PDF generation failed (non-critical):', pdfError.message);
+    //     // Continue without PDF - don't let this block the response
+    //   }
+    // }
 
-    // Send email if requested
-    if (options.emailReport && pdfBuffer) {
-      try {
-        await emailService.sendConsensusReport(
-          req.user.email,
-          req.user.profile?.firstName || 'User',
-          consensus,
-          pdfBuffer
-        );
-      } catch (emailError) {
-        console.warn('⚠️ Email sending failed (non-critical):', emailError.message);
-      }
-    }
+    // TEMPORARILY DISABLE email sending to focus on core consensus functionality
+    console.log('📧 Email sending temporarily disabled for debugging');
+    // if (options.emailReport && pdfBuffer) {
+    //   try {
+    //     console.log('📧 Attempting email send...');
+    //     await emailService.sendConsensusReport(
+    //       req.user.email,
+    //       req.user.profile?.firstName || 'User',
+    //       consensus,
+    //       pdfBuffer
+    //     );
+    //     console.log('✅ Email sent successfully');
+    //   } catch (emailError) {
+    //     console.warn('⚠️ Email sending failed (non-critical):', emailError.message);
+    //     // Continue without email - don't let this block the response
+    //   }
+    // }
 
     // Return comprehensive response
     const response = {
