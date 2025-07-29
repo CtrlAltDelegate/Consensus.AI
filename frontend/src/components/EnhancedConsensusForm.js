@@ -106,13 +106,29 @@ function EnhancedConsensusForm({ progressModal }) {
       
       // Make real API call to Railway backend (this is the actual time-consuming process)
       console.log('📡 Sending request to backend:', requestData);
+      console.log('📡 API URL:', import.meta.env.VITE_API_URL);
+      
       const response = await apiHelpers.generateConsensus(requestData);
-      console.log('✅ Consensus generated successfully:', response.data);
-      console.log('📊 Response structure:', {
+      
+      console.log('✅ RAW RESPONSE RECEIVED:', response);
+      console.log('✅ Response status:', response.status);
+      console.log('✅ Response headers:', response.headers);
+      console.log('✅ Response data:', response.data);
+      console.log('📊 Response data type:', typeof response.data);
+      console.log('📊 Response data keys:', Object.keys(response.data || {}));
+      console.log('📊 Detailed response structure:', {
         success: !!response.data,
         hasConsensus: !!response.data?.consensus,
+        consensusType: typeof response.data?.consensus,
+        consensusLength: response.data?.consensus?.length,
+        hasConfidence: !!response.data?.confidence,
+        confidenceValue: response.data?.confidence,
+        hasMetadata: !!response.data?.metadata,
+        metadataKeys: Object.keys(response.data?.metadata || {}),
+        hasTotalTokens: !!response.data?.metadata?.totalTokens,
+        totalTokensValue: response.data?.metadata?.totalTokens,
         hasPhases: !!response.data?.phases,
-        totalTokens: response.data?.totalTokens
+        phasesKeys: Object.keys(response.data?.phases || {})
       });
       
       // Update to phase 3 (synthesis)
