@@ -80,11 +80,12 @@ class LLMOrchestrator {
 
     const requestBody = this.buildRequestBody(provider, model, prompt, options);
     
-    try {
-      // Special handling for Google Gemini endpoint
-      const endpoint = provider === 'google' 
-        ? `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GOOGLE_API_KEY}`
-        : providerConfig.endpoint;
+   // Special handling for Google Gemini endpoint
+const endpoint = provider === 'google' 
+  ? `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GOOGLE_API_KEY}`
+  : providerConfig.endpoint;
+
+try {
 
       // ENHANCED DEBUG: Log endpoint assignment process
       console.log('🔍 ENDPOINT DEBUG:', {
