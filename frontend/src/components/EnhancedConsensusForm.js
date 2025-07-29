@@ -99,58 +99,36 @@ function EnhancedConsensusForm({ progressModal }) {
         }
       };
       
-      // Update to phase 2 after preparing request
-      if (progressModal) {
-        progressModal.updateStage('phase2');
-      }
-      
-      // Make real API call to Railway backend (this is the actual time-consuming process)
+      // Make API call to start async job (returns immediately)
       console.log('📡 Sending request to backend:', requestData);
       console.log('📡 API URL:', import.meta.env.VITE_API_URL);
       
-      const response = await apiHelpers.generateConsensus(requestData);
+      const jobResponse = await apiHelpers.generateConsensus(requestData);
+      console.log('✅ Job started successfully:', jobResponse.data);
       
-      console.log('✅ RAW RESPONSE RECEIVED:', response);
-      console.log('✅ Response status:', response.status);
-      console.log('✅ Response headers:', response.headers);
-      console.log('✅ Response data:', response.data);
-      console.log('📊 Response data type:', typeof response.data);
-      console.log('📊 Response data keys:', Object.keys(response.data || {}));
-      console.log('📊 Detailed response structure:', {
-        success: !!response.data,
-        hasConsensus: !!response.data?.consensus,
-        consensusType: typeof response.data?.consensus,
-        consensusLength: response.data?.consensus?.length,
-        hasConfidence: !!response.data?.confidence,
-        confidenceValue: response.data?.confidence,
-        hasMetadata: !!response.data?.metadata,
-        metadataKeys: Object.keys(response.data?.metadata || {}),
-        hasTotalTokens: !!response.data?.metadata?.totalTokens,
-        totalTokensValue: response.data?.metadata?.totalTokens,
-        hasPhases: !!response.data?.phases,
-        phasesKeys: Object.keys(response.data?.phases || {})
-      });
-      
-      // Update to phase 3 (synthesis)
-      if (progressModal) {
-        progressModal.updateStage('phase3');
+      if (!jobResponse.data.jobId) {
+        throw new Error('No job ID received from server');
       }
+
+      const jobId = jobResponse.data.jobId;
+      console.log(`🔄 Polling job status for: ${jobId}`);
+
+      // Start polling for job completion
+      const result = await pollJobStatus(jobId);
+      console.log('✅ Job completed successfully:', result);
       
-      // Small delay to show final phase
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Hide progress modal only after real API completes
+      // Hide progress modal after completion
       if (progressModal) {
         progressModal.hideProgress();
       }
       
       // Set the real result from the 4-LLM system
       setResult({
-        consensus: response.data.consensus,
-        confidence: response.data.confidence,
-        totalTokens: response.data.metadata?.totalTokens || estimatedTokens,
-        llmsUsed: response.data.metadata?.llmsUsed || ['GPT-4o', 'Claude 3.5 Sonnet', 'Gemini 1.5 Pro', 'Command R+'],
-        phases: response.data.phases,
+        consensus: result.consensus,
+        confidence: result.confidence,
+        totalTokens: result.metadata?.totalTokens || estimatedTokens,
+        llmsUsed: result.metadata?.llmsUsed || ['GPT-4o', 'Claude 3.5 Sonnet', 'Gemini 1.5 Pro', 'Command R+'],
+        phases: result.phases,
         generatedAt: new Date().toISOString(),
         title: data.topic.substring(0, 100) + (data.topic.length > 100 ? '...' : ''),
         id: `rep_${Date.now()}`
@@ -198,6 +176,50 @@ function EnhancedConsensusForm({ progressModal }) {
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  // Polling function for job status
+  const pollJobStatus = async (jobId) => {
+    const maxAttempts = 120; // 2 minutes max (polling every 1 second)
+    let attempts = 0;
+    
+    while (attempts < maxAttempts) {
+      try {
+        console.log(`📊 Polling attempt ${attempts + 1}/${maxAttempts} for job ${jobId}`);
+        
+        const statusResponse = await fetch(`${import.meta.env.VITE_API_URL}/api/consensus/status/${jobId}`);
+        const statusData = await statusResponse.json();
+        
+        console.log(`📈 Job status:`, statusData);
+        
+        // Update progress modal with real data
+        if (progressModal && statusData.progress !== undefined) {
+          const phase = statusData.phase === 'phase1' ? 'phase1' : 
+                       statusData.phase === 'phase2' ? 'phase2' : 
+                       statusData.phase === 'phase3' ? 'phase3' : 'phase3';
+          progressModal.updateStage(phase);
+        }
+        
+        if (statusData.status === 'completed') {
+          console.log('🎉 Job completed!');
+          return statusData.result;
+        }
+        
+        if (statusData.status === 'failed') {
+          throw new Error(statusData.error || 'Job failed');
+        }
+        
+        // Wait 1 second before next poll
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        attempts++;
+        
+      } catch (pollError) {
+        console.error(`❌ Polling error:`, pollError);
+        throw new Error(`Job status polling failed: ${pollError.message}`);
+      }
+    }
+    
+    throw new Error('Job polling timeout - process may still be running');
   };
 
   return React.createElement('div', { className: 'min-h-screen bg-slate-50/50' },

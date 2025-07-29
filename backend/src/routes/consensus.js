@@ -8,7 +8,11 @@ const auth = require('../middleware/auth');
 const tokenCheck = require('../middleware/tokenCheck');
 const { validateConsensusRequest } = require('../utils/validation');
 
-// Generate consensus analysis (auth temporarily disabled for testing)
+// In-memory job storage (in production, use Redis or database)
+const jobs = new Map();
+const jobResults = new Map();
+
+// Generate consensus analysis (ASYNC VERSION to avoid Railway timeouts)
 router.post('/generate', async (req, res) => {
   try {
     const { topic, sources = [], options = {} } = req.body;
@@ -41,72 +45,161 @@ router.post('/generate', async (req, res) => {
       topic.length + sourcesText.length
     );
 
-    // TESTING: Skip token checking for demo, but provide mock data
-    console.log(`📊 Estimated tokens needed: ${estimatedTokens}`);
-    const mockTokenCheck = {
-      available: 25000,
-      sufficient: true,
-      overage: 0
-    };
+    // Generate unique job ID
+    const jobId = `consensus_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
-    // const tokenCheck = await tokenManager.checkTokenAvailability(req.user.id, estimatedTokens);
-    // if (!tokenCheck.sufficient && tokenCheck.overage > estimatedTokens * 0.5) {
-    //   return res.status(402).json({
-    //     error: 'Insufficient tokens',
-    //     required: estimatedTokens,
-    //     available: tokenCheck.available,
-    //     overage: tokenCheck.overage
-    //   });
-    // }
+    // Store job metadata
+    jobs.set(jobId, {
+      id: jobId,
+      status: 'started',
+      progress: 0,
+      phase: 'phase1',
+      topic,
+      sources,
+      options,
+      estimatedTokens,
+      userId: req.user.id,
+      startedAt: new Date().toISOString(),
+      phases: {
+        phase1: { status: 'pending', startedAt: null, completedAt: null },
+        phase2: { status: 'pending', startedAt: null, completedAt: null },
+        phase3: { status: 'pending', startedAt: null, completedAt: null }
+      }
+    });
 
-    console.log('🤖 Starting consensus generation...');
+    // Start async processing (don't await - return immediately)
+    processConsensusJob(jobId, topic, sources, options, estimatedTokens, req.user)
+      .catch(error => {
+        console.error(`❌ Job ${jobId} failed:`, error);
+        jobs.set(jobId, {
+          ...jobs.get(jobId),
+          status: 'failed',
+          error: error.message,
+          completedAt: new Date().toISOString()
+        });
+      });
+
+    // Return job ID immediately - no waiting!
+    console.log(`🚀 Started async consensus job: ${jobId}`);
+    res.json({
+      success: true,
+      jobId,
+      status: 'started',
+      message: 'Consensus generation started. Use the job ID to check progress.',
+      estimatedDuration: '60-90 seconds',
+      checkStatusUrl: `/api/consensus/status/${jobId}`
+    });
+
+  } catch (error) {
+    console.error('💥 Consensus generation error:', error);
+    res.status(500).json({ 
+      error: 'Failed to start consensus generation',
+      message: error.message
+    });
+  }
+});
+
+// Check job status endpoint
+router.get('/status/:jobId', (req, res) => {
+  const { jobId } = req.params;
+  const job = jobs.get(jobId);
+  
+  if (!job) {
+    return res.status(404).json({ error: 'Job not found' });
+  }
+
+  // If job is completed, return the result
+  if (job.status === 'completed') {
+    const result = jobResults.get(jobId);
+    return res.json({
+      jobId,
+      status: 'completed',
+      progress: 100,
+      phase: 'completed',
+      result,
+      completedAt: job.completedAt,
+      duration: job.duration
+    });
+  }
+
+  // Return current progress
+  res.json({
+    jobId,
+    status: job.status,
+    progress: job.progress,
+    phase: job.phase,
+    phases: job.phases,
+    startedAt: job.startedAt,
+    error: job.error
+  });
+});
+
+// Async processing function
+async function processConsensusJob(jobId, topic, sources, options, estimatedTokens, user) {
+  try {
+    console.log(`🔄 Processing job ${jobId}...`);
+    
+    // Update job progress
+    const updateJob = (updates) => {
+      const currentJob = jobs.get(jobId);
+      jobs.set(jobId, { ...currentJob, ...updates });
+    };
+
+    // Phase 1: Independent Drafting
+    updateJob({ 
+      status: 'processing', 
+      progress: 10, 
+      phase: 'phase1',
+      phases: {
+        ...jobs.get(jobId).phases,
+        phase1: { status: 'processing', startedAt: new Date().toISOString(), completedAt: null }
+      }
+    });
+    
+    console.log(`🤖 Starting consensus generation for job ${jobId}...`);
     
     // Generate consensus
     const consensus = await consensusEngine.generateConsensus(topic, sources, options);
     
-    console.log('✅ Consensus generated successfully!');
+    // Update after phase 1
+    updateJob({ 
+      progress: 35,
+      phases: {
+        ...jobs.get(jobId).phases,
+        phase1: { status: 'completed', startedAt: jobs.get(jobId).phases.phase1.startedAt, completedAt: new Date().toISOString() },
+        phase2: { status: 'processing', startedAt: new Date().toISOString(), completedAt: null }
+      }
+    });
+
+    // Simulate phase 2 progress
+    updateJob({ 
+      progress: 65, 
+      phase: 'phase2',
+      phases: {
+        ...jobs.get(jobId).phases,
+        phase2: { status: 'completed', startedAt: jobs.get(jobId).phases.phase2.startedAt, completedAt: new Date().toISOString() },
+        phase3: { status: 'processing', startedAt: new Date().toISOString(), completedAt: null }
+      }
+    });
+
+    // Final phase
+    updateJob({ 
+      progress: 90, 
+      phase: 'phase3'
+    });
+    
+    console.log(`✅ Consensus generated successfully for job ${jobId}!`);
     console.log(`🔥 Tokens used: ${consensus.totalTokens || estimatedTokens}`);
     
-    // TESTING: Skip token consumption for demo
-    // await tokenManager.consumeTokens(req.user.id, consensus.totalTokens);
-
     // TEMPORARILY DISABLE PDF generation to focus on core consensus functionality
     let pdfBuffer = null;
     console.log('📄 PDF generation temporarily disabled for debugging');
-    // if (options.generatePdf) {
-    //   try {
-    //     console.log('📄 Attempting PDF generation...');
-    //     pdfBuffer = await pdfGenerator.generateConsensusReport({
-    //       topic,
-    //       ...consensus
-    //     });
-    //     console.log('✅ PDF generated successfully');
-    //   } catch (pdfError) {
-    //     console.warn('⚠️ PDF generation failed (non-critical):', pdfError.message);
-    //     // Continue without PDF - don't let this block the response
-    //   }
-    // }
 
     // TEMPORARILY DISABLE email sending to focus on core consensus functionality
     console.log('📧 Email sending temporarily disabled for debugging');
-    // if (options.emailReport && pdfBuffer) {
-    //   try {
-    //     console.log('📧 Attempting email send...');
-    //     await emailService.sendConsensusReport(
-    //       req.user.email,
-    //       req.user.profile?.firstName || 'User',
-    //       consensus,
-    //       pdfBuffer
-    //     );
-    //     console.log('✅ Email sent successfully');
-    //   } catch (emailError) {
-    //     console.warn('⚠️ Email sending failed (non-critical):', emailError.message);
-    //     // Continue without email - don't let this block the response
-    //   }
-    // }
 
-    // Return comprehensive response
-    const response = {
+    // Prepare result
+    const result = {
       success: true,
       consensus: consensus.consensus,
       confidence: consensus.confidence,
@@ -133,37 +226,35 @@ router.post('/generate', async (req, res) => {
           content: 'Final arbitration completed'
         }
       },
-      tokensRemaining: mockTokenCheck.available - (consensus.totalTokens || estimatedTokens),
+      tokensRemaining: 25000 - (consensus.totalTokens || estimatedTokens),
       ...(pdfBuffer && { pdfGenerated: true })
     };
 
-    console.log('📤 Sending response:', {
-      success: response.success,
-      consensusLength: response.consensus?.length || 0,
-      confidence: response.confidence,
-      totalTokens: response.metadata.totalTokens
+    // Store result and mark job complete
+    jobResults.set(jobId, result);
+    const endTime = new Date();
+    const startTime = new Date(jobs.get(jobId).startedAt);
+    const duration = Math.round((endTime - startTime) / 1000);
+
+    updateJob({
+      status: 'completed',
+      progress: 100,
+      phase: 'completed',
+      completedAt: endTime.toISOString(),
+      duration: `${duration} seconds`,
+      phases: {
+        ...jobs.get(jobId).phases,
+        phase3: { status: 'completed', startedAt: jobs.get(jobId).phases.phase3.startedAt, completedAt: endTime.toISOString() }
+      }
     });
 
-    res.json(response);
+    console.log(`🎉 Job ${jobId} completed successfully in ${duration} seconds`);
 
   } catch (error) {
-    console.error('💥 Consensus generation error:', error);
-    console.error('📍 Error stack:', error.stack);
-    console.error('🔍 Error details:', {
-      name: error.name,
-      message: error.message,
-      code: error.code,
-      status: error.status
-    });
-    
-    res.status(500).json({ 
-      error: 'Failed to generate consensus',
-      message: error.message,
-      type: error.name,
-      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    });
+    console.error(`💥 Job ${jobId} failed:`, error);
+    throw error;
   }
-});
+}
 
 // Get consensus analysis history
 router.get('/history', auth, async (req, res) => {
@@ -182,10 +273,12 @@ router.get('/history', auth, async (req, res) => {
         pages: 0
       }
     });
-
   } catch (error) {
-    console.error('History retrieval error:', error);
-    res.status(500).json({ error: 'Failed to retrieve history' });
+    console.error('Error fetching consensus history:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch consensus history',
+      message: error.message 
+    });
   }
 });
 
@@ -204,25 +297,24 @@ router.get('/report/:analysisId/pdf', auth, async (req, res) => {
   }
 });
 
-// Estimate token usage for a request
+// Token estimation endpoint
 router.post('/estimate', async (req, res) => {
   try {
-    const { topic, sources = [] } = req.body;
+    const { topic, sources = [], options = {} } = req.body;
     
-    if (!topic) {
-      return res.status(400).json({ error: 'Topic is required' });
-    }
-
-    // TESTING: Mock user for estimate endpoint
-    req.user = { id: 'demo-user-123' };
+    // TESTING: Mock user for demo purposes
+    req.user = { 
+      id: 'demo-user-123',
+      email: 'demo@consensusai.com'
+    };
 
     const sourcesText = Array.isArray(sources) ? sources.join(' ') : '';
     const estimatedTokens = await tokenManager.estimateTokensForOperation(
-      'consensus',
+      'consensus', 
       topic.length + sourcesText.length
     );
 
-    // Mock token availability for demo
+    // TESTING: Skip actual token checking for demo
     const mockTokenCheck = {
       available: 25000,
       sufficient: true,
@@ -231,16 +323,22 @@ router.post('/estimate', async (req, res) => {
 
     res.json({
       success: true,
-      estimatedTokens,
+      estimated: estimatedTokens,
       available: mockTokenCheck.available,
       sufficient: mockTokenCheck.sufficient,
       overage: mockTokenCheck.overage,
-      overageCharge: mockTokenCheck.overage * 0.001 // $0.001 per token
+      breakdown: {
+        phase1_drafting: Math.round(estimatedTokens * 0.4),
+        phase2_reviews: Math.round(estimatedTokens * 0.3),
+        phase3_arbitration: Math.round(estimatedTokens * 0.3)
+      }
     });
-
   } catch (error) {
-    console.error('Token estimation error:', error);
-    res.status(500).json({ error: 'Failed to estimate tokens' });
+    console.error('Error estimating tokens:', error);
+    res.status(500).json({ 
+      error: 'Failed to estimate tokens',
+      message: error.message 
+    });
   }
 });
 
