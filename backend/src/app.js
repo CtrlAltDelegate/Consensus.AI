@@ -34,6 +34,16 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Increase server timeout for long-running LLM requests (4-LLM consensus can take 60-90 seconds)
+app.use((req, res, next) => {
+  // Set timeout to 3 minutes for consensus generation
+  if (req.path.includes('/consensus/generate')) {
+    req.setTimeout(180000); // 3 minutes
+    res.setTimeout(180000); // 3 minutes
+  }
+  next();
+});
+
 // Routes
 app.use('/api/consensus', require('./routes/consensus'));
 app.use('/api/tokens', require('./routes/tokens'));
@@ -81,11 +91,17 @@ app.use('*', (req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
-// Start server
-app.listen(PORT, '0.0.0.0', () => {
+// Start server with extended timeout for LLM operations
+const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`📊 Health check: http://localhost:${PORT}/health`);
+  console.log(`⏱️  Server timeout: 3 minutes for LLM consensus operations`);
 });
+
+// Set server timeout to 3 minutes for long-running LLM requests
+server.timeout = 180000; // 3 minutes
+server.keepAliveTimeout = 185000; // Slightly longer than timeout
+server.headersTimeout = 186000; // Slightly longer than keepAliveTimeout
 
 module.exports = app; 
