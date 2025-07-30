@@ -162,31 +162,57 @@ async function processConsensusJob(jobId, topic, sources, options, estimatedToke
     const consensus = await consensusEngine.generateConsensus(topic, sources, options);
     
     // Update after phase 1
-    updateJob({ 
-      progress: 35,
-      phases: {
-        ...jobs.get(jobId).phases,
-        phase1: { status: 'completed', startedAt: jobs.get(jobId).phases.phase1.startedAt, completedAt: new Date().toISOString() },
-        phase2: { status: 'processing', startedAt: new Date().toISOString(), completedAt: null }
-      }
+    async function processConsensusJob(jobId, topic, sources, options, estimatedTokens, user) {
+  try {
+    console.log(`🔄 Processing job ${jobId}...`);
+    
+    const updateJob = (updates) => {
+      const currentJob = jobs.get(jobId);
+      jobs.set(jobId, { ...currentJob, ...updates });
+    };
+
+    // Start processing
+    updateJob({ status: 'processing', progress: 10, phase: 'phase1' });
+    
+    // Generate consensus (this is the actual work)
+    const consensus = await consensusEngine.generateConsensus(topic, sources, options);
+    
+    // Mark as completed with the real result
+    const result = {
+      success: true,
+      consensus: consensus.consensus,
+      confidence: consensus.confidence,
+      metadata: consensus.metadata,
+      phases: consensus.phases,
+      tokensRemaining: 25000 - (consensus.totalTokens || estimatedTokens)
+    };
+
+    jobResults.set(jobId, result);
+    
+    const endTime = new Date();
+    const startTime = new Date(jobs.get(jobId).startedAt);
+    const duration = Math.round((endTime - startTime) / 1000);
+
+    updateJob({
+      status: 'completed',
+      progress: 100,
+      phase: 'completed',
+      completedAt: endTime.toISOString(),
+      duration: `${duration} seconds`
     });
 
-    // Simulate phase 2 progress
-    updateJob({ 
-      progress: 65, 
-      phase: 'phase2',
-      phases: {
-        ...jobs.get(jobId).phases,
-        phase2: { status: 'completed', startedAt: jobs.get(jobId).phases.phase2.startedAt, completedAt: new Date().toISOString() },
-        phase3: { status: 'processing', startedAt: new Date().toISOString(), completedAt: null }
-      }
-    });
+    console.log(`🎉 Job ${jobId} completed successfully in ${duration} seconds`);
 
-    // Final phase
-    updateJob({ 
-      progress: 90, 
-      phase: 'phase3'
+  } catch (error) {
+    console.error(`💥 Job ${jobId} failed:`, error);
+    updateJob({
+      status: 'failed',
+      error: error.message,
+      completedAt: new Date().toISOString()
     });
+    throw error;
+  }
+}
     
     console.log(`✅ Consensus generated successfully for job ${jobId}!`);
     console.log(`🔥 Tokens used: ${consensus.totalTokens || estimatedTokens}`);
