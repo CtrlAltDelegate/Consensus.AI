@@ -180,7 +180,7 @@ function EnhancedConsensusForm({ progressModal }) {
 
   // Polling function for job status
   const pollJobStatus = async (jobId) => {
-    const maxAttempts = 120; // 2 minutes max (polling every 1 second)
+    const maxAttempts = 180; // 3 minutes max (polling every 1 second)
     let attempts = 0;
     
     while (attempts < maxAttempts) {
