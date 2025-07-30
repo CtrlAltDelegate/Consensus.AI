@@ -138,11 +138,11 @@ class ConsensusEngine {
         
         try {
           const response = await llmOrchestrator.executeQuery(
-            reviewer.provider,
-            reviewer.model,
-            reviewPrompt,
-            { maxTokens: 1500, temperature: 0.6 }
-          );
+  reviewer.provider,
+  reviewer.model,
+  reviewPrompt,
+  { maxTokens: 1500, temperature: 0.6, timeout: 60000 } // Add 1-minute timeout
+);
           
           allReviews.push({
             reviewer: reviewer.name,
@@ -172,11 +172,11 @@ class ConsensusEngine {
     
     try {
       const response = await llmOrchestrator.executeQuery(
-        this.arbiterLLM.provider,
-        this.arbiterLLM.model,
-        prompt,
-        { maxTokens: 3000, temperature: 0.5 }
-      );
+  this.arbiterLLM.provider,
+  this.arbiterLLM.model,
+  prompt,
+  { maxTokens: 3000, temperature: 0.5, timeout: 120000 } // Add 2-minute timeout
+);
       
       return {
         provider: this.arbiterLLM.provider,
