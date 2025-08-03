@@ -62,6 +62,30 @@ app.use(cors({
   preflightContinue: false
 }));
 
+// Explicit preflight handler to ensure CORS headers are always set
+app.options('*', (req, res) => {
+  const origin = req.headers.origin;
+  console.log('OPTIONS preflight request from origin:', origin);
+  
+  // Check if origin is allowed
+  const isAllowed = !origin || 
+                   allowedOrigins.includes(origin) || 
+                   (origin && (origin.includes('localhost') || origin.includes('127.0.0.1')));
+  
+  if (isAllowed) {
+    res.header('Access-Control-Allow-Origin', origin || '*');
+    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Max-Age', '86400'); // Cache preflight for 24 hours
+    console.log('OPTIONS preflight approved for origin:', origin);
+    res.sendStatus(200);
+  } else {
+    console.log('OPTIONS preflight blocked for origin:', origin);
+    res.sendStatus(403);
+  }
+});
+
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
