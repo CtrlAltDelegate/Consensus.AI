@@ -48,6 +48,7 @@ app.use((req, res, next) => {
 app.use('/api/consensus', require('./routes/consensus'));
 app.use('/api/tokens', require('./routes/tokens'));
 app.use('/api/billing', require('./routes/billing'));
+app.use('/api/reports', require('./routes/reports'));
 app.use('/api/webhooks', require('./routes/webhooks'));
 
 // Health check endpoint for Railway

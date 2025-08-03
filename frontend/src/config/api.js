@@ -82,6 +82,19 @@ export const API_ENDPOINTS = {
     plans: '/api/billing/plans',
   },
   
+  // Reports endpoints
+  reports: {
+    list: '/api/reports',
+    get: (reportId) => `/api/reports/${reportId}`,
+    create: '/api/reports',
+    update: (reportId) => `/api/reports/${reportId}`,
+    delete: (reportId) => `/api/reports/${reportId}`,
+    bulkDelete: '/api/reports',
+    stats: '/api/reports/stats/overview',
+    export: '/api/reports/export',
+    downloadPdf: (jobId) => `/api/consensus/report/${jobId}/pdf`,
+  },
+  
   // Webhook endpoints (for testing)
   webhooks: {
     stripe: '/api/webhooks/stripe',
@@ -115,6 +128,17 @@ export const apiHelpers = {
   getBillingHistory: (params = {}) => api.get(API_ENDPOINTS.billing.history, { params }),
   createSetupIntent: () => api.post(API_ENDPOINTS.billing.setupIntent),
   getAvailablePlans: () => api.get(API_ENDPOINTS.billing.plans),
+  
+  // Reports helpers
+  getReports: (params = {}) => api.get(API_ENDPOINTS.reports.list, { params }),
+  getReport: (reportId) => api.get(API_ENDPOINTS.reports.get(reportId)),
+  saveReport: (data) => api.post(API_ENDPOINTS.reports.create, data),
+  updateReport: (reportId, data) => api.patch(API_ENDPOINTS.reports.update(reportId), data),
+  deleteReport: (reportId) => api.delete(API_ENDPOINTS.reports.delete(reportId)),
+  bulkDeleteReports: (reportIds) => api.delete(API_ENDPOINTS.reports.bulkDelete, { data: { reportIds } }),
+  getReportStats: () => api.get(API_ENDPOINTS.reports.stats),
+  exportReports: (reportIds, format) => api.post(API_ENDPOINTS.reports.export, { reportIds, format }, { responseType: 'blob' }),
+  downloadReportPdf: (jobId) => api.get(API_ENDPOINTS.reports.downloadPdf(jobId), { responseType: 'blob' }),
 };
 
 // Export the configured axios instance

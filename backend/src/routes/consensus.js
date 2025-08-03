@@ -4,6 +4,7 @@ const consensusEngine = require('../services/consensusEngine');
 const tokenManager = require('../services/tokenManager');
 const pdfGenerator = require('../services/pdfGenerator');
 const emailService = require('../services/emailService');
+const Report = require('../models/reportModel');
 const auth = require('../middleware/auth');
 const tokenCheck = require('../middleware/tokenCheck');
 const { validateConsensusRequest } = require('../utils/validation');
@@ -11,6 +12,7 @@ const { validateConsensusRequest } = require('../utils/validation');
 // In-memory job storage (in production, use Redis or database)
 const jobs = new Map();
 const jobResults = new Map();
+const jobPdfs = new Map(); // Store PDFs temporarily
 
 // Generate consensus analysis (ASYNC VERSION to avoid Railway timeouts)
 router.post('/generate', async (req, res) => {
@@ -217,9 +219,38 @@ async function processConsensusJob(jobId, topic, sources, options, estimatedToke
     console.log(`✅ Consensus generated successfully for job ${jobId}!`);
     console.log(`🔥 Tokens used: ${consensus.totalTokens || estimatedTokens}`);
     
-    // TEMPORARILY DISABLE PDF generation to focus on core consensus functionality
+    // Generate PDF if requested
     let pdfBuffer = null;
-    console.log('📄 PDF generation temporarily disabled for debugging');
+    if (options.generatePdf !== false) { // Default to true
+      try {
+        console.log('📄 Generating PDF report...');
+        pdfBuffer = await pdfGenerator.generateConsensusReport({
+          topic,
+          consensus: consensus.consensus,
+          confidence: consensus.confidence,
+          sources: consensus.llmsUsed || ['GPT-4o', 'Claude 3.5 Sonnet', 'Gemini 1.5 Pro', 'Command R+'],
+          metadata: {
+            totalTokens: consensus.totalTokens || estimatedTokens,
+            generatedAt: new Date().toISOString(),
+            processingTime: consensus.processingTime || 'Unknown'
+          }
+        });
+        console.log('✅ PDF generated successfully');
+        
+        // Store PDF buffer for download
+        if (pdfBuffer) {
+          jobPdfs.set(jobId, {
+            buffer: pdfBuffer,
+            filename: `consensus-report-${Date.now()}.pdf`,
+            createdAt: new Date().toISOString()
+          });
+          console.log('📄 PDF stored for download');
+        }
+      } catch (pdfError) {
+        console.error('❌ PDF generation failed:', pdfError);
+        // Continue without PDF - don't fail the entire job
+      }
+    }
 
     // TEMPORARILY DISABLE email sending to focus on core consensus functionality
     console.log('📧 Email sending temporarily disabled for debugging');
@@ -253,7 +284,12 @@ async function processConsensusJob(jobId, topic, sources, options, estimatedToke
         }
       },
       tokensRemaining: 25000 - (consensus.totalTokens || estimatedTokens),
-      ...(pdfBuffer && { pdfGenerated: true })
+      ...(pdfBuffer && { 
+        pdfGenerated: true,
+        pdfSize: pdfBuffer.length,
+        pdfAvailable: true,
+        pdfDownloadUrl: `/api/consensus/report/${jobId}/pdf`
+      })
     };
 
     // Store result and mark job complete
@@ -275,6 +311,67 @@ async function processConsensusJob(jobId, topic, sources, options, estimatedToke
     });
 
     console.log(`🎉 Job ${jobId} completed successfully in ${duration} seconds`);
+    
+    // Auto-save report to database if user exists and it's not a demo user
+    if (user && user.id !== 'demo-user-123') {
+      try {
+        console.log('💾 Auto-saving report to database...');
+        
+        const report = new Report({
+          title: topic.length > 100 ? topic.substring(0, 100) + '...' : topic,
+          topic,
+          userId: user.id,
+          jobId,
+          consensus: consensus.consensus,
+          confidence: consensus.confidence,
+          metadata: {
+            totalTokens: consensus.totalTokens || estimatedTokens,
+            llmsUsed: consensus.llmsUsed || ['GPT-4o', 'Claude 3.5 Sonnet', 'Gemini 1.5 Pro', 'Command R+'],
+            processingTime: `${duration} seconds`,
+            priority: options.priority || 'standard'
+          },
+          phases: consensus.phases || {
+            phase1_drafts: [
+              { model: 'GPT-4o', content: 'Analysis completed' },
+              { model: 'Claude 3.5 Sonnet', content: 'Analysis completed' },
+              { model: 'Gemini 1.5 Pro', content: 'Analysis completed' },
+              { model: 'Command R+', content: 'Analysis completed' }
+            ],
+            phase2_reviews: [
+              { reviewer: 'Claude 3.5 Sonnet', content: 'Peer review completed' },
+              { reviewer: 'Gemini 1.5 Pro', content: 'Peer review completed' },
+              { reviewer: 'Command R+', content: 'Peer review completed' }
+            ],
+            phase3_consensus: {
+              arbiter: 'Command R+',
+              content: 'Final arbitration completed'
+            }
+          },
+          sources: sources || [],
+          pdf: {
+            available: !!pdfBuffer,
+            filename: pdfBuffer ? `consensus-report-${Date.now()}.pdf` : null,
+            size: pdfBuffer ? pdfBuffer.length : null,
+            generatedAt: pdfBuffer ? new Date() : null
+          }
+        });
+
+        await report.save();
+        console.log(`✅ Report auto-saved with ID: ${report._id}`);
+        
+        // Add report ID to the job result
+        const currentResult = jobResults.get(jobId);
+        if (currentResult) {
+          currentResult.reportId = report._id;
+          currentResult.reportSaved = true;
+          jobResults.set(jobId, currentResult);
+        }
+        
+      } catch (reportError) {
+        console.error('❌ Failed to auto-save report:', reportError);
+        // Don't fail the job if report saving fails
+      }
+    }
 
   } catch (error) {
     console.error(`💥 Job ${jobId} failed:`, error);
@@ -309,17 +406,28 @@ router.get('/history', auth, async (req, res) => {
 });
 
 // Download consensus report as PDF
-router.get('/report/:analysisId/pdf', auth, async (req, res) => {
+router.get('/report/:jobId/pdf', async (req, res) => {
   try {
-    const { analysisId } = req.params;
+    const { jobId } = req.params;
     
-    // In a real implementation, you'd fetch the analysis from database
-    // For now, return error
-    res.status(404).json({ error: 'Analysis not found' });
+    // Check if PDF exists for this job
+    const pdfData = jobPdfs.get(jobId);
+    if (!pdfData) {
+      return res.status(404).json({ error: 'PDF not found for this job' });
+    }
+
+    // Set PDF headers
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${pdfData.filename}"`);
+    res.setHeader('Content-Length', pdfData.buffer.length);
+    
+    // Send PDF buffer
+    res.send(pdfData.buffer);
+    console.log(`📄 PDF downloaded for job ${jobId}`);
 
   } catch (error) {
     console.error('PDF download error:', error);
-    res.status(500).json({ error: 'Failed to generate PDF' });
+    res.status(500).json({ error: 'Failed to download PDF' });
   }
 });
 

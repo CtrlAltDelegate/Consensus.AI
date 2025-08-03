@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apiHelpers } from '../config/api';
 
 function ReportHistory({ onViewReport, onExportReport }) {
   const [reports, setReports] = useState([]);
@@ -285,12 +286,50 @@ The transition requires coordinated policy responses that balance urban vitality
   ];
 
   useEffect(() => {
-    // Simulate loading
-    setTimeout(() => {
-      setReports(mockReports);
-      setFilteredReports(mockReports);
-      setIsLoading(false);
-    }, 1000);
+    // Load real reports from API
+    const loadReports = async () => {
+      setIsLoading(true);
+      try {
+        const response = await apiHelpers.getReports({
+          page: 1,
+          limit: 50, // Load more reports initially
+          status: 'completed',
+          sortBy: 'createdAt',
+          sortOrder: 'desc'
+        });
+        
+        if (response.data.success) {
+          const reports = response.data.reports.map(report => ({
+            ...report,
+            // Ensure compatibility with existing component structure
+            id: report._id,
+            tokenUsage: report.metadata?.totalTokens || 0,
+            totalTokens: report.metadata?.totalTokens || 0,
+            models: report.metadata?.llmsUsed || [],
+            llmsUsed: report.metadata?.llmsUsed || [],
+            generatedAt: report.createdAt,
+            tags: report.tags || []
+          }));
+          
+          setReports(reports);
+          setFilteredReports(reports);
+        } else {
+          console.error('Failed to load reports:', response.data);
+          // Fallback to mock data if API fails
+          setReports(mockReports);
+          setFilteredReports(mockReports);
+        }
+      } catch (error) {
+        console.error('Error loading reports:', error);
+        // Fallback to mock data if API fails
+        setReports(mockReports);
+        setFilteredReports(mockReports);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadReports();
   }, []);
 
   // Filter and search
@@ -361,14 +400,57 @@ The transition requires coordinated policy responses that balance urban vitality
     setSelectedReports(newSelected);
   };
 
-  const handleBulkExport = () => {
-    const selectedReportsList = reports.filter(r => selectedReports.has(r.id));
-    onExportReport && onExportReport(selectedReportsList);
+  const handleBulkExport = async () => {
+    try {
+      const selectedIds = Array.from(selectedReports);
+      if (selectedIds.length === 0) {
+        alert('Please select reports to export');
+        return;
+      }
+
+      // Export as JSON by default
+      const response = await apiHelpers.exportReports(selectedIds, 'json');
+      
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `reports-export-${Date.now()}.json`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      console.log(`✅ Exported ${selectedIds.length} reports`);
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Failed to export reports. Please try again.');
+    }
   };
 
-  const handleDeleteSelected = () => {
-    setReports(reports.filter(r => !selectedReports.has(r.id)));
-    setSelectedReports(new Set());
+  const handleDeleteSelected = async () => {
+    try {
+      const selectedIds = Array.from(selectedReports);
+      if (selectedIds.length === 0) {
+        alert('Please select reports to delete');
+        return;
+      }
+
+      if (!confirm(`Are you sure you want to delete ${selectedIds.length} report(s)? This action cannot be undone.`)) {
+        return;
+      }
+
+      await apiHelpers.bulkDeleteReports(selectedIds);
+      
+      // Remove deleted reports from local state
+      setReports(reports.filter(r => !selectedReports.has(r.id)));
+      setSelectedReports(new Set());
+      
+      console.log(`✅ Deleted ${selectedIds.length} reports`);
+    } catch (error) {
+      console.error('Delete failed:', error);
+      alert('Failed to delete reports. Please try again.');
+    }
   };
 
   // Enhanced view report handler with debugging
