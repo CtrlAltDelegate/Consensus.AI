@@ -32,20 +32,27 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: function (origin, callback) {
+    console.log('CORS check for origin:', origin);
+    
     // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
+    if (!origin) {
+      console.log('Allowing request with no origin');
+      return callback(null, true);
+    }
     
     if (allowedOrigins.includes(origin)) {
+      console.log('Origin allowed:', origin);
       return callback(null, true);
     }
     
     // For development, allow any localhost
-    if (origin && origin.includes('localhost')) {
+    if (origin && (origin.includes('localhost') || origin.includes('127.0.0.1'))) {
+      console.log('Allowing localhost origin:', origin);
       return callback(null, true);
     }
     
     console.log('CORS blocked origin:', origin);
-    return callback(new Error('Not allowed by CORS'), false);
+    return callback(null, false); // Don't throw error, just deny
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
@@ -54,15 +61,6 @@ app.use(cors({
   optionsSuccessStatus: 200,
   preflightContinue: false
 }));
-
-// Additional CORS headers for preflight requests
-app.options('*', (req, res) => {
-  res.header('Access-Control-Allow-Origin', req.headers.origin);
-  res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.sendStatus(200);
-});
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
