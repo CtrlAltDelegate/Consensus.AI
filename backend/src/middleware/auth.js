@@ -1,15 +1,23 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/userModel');
+const env = require('../config/environment');
 
 const auth = async (req, res, next) => {
   try {
+    // Skip database-dependent auth if no database configured
+    if (!env.hasDatabase()) {
+      console.warn('⚠️  No database configured - using demo authentication');
+      req.user = { id: 'demo-user', email: 'demo@example.com' };
+      return next();
+    }
+
     const token = req.header('Authorization')?.replace('Bearer ', '');
     
     if (!token) {
       return res.status(401).json({ error: 'Access denied. No token provided.' });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, env.JWT_SECRET);
     const user = await User.findById(decoded.id).select('-password');
     
     if (!user) {

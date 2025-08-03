@@ -1,8 +1,15 @@
 const tokenManager = require('../services/tokenManager');
+const env = require('../config/environment');
 
 const tokenCheck = (requiredTokens = 0) => {
   return async (req, res, next) => {
     try {
+      // Skip token check if no database configured
+      if (!env.hasDatabase()) {
+        console.warn('⚠️  No database configured - skipping token check');
+        return next();
+      }
+
       // If no specific token requirement, just check if user has any tokens left
       let tokensToCheck = requiredTokens;
       
