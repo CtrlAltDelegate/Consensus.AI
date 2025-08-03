@@ -1,0 +1,27 @@
+{
+  "name": "consensus-ai",
+  "version": "1.0.0",
+  "description": "AI-powered consensus generation platform",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev --prefix frontend\" \"npm run dev --prefix backend\"",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "dev:backend": "npm run dev --prefix backend",
+    "start": "concurrently \"npm start --prefix frontend\" \"npm start --prefix backend\"",
+    "start:frontend": "npm start --prefix frontend",
+    "start:backend": "npm start --prefix backend",
+    "build": "npm run build --prefix frontend",
+    "install:all": "npm install && npm install --prefix frontend && npm install --prefix backend",
+    "clean": "rm -rf node_modules frontend/node_modules backend/node_modules frontend/dist backend/dist"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  },
+  "keywords": ["ai", "consensus", "react", "nodejs"],
+  "author": "Consensus.AI Team",
+  "license": "MIT"
+}

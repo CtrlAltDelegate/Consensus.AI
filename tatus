@@ -1,3 +1,0 @@
-[33me7418fc[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m  Implement async job system with polling to eliminate Railway timeout issues during long-running 4-LLM consensus operations
-[33m788b0b3[m  Add 3-minute server timeout configuration for long-running 4-LLM consensus operations
-[33m3a92da9[m  Add ultra-detailed response debugging to isolate frontend parsing issue
