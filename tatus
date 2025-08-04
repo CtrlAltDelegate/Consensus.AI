@@ -1,0 +1,3 @@
+[33m5ea8f06[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Fix Dockerfile to use npm install instead of npm ci for missing package-lock.json
+[33md079546[m Fix package-lock.json sync issues and remove infinite postinstall loop
+[33mb55661c[m Update package-lock.json to sync express-validator dependency
