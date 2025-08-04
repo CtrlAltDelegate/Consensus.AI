@@ -13,3 +13,4 @@ cmd = 'cd backend && npm start'
 [variables]
 NODE_ENV = 'production'
 PORT = '3000'
+RAILWAY_CORS_ORIGIN = 'https://consensusai.netlify.app,https://consensus-ai.netlify.app,https://main--consensusai.netlify.app'
