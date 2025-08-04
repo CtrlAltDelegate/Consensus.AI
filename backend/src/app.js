@@ -30,19 +30,6 @@ const allowedOrigins = [
   'https://main--consensusai.netlify.app' // Branch deploys
 ];
 
-// Railway-specific CORS headers (must be set at Express response level to override proxy)
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (allowedOrigins.includes(origin) || (origin && origin.includes('localhost'))) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-    console.log('✅ Railway CORS override set for origin:', origin);
-  }
-  next();
-});
-
 app.use(cors({
   origin: function (origin, callback) {
     console.log('CORS check for origin:', origin);
@@ -109,6 +96,19 @@ app.use((req, res, next) => {
   if (req.path.includes('/consensus/generate')) {
     req.setTimeout(180000); // 3 minutes
     res.setTimeout(180000); // 3 minutes
+  }
+  next();
+});
+
+// Railway-specific CORS headers (override proxy interference)
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin) || (origin && origin.includes('localhost'))) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+    console.log('✅ Railway CORS override set for origin:', origin);
   }
   next();
 });
