@@ -62,28 +62,19 @@ app.use(cors({
   preflightContinue: false
 }));
 
-// Explicit preflight handler to ensure CORS headers are always set
+// Explicit preflight handler - TEMPORARY ALLOW ALL
 app.options('*', (req, res) => {
   const origin = req.headers.origin;
   console.log('OPTIONS preflight request from origin:', origin);
   
-  // Check if origin is allowed
-  const isAllowed = !origin || 
-                   allowedOrigins.includes(origin) || 
-                   (origin && (origin.includes('localhost') || origin.includes('127.0.0.1')));
-  
-  if (isAllowed) {
-    res.header('Access-Control-Allow-Origin', origin || '*');
-    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Access-Control-Max-Age', '86400'); // Cache preflight for 24 hours
-    console.log('OPTIONS preflight approved for origin:', origin);
-    res.sendStatus(200);
-  } else {
-    console.log('OPTIONS preflight blocked for origin:', origin);
-    res.sendStatus(403);
-  }
+  // TEMPORARY: Allow all origins
+  res.header('Access-Control-Allow-Origin', origin || '*');
+  res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Max-Age', '86400'); // Cache preflight for 24 hours
+  console.log('OPTIONS preflight approved for origin (ALLOW ALL):', origin);
+  res.sendStatus(200);
 });
 
 // Body parsing middleware
@@ -109,16 +100,12 @@ app.use((req, res, next) => {
   console.log('🔍 origin type:', typeof origin);
   console.log('🔍 origin length:', origin ? origin.length : 'null');
   
-  // Always set CORS headers for allowed origins OR any origin if no origin header (direct API calls)
-  if (!origin || allowedOrigins.includes(origin) || (origin && origin.includes('localhost'))) {
-    res.header('Access-Control-Allow-Origin', origin || '*');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-    console.log('✅ CORS headers set for origin:', origin || 'no-origin');
-  } else {
-    console.log('❌ CORS blocked for origin:', origin);
-  }
+  // TEMPORARY: Allow all origins to test CORS fix
+  res.header('Access-Control-Allow-Origin', origin || '*');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+  console.log('✅ CORS headers set for origin (ALLOW ALL):', origin || 'no-origin');
   next();
 });
 
