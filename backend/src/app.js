@@ -67,14 +67,19 @@ app.options('*', (req, res) => {
   const origin = req.headers.origin;
   console.log('OPTIONS preflight request from origin:', origin);
   
-  // TEMPORARY: Allow all origins
-  res.header('Access-Control-Allow-Origin', origin || '*');
-  res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.header('Access-Control-Max-Age', '86400'); // Cache preflight for 24 hours
-  console.log('OPTIONS preflight approved for origin (ALLOW ALL):', origin);
-  res.sendStatus(200);
+  // Check if origin is allowed
+  if (!origin || origin.includes('consensusai.netlify.app') || origin.includes('localhost')) {
+    res.header('Access-Control-Allow-Origin', origin || '*');
+    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Max-Age', '86400'); // Cache preflight for 24 hours
+    console.log('OPTIONS preflight approved for origin:', origin);
+    res.sendStatus(200);
+  } else {
+    console.log('OPTIONS preflight blocked for origin:', origin);
+    res.sendStatus(403);
+  }
 });
 
 // Body parsing middleware
@@ -100,12 +105,16 @@ app.use((req, res, next) => {
   console.log('🔍 origin type:', typeof origin);
   console.log('🔍 origin length:', origin ? origin.length : 'null');
   
-  // TEMPORARY: Allow all origins to test CORS fix
-  res.header('Access-Control-Allow-Origin', origin || '*');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-  console.log('✅ CORS headers set for origin (ALLOW ALL):', origin || 'no-origin');
+  // Set CORS headers for allowed origins
+  if (!origin || origin.includes('consensusai.netlify.app') || origin.includes('localhost')) {
+    res.header('Access-Control-Allow-Origin', origin || '*');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+    console.log('✅ CORS headers set for origin:', origin || 'no-origin');
+  } else {
+    console.log('❌ CORS blocked for origin:', origin);
+  }
   next();
 });
 
