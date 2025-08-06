@@ -100,15 +100,20 @@ app.use((req, res, next) => {
   next();
 });
 
-// Railway-specific CORS headers (override proxy interference)
+// Railway-specific CORS headers (override proxy interference) - FIXED VERSION
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  if (allowedOrigins.includes(origin) || (origin && origin.includes('localhost'))) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-    console.log('✅ Railway CORS override set for origin:', origin);
+  console.log('🔍 CORS middleware check for origin:', origin);
+  
+  // Always set CORS headers for allowed origins OR any origin if no origin header (direct API calls)
+  if (!origin || allowedOrigins.includes(origin) || (origin && origin.includes('localhost'))) {
+    res.header('Access-Control-Allow-Origin', origin || '*');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+    console.log('✅ CORS headers set for origin:', origin || 'no-origin');
+  } else {
+    console.log('❌ CORS blocked for origin:', origin);
   }
   next();
 });
