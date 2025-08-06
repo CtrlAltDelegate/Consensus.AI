@@ -122,6 +122,17 @@ app.use('/api/webhooks', require('./routes/webhooks'));
 
 // Health check endpoint for Railway
 app.get('/health', (req, res) => {
+  console.log('🏥 Health check requested from origin:', req.headers.origin);
+  
+  // Manually set CORS headers for testing
+  const origin = req.headers.origin;
+  res.header('Access-Control-Allow-Origin', origin || '*');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+  
+  console.log('🏥 CORS headers manually set for origin:', origin);
+  
   res.status(200).json({ 
     status: 'OK',
     timestamp: new Date().toISOString(),
