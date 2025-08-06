@@ -100,10 +100,14 @@ app.use((req, res, next) => {
   next();
 });
 
-// Railway-specific CORS headers (override proxy interference) - FIXED VERSION
+// Railway-specific CORS headers (override proxy interference) - DEBUG VERSION
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   console.log('🔍 CORS middleware check for origin:', origin);
+  console.log('🔍 allowedOrigins array:', allowedOrigins);
+  console.log('🔍 origin in allowedOrigins?', allowedOrigins.includes(origin));
+  console.log('🔍 origin type:', typeof origin);
+  console.log('🔍 origin length:', origin ? origin.length : 'null');
   
   // Always set CORS headers for allowed origins OR any origin if no origin header (direct API calls)
   if (!origin || allowedOrigins.includes(origin) || (origin && origin.includes('localhost'))) {
