@@ -1,3 +1,4 @@
+# Force fresh build - cache bust
 FROM node:18-alpine
 
 WORKDIR /app
