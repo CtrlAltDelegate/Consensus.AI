@@ -61,7 +61,17 @@ app.use(cors({
     console.log('🔍 Contains netlify normalized:', containsNetlifyNormalized);
     console.log('🔍 Starts with netlify:', startsWithNetlify);
     
-    if (isInAllowedList || containsNetlify || isExactNetlify || containsNetlifyNormalized || startsWithNetlify) {
+    // NUCLEAR OPTION: Allow anything that looks like netlify due to string matching issues
+    const isNetlifyDomain = origin && (
+      origin.indexOf('netlify') !== -1 || 
+      origin.indexOf('consensusai') !== -1 ||
+      /netlify\.app/.test(origin) ||
+      /consensusai/.test(origin)
+    );
+    
+    console.log('🔍 Nuclear netlify check:', isNetlifyDomain);
+    
+    if (isInAllowedList || containsNetlify || isExactNetlify || containsNetlifyNormalized || startsWithNetlify || isNetlifyDomain) {
       console.log('✅ Origin allowed:', origin);
       return callback(null, true);
     }
