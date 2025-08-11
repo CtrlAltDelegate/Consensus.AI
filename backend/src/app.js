@@ -100,9 +100,24 @@ app.use(cors({
     console.log('❌ Origin not in allowedOrigins:', allowedOrigins);
     console.log('❌ Origin does not contain consensusai.netlify.app');
     
-    // TEMPORARY: Allow for development - we'll secure this later
-    console.log('🔥 TEMP: Allowing origin anyway for development');
-    return callback(null, true);
+    // SECURE: Use exact domain matching as final fallback
+    const secureAllowedDomains = [
+      'https://consensusai.netlify.app',
+      'https://consensus-ai.netlify.app',
+      'https://main--consensusai.netlify.app'
+    ];
+    
+    // Check if origin is in our secure list
+    const isSecureOrigin = secureAllowedDomains.some(domain => origin === domain);
+    
+    if (isSecureOrigin) {
+      console.log('🔒 SECURE: Origin allowed via exact domain match:', origin);
+      return callback(null, true);
+    }
+    
+    // Final security check: block everything else
+    console.log('❌ BLOCKED: Origin not in secure whitelist:', origin);
+    return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
