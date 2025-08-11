@@ -19,6 +19,23 @@
     "clean": "rm -rf node_modules frontend/node_modules backend/node_modules frontend/dist backend/dist",
     "heroku-postbuild": "cd backend && npm install --only=production"
   },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "helmet": "^7.0.0",
+    "dotenv": "^16.3.1",
+    "mongoose": "^7.5.0",
+    "stripe": "^13.6.0",
+    "express-rate-limit": "^6.10.0",
+    "express-validator": "^7.0.1",
+    "jsonwebtoken": "^9.0.2",
+    "bcryptjs": "^2.4.3",
+    "joi": "^17.9.2",
+    "axios": "^1.5.0",
+    "pdf-lib": "^1.17.1",
+    "nodemailer": "^6.9.4",
+    "node-cron": "^3.0.2"
+  },
   "devDependencies": {
     "concurrently": "^8.2.0"
   },
