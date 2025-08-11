@@ -21,13 +21,15 @@ app.use(helmet({
   },
 }));
 
-// Fresh, simple CORS configuration
+// Fresh, simple CORS configuration - REWRITTEN VERSION
+console.log('🔥 STARTING WITH REWRITTEN CORS LOGIC - VERSION 2.0');
 const validOrigins = [
   'https://consensusai.netlify.app',
   'https://consensus-ai.netlify.app', 
   'http://localhost:5173',
   'http://localhost:3000'
 ];
+console.log('🔥 Valid origins loaded:', validOrigins);
 
 app.use(cors({
   origin: function (origin, callback) {
@@ -89,10 +91,10 @@ app.options('*', (req, res) => {
   }
 });
 
-// Explicit CORS headers middleware to override Railway proxy
+// NUCLEAR: Explicit CORS headers middleware to override Railway proxy  
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  console.log('🔧 Setting explicit CORS headers for:', origin);
+  console.log('🚀 NUCLEAR CORS MIDDLEWARE RUNNING for:', origin);
   
   // Set CORS headers on every response
   if (!origin || 
@@ -103,7 +105,7 @@ app.use((req, res, next) => {
     res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
     res.header('Access-Control-Allow-Credentials', 'true');
-    console.log('🔧 CORS headers set for:', origin);
+    console.log('🚀 NUCLEAR CORS HEADERS SET for:', origin);
   }
   
   next();
