@@ -61,17 +61,17 @@ app.use(cors({
     console.log('🔍 Contains netlify normalized:', containsNetlifyNormalized);
     console.log('🔍 Starts with netlify:', startsWithNetlify);
     
-    // NUCLEAR OPTION: Allow anything that looks like netlify due to string matching issues
-    const isNetlifyDomain = origin && (
-      origin.indexOf('netlify') !== -1 || 
-      origin.indexOf('consensusai') !== -1 ||
-      /netlify\.app/.test(origin) ||
-      /consensusai/.test(origin)
+    // SECURE: Only allow legitimate Netlify domains using indexOf (which works)
+    const isLegitimateNetlify = origin && (
+      origin.indexOf('https://consensusai.netlify.app') === 0 ||
+      origin.indexOf('https://consensus-ai.netlify.app') === 0 ||
+      origin.indexOf('https://main--consensusai.netlify.app') === 0 ||
+      /^https:\/\/[a-zA-Z0-9-]+--consensusai\.netlify\.app$/.test(origin)
     );
     
-    console.log('🔍 Nuclear netlify check:', isNetlifyDomain);
+    console.log('🔍 Legitimate netlify check:', isLegitimateNetlify);
     
-    if (isInAllowedList || containsNetlify || isExactNetlify || containsNetlifyNormalized || startsWithNetlify || isNetlifyDomain) {
+    if (isInAllowedList || containsNetlify || isExactNetlify || containsNetlifyNormalized || startsWithNetlify || isLegitimateNetlify) {
       console.log('✅ Origin allowed:', origin);
       return callback(null, true);
     }
