@@ -50,11 +50,18 @@ app.use(cors({
     console.log('🔍 Origin length:', origin ? origin.length : 'null');
     console.log('🔍 Origin chars:', origin ? origin.split('').map(c => c.charCodeAt(0)) : 'null');
     
-    // Temporary: Also check exact string we see in logs
+    // Temporary: Also check exact string we see in logs and normalized versions
     const isExactNetlify = origin === 'https://consensusai.netlify.app';
-    console.log('🔍 Exact netlify match:', isExactNetlify);
+    const normalizedOrigin = origin ? origin.trim().toLowerCase() : '';
+    const containsNetlifyNormalized = normalizedOrigin.includes('consensusai.netlify.app');
+    const startsWithNetlify = normalizedOrigin.startsWith('https://consensusai.netlify.app');
     
-    if (isInAllowedList || containsNetlify || isExactNetlify) {
+    console.log('🔍 Exact netlify match:', isExactNetlify);
+    console.log('🔍 Normalized origin:', normalizedOrigin);
+    console.log('🔍 Contains netlify normalized:', containsNetlifyNormalized);
+    console.log('🔍 Starts with netlify:', startsWithNetlify);
+    
+    if (isInAllowedList || containsNetlify || isExactNetlify || containsNetlifyNormalized || startsWithNetlify) {
       console.log('✅ Origin allowed:', origin);
       return callback(null, true);
     }
