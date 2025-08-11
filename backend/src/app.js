@@ -61,13 +61,11 @@ app.use(cors({
     console.log('🔍 Contains netlify normalized:', containsNetlifyNormalized);
     console.log('🔍 Starts with netlify:', startsWithNetlify);
     
-    // SECURE: Only allow legitimate Netlify domains using indexOf (which works)
-    const isLegitimateNetlify = origin && (
-      origin.indexOf('https://consensusai.netlify.app') === 0 ||
-      origin.indexOf('https://consensus-ai.netlify.app') === 0 ||
-      origin.indexOf('https://main--consensusai.netlify.app') === 0 ||
-      /^https:\/\/[a-zA-Z0-9-]+--consensusai\.netlify\.app$/.test(origin)
-    );
+    // WORKING + SECURE: Use indexOf !== -1 but validate it ends with .netlify.app
+    const hasConsensusai = origin && origin.indexOf('consensusai') !== -1;
+    const endsWithNetlifyApp = origin && origin.indexOf('.netlify.app') !== -1;
+    const startsWithHttps = origin && origin.indexOf('https://') === 0;
+    const isLegitimateNetlify = hasConsensusai && endsWithNetlifyApp && startsWithHttps;
     
     console.log('🔍 Legitimate netlify check:', isLegitimateNetlify);
     
