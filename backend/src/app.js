@@ -21,123 +21,44 @@ app.use(helmet({
   },
 }));
 
-// CORS configuration for Railway + Netlify
-const allowedOrigins = [
+// Fresh, simple CORS configuration
+const validOrigins = [
   'https://consensusai.netlify.app',
   'https://consensus-ai.netlify.app', 
   'http://localhost:5173',
-  'http://localhost:3000',
-  'https://main--consensusai.netlify.app' // Branch deploys
+  'http://localhost:3000'
 ];
 
 app.use(cors({
   origin: function (origin, callback) {
-    console.log('🔍 CORS check for origin:', origin);
-    console.log('🔍 Allowed origins:', allowedOrigins);
+    console.log('🔍 Fresh CORS check for:', origin);
     
-    // Allow requests with no origin (like mobile apps or curl requests)
+    // No origin = allow (mobile apps, curl, etc.)
     if (!origin) {
-      console.log('✅ Allowing request with no origin');
+      console.log('✅ No origin - allowed');
       return callback(null, true);
     }
     
-    // Use more robust string matching for Netlify domains
-    const isInAllowedList = allowedOrigins.includes(origin);
-    const containsNetlify = origin && origin.includes('consensusai.netlify.app');
-    
-    console.log('🔍 Exact origin match check:', isInAllowedList);
-    console.log('🔍 Contains netlify check:', containsNetlify);
-    console.log('🔍 Origin length:', origin ? origin.length : 'null');
-    console.log('🔍 Origin chars:', origin ? origin.split('').map(c => c.charCodeAt(0)) : 'null');
-    
-    // Temporary: Also check exact string we see in logs and normalized versions
-    const isExactNetlify = origin === 'https://consensusai.netlify.app';
-    const normalizedOrigin = origin ? origin.trim().toLowerCase() : '';
-    const containsNetlifyNormalized = normalizedOrigin.includes('consensusai.netlify.app');
-    const startsWithNetlify = normalizedOrigin.startsWith('https://consensusai.netlify.app');
-    
-    console.log('🔍 Exact netlify match:', isExactNetlify);
-    console.log('🔍 Normalized origin:', normalizedOrigin);
-    console.log('🔍 Contains netlify normalized:', containsNetlifyNormalized);
-    console.log('🔍 Starts with netlify:', startsWithNetlify);
-    
-    // WORKING + SECURE: Use indexOf !== -1 but validate it ends with .netlify.app
-    const hasConsensusai = origin && origin.indexOf('consensusai') !== -1;
-    const endsWithNetlifyApp = origin && origin.indexOf('.netlify.app') !== -1;
-    const startsWithHttps = origin && origin.indexOf('https://') === 0;
-    const isLegitimateNetlify = hasConsensusai && endsWithNetlifyApp && startsWithHttps;
-    
-    console.log('🔍 Has consensusai:', hasConsensusai, 'indexOf result:', origin ? origin.indexOf('consensusai') : 'null');
-    console.log('🔍 Ends with netlify.app:', endsWithNetlifyApp, 'indexOf result:', origin ? origin.indexOf('.netlify.app') : 'null');
-    console.log('🔍 Starts with https:', startsWithHttps, 'indexOf result:', origin ? origin.indexOf('https://') : 'null');
-    console.log('🔍 Legitimate netlify check:', isLegitimateNetlify);
-    
-    // EMERGENCY: If all string methods are broken, allow the specific origin we see in logs
-    const isExactKnownGoodOrigin = origin === 'https://consensusai.netlify.app';
-    
-    // NUCLEAR: Handle potential encoding issues
-    const cleanOrigin = origin ? origin.replace(/[^\x20-\x7E]/g, '') : ''; // Remove non-printable chars
-    const isCleanMatch = cleanOrigin === 'https://consensusai.netlify.app';
-    const containsCleanConsensus = cleanOrigin.indexOf('consensusai') !== -1;
-    
-    console.log('🚨 Emergency exact match:', isExactKnownGoodOrigin);
-    console.log('🧹 Clean origin:', cleanOrigin);
-    console.log('🧹 Clean match:', isCleanMatch);
-    console.log('🧹 Clean contains consensusai:', containsCleanConsensus);
-    
-    if (isInAllowedList || containsNetlify || isExactNetlify || containsNetlifyNormalized || startsWithNetlify || isLegitimateNetlify || isExactKnownGoodOrigin || isCleanMatch || containsCleanConsensus) {
-      console.log('✅ Origin allowed:', origin);
+    // Localhost = allow for development
+    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      console.log('✅ Localhost - allowed');
       return callback(null, true);
     }
     
-    // For development, allow any localhost
-    if (origin && (origin.includes('localhost') || origin.includes('127.0.0.1'))) {
-      console.log('✅ Allowing localhost origin:', origin);
+    // Check against valid origins list
+    if (validOrigins.includes(origin)) {
+      console.log('✅ Valid origin - allowed');
       return callback(null, true);
     }
     
-    console.log('❌ CORS blocked origin:', origin);
-    console.log('❌ Origin not in allowedOrigins:', allowedOrigins);
-    console.log('❌ Origin does not contain consensusai.netlify.app');
-    
-    // NUCLEAR + SECURE: Handle weird string encoding but stay secure
-    const secureAllowedDomains = [
-      'https://consensusai.netlify.app',
-      'https://consensus-ai.netlify.app', 
-      'https://main--consensusai.netlify.app'
-    ];
-    
-    // Multiple fallback checks for string encoding issues
-    const originStr = String(origin || '');
-    const cleanOrigin = originStr.replace(/[^\x20-\x7E]/g, '').trim();
-    
-    const isSecureOrigin = secureAllowedDomains.some(domain => {
-      return (
-        origin === domain ||                    // Exact match
-        cleanOrigin === domain ||               // Clean match  
-        originStr === domain ||                 // String conversion match
-        JSON.stringify(origin) === JSON.stringify(domain) // JSON comparison
-      );
-    });
-    
-    if (isSecureOrigin) {
-      console.log('🔒 SECURE: Origin allowed via multi-method match:', origin);
+    // Netlify branch deployments (format: https://branch--consensusai.netlify.app)
+    if (origin.startsWith('https://') && origin.endsWith('--consensusai.netlify.app')) {
+      console.log('✅ Netlify branch - allowed');
       return callback(null, true);
     }
     
-    // If it contains our domain but doesn't match exactly, it might be a subdomain attack
-    const containsConsensusDomain = cleanOrigin.includes('consensusai.netlify.app');
-    const isLikelyLegitimate = containsConsensusDomain && cleanOrigin.startsWith('https://') && cleanOrigin.endsWith('.netlify.app');
-    
-    if (isLikelyLegitimate) {
-      console.log('🔒 SECURE: Allowing legitimate Netlify subdomain:', origin);
-      return callback(null, true);  
-    }
-    
-    // Final security check: block everything else
-    console.log('❌ BLOCKED: Origin not in secure whitelist:', origin);
-    console.log('❌ Clean origin:', cleanOrigin);
-    console.log('❌ Secure domains:', secureAllowedDomains);
+    // Block everything else
+    console.log('❌ Origin blocked:', origin);
     return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
