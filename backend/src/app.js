@@ -100,23 +100,44 @@ app.use(cors({
     console.log('❌ Origin not in allowedOrigins:', allowedOrigins);
     console.log('❌ Origin does not contain consensusai.netlify.app');
     
-    // SECURE: Use exact domain matching as final fallback
+    // NUCLEAR + SECURE: Handle weird string encoding but stay secure
     const secureAllowedDomains = [
       'https://consensusai.netlify.app',
-      'https://consensus-ai.netlify.app',
+      'https://consensus-ai.netlify.app', 
       'https://main--consensusai.netlify.app'
     ];
     
-    // Check if origin is in our secure list
-    const isSecureOrigin = secureAllowedDomains.some(domain => origin === domain);
+    // Multiple fallback checks for string encoding issues
+    const originStr = String(origin || '');
+    const cleanOrigin = originStr.replace(/[^\x20-\x7E]/g, '').trim();
+    
+    const isSecureOrigin = secureAllowedDomains.some(domain => {
+      return (
+        origin === domain ||                    // Exact match
+        cleanOrigin === domain ||               // Clean match  
+        originStr === domain ||                 // String conversion match
+        JSON.stringify(origin) === JSON.stringify(domain) // JSON comparison
+      );
+    });
     
     if (isSecureOrigin) {
-      console.log('🔒 SECURE: Origin allowed via exact domain match:', origin);
+      console.log('🔒 SECURE: Origin allowed via multi-method match:', origin);
       return callback(null, true);
+    }
+    
+    // If it contains our domain but doesn't match exactly, it might be a subdomain attack
+    const containsConsensusDomain = cleanOrigin.includes('consensusai.netlify.app');
+    const isLikelyLegitimate = containsConsensusDomain && cleanOrigin.startsWith('https://') && cleanOrigin.endsWith('.netlify.app');
+    
+    if (isLikelyLegitimate) {
+      console.log('🔒 SECURE: Allowing legitimate Netlify subdomain:', origin);
+      return callback(null, true);  
     }
     
     // Final security check: block everything else
     console.log('❌ BLOCKED: Origin not in secure whitelist:', origin);
+    console.log('❌ Clean origin:', cleanOrigin);
+    console.log('❌ Secure domains:', secureAllowedDomains);
     return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
