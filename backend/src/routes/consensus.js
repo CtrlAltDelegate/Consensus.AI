@@ -312,8 +312,8 @@ async function processConsensusJob(jobId, topic, sources, options, estimatedToke
 
     console.log(`🎉 Job ${jobId} completed successfully in ${duration} seconds`);
     
-    // Auto-save report to database if user exists and it's not a demo user
-    if (user && user.id !== 'demo-user-123') {
+    // Auto-save report to database if user exists (including demo users for testing)
+    if (user) {
       try {
         console.log('💾 Auto-saving report to database...');
         
@@ -383,17 +383,37 @@ async function processConsensusJob(jobId, topic, sources, options, estimatedToke
 router.get('/history', auth, async (req, res) => {
   try {
     const { page = 1, limit = 10 } = req.query;
+    const userId = req.user.id;
     
-    // In a real implementation, you'd fetch from a database
-    // For now, return mock data
+    console.log(`📚 Fetching reports for user: ${userId}`);
+    
+    // Fetch reports from database
+    const reports = await Report.find({ userId })
+      .sort({ createdAt: -1 })
+      .limit(parseInt(limit))
+      .skip((parseInt(page) - 1) * parseInt(limit));
+    
+    const total = await Report.countDocuments({ userId });
+    
+    console.log(`📊 Found ${reports.length} reports for user ${userId}`);
+    
     res.json({
       success: true,
-      analyses: [],
+      analyses: reports.map(report => ({
+        id: report._id,
+        title: report.title,
+        topic: report.topic,
+        consensus: report.consensus,
+        confidence: report.confidence,
+        metadata: report.metadata,
+        createdAt: report.createdAt,
+        pdfAvailable: report.pdf?.available || false
+      })),
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
-        total: 0,
-        pages: 0
+        total,
+        pages: Math.ceil(total / parseInt(limit))
       }
     });
   } catch (error) {
