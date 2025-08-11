@@ -67,9 +67,16 @@ app.use(cors({
     const startsWithHttps = origin && origin.indexOf('https://') === 0;
     const isLegitimateNetlify = hasConsensusai && endsWithNetlifyApp && startsWithHttps;
     
+    console.log('🔍 Has consensusai:', hasConsensusai, 'indexOf result:', origin ? origin.indexOf('consensusai') : 'null');
+    console.log('🔍 Ends with netlify.app:', endsWithNetlifyApp, 'indexOf result:', origin ? origin.indexOf('.netlify.app') : 'null');
+    console.log('🔍 Starts with https:', startsWithHttps, 'indexOf result:', origin ? origin.indexOf('https://') : 'null');
     console.log('🔍 Legitimate netlify check:', isLegitimateNetlify);
     
-    if (isInAllowedList || containsNetlify || isExactNetlify || containsNetlifyNormalized || startsWithNetlify || isLegitimateNetlify) {
+    // EMERGENCY: If all string methods are broken, allow the specific origin we see in logs
+    const isExactKnownGoodOrigin = origin === 'https://consensusai.netlify.app';
+    console.log('🚨 Emergency exact match:', isExactKnownGoodOrigin);
+    
+    if (isInAllowedList || containsNetlify || isExactNetlify || containsNetlifyNormalized || startsWithNetlify || isLegitimateNetlify || isExactKnownGoodOrigin) {
       console.log('✅ Origin allowed:', origin);
       return callback(null, true);
     }
