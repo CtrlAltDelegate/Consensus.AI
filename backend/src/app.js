@@ -40,7 +40,9 @@ app.use(cors({
       return callback(null, true);
     }
     
-    if (allowedOrigins.includes(origin)) {
+    // Use more robust string matching for Netlify domains
+    if (allowedOrigins.includes(origin) || 
+        (origin && origin.includes('consensusai.netlify.app'))) {
       console.log('Origin allowed:', origin);
       return callback(null, true);
     }
