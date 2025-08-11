@@ -89,6 +89,26 @@ app.options('*', (req, res) => {
   }
 });
 
+// Explicit CORS headers middleware to override Railway proxy
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  console.log('🔧 Setting explicit CORS headers for:', origin);
+  
+  // Set CORS headers on every response
+  if (!origin || 
+      origin.includes('localhost') || 
+      origin.includes('consensusai.netlify.app') ||
+      (origin.startsWith('https://') && origin.endsWith('--consensusai.netlify.app'))) {
+    res.header('Access-Control-Allow-Origin', origin || '*');
+    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    console.log('🔧 CORS headers set for:', origin);
+  }
+  
+  next();
+});
+
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
