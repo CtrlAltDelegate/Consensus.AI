@@ -32,29 +32,32 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: function (origin, callback) {
-    console.log('CORS check for origin:', origin);
+    console.log('🔍 CORS check for origin:', origin);
+    console.log('🔍 Allowed origins:', allowedOrigins);
     
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) {
-      console.log('Allowing request with no origin');
+      console.log('✅ Allowing request with no origin');
       return callback(null, true);
     }
     
     // Use more robust string matching for Netlify domains
     if (allowedOrigins.includes(origin) || 
         (origin && origin.includes('consensusai.netlify.app'))) {
-      console.log('Origin allowed:', origin);
+      console.log('✅ Origin allowed:', origin);
       return callback(null, true);
     }
     
     // For development, allow any localhost
     if (origin && (origin.includes('localhost') || origin.includes('127.0.0.1'))) {
-      console.log('Allowing localhost origin:', origin);
+      console.log('✅ Allowing localhost origin:', origin);
       return callback(null, true);
     }
     
-    console.log('CORS blocked origin:', origin);
-    return callback(null, false); // Don't throw error, just deny
+    console.log('❌ CORS blocked origin:', origin);
+    console.log('❌ Origin not in allowedOrigins:', allowedOrigins);
+    console.log('❌ Origin does not contain consensusai.netlify.app');
+    return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
