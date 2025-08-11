@@ -42,8 +42,19 @@ app.use(cors({
     }
     
     // Use more robust string matching for Netlify domains
-    if (allowedOrigins.includes(origin) || 
-        (origin && origin.includes('consensusai.netlify.app'))) {
+    const isInAllowedList = allowedOrigins.includes(origin);
+    const containsNetlify = origin && origin.includes('consensusai.netlify.app');
+    
+    console.log('🔍 Exact origin match check:', isInAllowedList);
+    console.log('🔍 Contains netlify check:', containsNetlify);
+    console.log('🔍 Origin length:', origin ? origin.length : 'null');
+    console.log('🔍 Origin chars:', origin ? origin.split('').map(c => c.charCodeAt(0)) : 'null');
+    
+    // Temporary: Also check exact string we see in logs
+    const isExactNetlify = origin === 'https://consensusai.netlify.app';
+    console.log('🔍 Exact netlify match:', isExactNetlify);
+    
+    if (isInAllowedList || containsNetlify || isExactNetlify) {
       console.log('✅ Origin allowed:', origin);
       return callback(null, true);
     }
