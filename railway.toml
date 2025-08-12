@@ -1,6 +1,11 @@
 [build]
 builder = "nixpacks"
 
+[build.nixpacks]
+installCmd = "npm install && npm install --prefix backend"
+buildCmd = "echo 'No build needed'"
+startCmd = "npm start"
+
 [deploy]
 healthcheckPath = "/health"
 healthcheckTimeout = 30
