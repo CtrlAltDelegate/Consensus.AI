@@ -31,45 +31,8 @@ const validOrigins = [
 ];
 console.log('🚂 Valid origins for Railway:', validOrigins);
 
-app.use(cors({
-  origin: function (origin, callback) {
-    console.log('🔍 Fresh CORS check for:', origin);
-    
-    // No origin = allow (mobile apps, curl, etc.)
-    if (!origin) {
-      console.log('✅ No origin - allowed');
-      return callback(null, true);
-    }
-    
-    // Localhost = allow for development
-    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
-      console.log('✅ Localhost - allowed');
-      return callback(null, true);
-    }
-    
-    // Check against valid origins list
-    if (validOrigins.includes(origin)) {
-      console.log('✅ Valid origin - allowed');
-      return callback(null, true);
-    }
-    
-    // Netlify branch deployments (format: https://branch--consensusai.netlify.app)
-    if (origin.startsWith('https://') && origin.endsWith('--consensusai.netlify.app')) {
-      console.log('✅ Netlify branch - allowed');
-      return callback(null, true);
-    }
-    
-    // Block everything else
-    console.log('❌ Origin blocked:', origin);
-    return callback(new Error('Not allowed by CORS'));
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
-  exposedHeaders: ['Content-Range', 'X-Content-Range'],
-  optionsSuccessStatus: 200,
-  preflightContinue: false
-}));
+// DISABLE cors() middleware - handle manually to override Railway
+console.log('🚂 DISABLING cors() middleware - handling manually');
 
 // Explicit preflight handler - TEMPORARY ALLOW ALL
 app.options('*', (req, res) => {
