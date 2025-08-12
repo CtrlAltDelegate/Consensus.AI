@@ -21,15 +21,15 @@ app.use(helmet({
   },
 }));
 
-// Vercel-optimized CORS configuration
-console.log('🚀 STARTING WITH VERCEL-OPTIMIZED CORS LOGIC');
+// Railway-optimized CORS configuration
+console.log('🚂 STARTING WITH RAILWAY-OPTIMIZED CORS LOGIC');
 const validOrigins = [
   'https://consensusai.netlify.app',
   'https://consensus-ai.netlify.app', 
   'http://localhost:5173',
   'http://localhost:3000'
 ];
-console.log('🚀 Valid origins for Vercel:', validOrigins);
+console.log('🚂 Valid origins for Railway:', validOrigins);
 
 app.use(cors({
   origin: function (origin, callback) {
