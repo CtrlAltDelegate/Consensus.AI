@@ -45,12 +45,7 @@
     Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
     Access-Control-Allow-Headers = "Content-Type, Authorization"
 
-# Environment-specific redirects
-[[redirects]]
-  from = "/api/*"
-  to = ":REACT_APP_API_URL/:splat"
-  status = 200
-  force = false
+# API requests handled by frontend code, not redirects
 
 # Form handling (if you plan to use Netlify Forms)
 [[headers]]
