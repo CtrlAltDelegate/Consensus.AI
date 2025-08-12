@@ -91,21 +91,24 @@ app.options('*', (req, res) => {
   }
 });
 
-// NUCLEAR: Explicit CORS headers middleware to override Railway proxy  
+// ULTRA-NUCLEAR: Force CORS headers to override Railway  
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  console.log('🚀 NUCLEAR CORS MIDDLEWARE RUNNING for:', origin);
+  console.log('💥 ULTRA-NUCLEAR CORS OVERRIDE for:', origin);
   
-  // Set CORS headers on every response
+  // FORCE set CORS headers on every response - override Railway
   if (!origin || 
       origin.includes('localhost') || 
       origin.includes('consensusai.netlify.app') ||
       (origin.startsWith('https://') && origin.endsWith('--consensusai.netlify.app'))) {
-    res.header('Access-Control-Allow-Origin', origin || '*');
-    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    console.log('🚀 NUCLEAR CORS HEADERS SET for:', origin);
+    
+    // Override any existing headers
+    res.setHeader('Access-Control-Allow-Origin', origin || '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    
+    console.log('💥 ULTRA-NUCLEAR CORS HEADERS FORCED for:', origin);
   }
   
   next();
