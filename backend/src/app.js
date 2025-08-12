@@ -34,24 +34,20 @@ console.log('🚂 Valid origins for Railway:', validOrigins);
 // DISABLE cors() middleware - handle manually to override Railway
 console.log('🚂 DISABLING cors() middleware - handling manually');
 
-// Explicit preflight handler - TEMPORARY ALLOW ALL
-app.options('*', (req, res) => {
-  const origin = req.headers.origin;
-  console.log('OPTIONS preflight request from origin:', origin);
+// SIMPLE TEST: Just allow everything temporarily
+app.use((req, res, next) => {
+  console.log('🟢 SIMPLE CORS TEST - allowing all origins');
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+  res.header('Access-Control-Allow-Credentials', 'true');
   
-  // Check if origin is allowed
-  if (!origin || origin.includes('consensusai.netlify.app') || origin.includes('localhost')) {
-    res.header('Access-Control-Allow-Origin', origin || '*');
-    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Access-Control-Max-Age', '86400'); // Cache preflight for 24 hours
-    console.log('OPTIONS preflight approved for origin:', origin);
-    res.sendStatus(200);
-  } else {
-    console.log('OPTIONS preflight blocked for origin:', origin);
-    res.sendStatus(403);
+  if (req.method === 'OPTIONS') {
+    console.log('🟢 OPTIONS handled - allow all');
+    return res.sendStatus(200);
   }
+  
+  next();
 });
 
 // FINAL NUCLEAR OPTION: Intercept ALL responses and force CORS
