@@ -14,7 +14,7 @@
     "dev:backend": "npm run dev --prefix backend",
     "start:frontend": "npm start --prefix frontend",
     "start:backend": "npm start --prefix backend",
-    "build": "npm run build --prefix frontend",
+    "build": "echo 'No build step needed for serverless functions'",
     "install:all": "npm install && npm install --prefix frontend && npm install --prefix backend",
     "clean": "rm -rf node_modules frontend/node_modules backend/node_modules frontend/dist backend/dist",
     "heroku-postbuild": "cd backend && npm install --only=production"
