@@ -141,6 +141,13 @@ app.use('/api/billing', require('./routes/billing'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/webhooks', require('./routes/webhooks'));
 
+// TEST ENDPOINT - debug connectivity
+app.get('/test', (req, res) => {
+  console.log('🔥 TEST ENDPOINT HIT from:', req.headers.origin);
+  res.header('Access-Control-Allow-Origin', '*');
+  res.json({ message: 'BACKEND IS REACHABLE!', origin: req.headers.origin });
+});
+
 // Health check endpoint for Railway
 app.get('/health', (req, res) => {
   console.log('🏥 Health check requested from origin:', req.headers.origin);
