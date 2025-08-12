@@ -54,25 +54,50 @@ app.options('*', (req, res) => {
   }
 });
 
-// ULTRA-NUCLEAR: Force CORS headers to override Railway  
+// FINAL NUCLEAR OPTION: Intercept ALL responses and force CORS
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  console.log('💥 ULTRA-NUCLEAR CORS OVERRIDE for:', origin);
+  console.log('☢️ FINAL NUCLEAR CORS INTERCEPT for:', origin);
   
-  // FORCE set CORS headers on every response - override Railway
-  if (!origin || 
-      origin.includes('localhost') || 
-      origin.includes('consensusai.netlify.app') ||
-      (origin.startsWith('https://') && origin.endsWith('--consensusai.netlify.app'))) {
+  // Override Railway proxy - set headers AFTER response
+  const originalSend = res.send;
+  const originalJson = res.json;
+  
+  res.send = function(data) {
+    // Force CORS headers just before sending
+    if (!origin || 
+        origin.includes('localhost') || 
+        origin.includes('consensusai.netlify.app') ||
+        (origin.startsWith('https://') && origin.endsWith('--consensusai.netlify.app'))) {
+      
+      this.header('Access-Control-Allow-Origin', origin || '*');
+      this.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
+      this.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+      this.header('Access-Control-Allow-Credentials', 'true');
+      
+      console.log('☢️ NUCLEAR CORS HEADERS INJECTED at response time for:', origin);
+    }
     
-    // Override any existing headers
-    res.setHeader('Access-Control-Allow-Origin', origin || '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    return originalSend.call(this, data);
+  };
+  
+  res.json = function(data) {
+    // Force CORS headers just before sending JSON
+    if (!origin || 
+        origin.includes('localhost') || 
+        origin.includes('consensusai.netlify.app') ||
+        (origin.startsWith('https://') && origin.endsWith('--consensusai.netlify.app'))) {
+      
+      this.header('Access-Control-Allow-Origin', origin || '*');
+      this.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
+      this.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+      this.header('Access-Control-Allow-Credentials', 'true');
+      
+      console.log('☢️ NUCLEAR CORS HEADERS INJECTED at JSON response time for:', origin);
+    }
     
-    console.log('💥 ULTRA-NUCLEAR CORS HEADERS FORCED for:', origin);
-  }
+    return originalJson.call(this, data);
+  };
   
   next();
 });
