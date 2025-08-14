@@ -14,6 +14,9 @@
   
   # Skip Husky install in CI
   HUSKY_SKIP_INSTALL = "1"
+  
+  # API URL for production backend on Railway
+  VITE_API_URL = "https://consensusai-production-up.railway.app"
 
 # Redirects for React Router (SPA)
 [[redirects]]

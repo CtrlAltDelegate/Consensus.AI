@@ -25,87 +25,49 @@ app.use(helmet({
 console.log('🚂 STARTING WITH RAILWAY-OPTIMIZED CORS LOGIC');
 const validOrigins = [
   'https://consensusai.netlify.app',
-  'https://consensus-ai.netlify.app', 
+  'https://consensus-ai.netlify.app',
+  'https://consensusai-production-up.railway.app',
   'http://localhost:5173',
   'http://localhost:3000'
 ];
 console.log('🚂 Valid origins for Railway:', validOrigins);
 
-// DISABLE cors() middleware - handle manually to override Railway
-console.log('🚂 DISABLING cors() middleware - handling manually');
-
-// DEBUG: Log ALL incoming requests
-app.use((req, res, next) => {
-  console.log('🔍 INCOMING REQUEST:', {
-    method: req.method,
-    url: req.url,
-    path: req.path,
-    originalUrl: req.originalUrl,
-    headers: {
-      host: req.headers.host,
-      origin: req.headers.origin,
-      userAgent: req.headers['user-agent']
-    }
-  });
-  
-  // SIMPLE CORS - allow all
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  
-  if (req.method === 'OPTIONS') {
-    console.log('🟢 OPTIONS handled - allow all');
-    return res.sendStatus(200);
-  }
-  
-  next();
-});
-
-// FINAL NUCLEAR OPTION: Intercept ALL responses and force CORS
+// Simplified CORS middleware
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  console.log('☢️ FINAL NUCLEAR CORS INTERCEPT for:', origin);
   
-  // Override Railway proxy - set headers AFTER response
-  const originalSend = res.send;
-  const originalJson = res.json;
+  console.log('🔍 CORS Check - Origin:', origin);
+  console.log('🔍 Method:', req.method);
+  console.log('🔍 Path:', req.path);
   
-  res.send = function(data) {
-    // Force CORS headers just before sending
-    if (!origin || 
-        origin.includes('localhost') || 
-        origin.includes('consensusai.netlify.app') ||
-        (origin.startsWith('https://') && origin.endsWith('--consensusai.netlify.app'))) {
-      
-      this.header('Access-Control-Allow-Origin', origin || '*');
-      this.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
-      this.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-      this.header('Access-Control-Allow-Credentials', 'true');
-      
-      console.log('☢️ NUCLEAR CORS HEADERS INJECTED at response time for:', origin);
-    }
+  // Check if origin is allowed
+  const isAllowedOrigin = !origin || 
+    validOrigins.includes(origin) || 
+    origin.includes('localhost') || 
+    origin.includes('consensusai.netlify.app') ||
+    origin.includes('railway.app') ||
+    (origin.startsWith('https://') && origin.endsWith('.netlify.app'));
+  
+  if (isAllowedOrigin) {
+    // Set CORS headers for allowed origins
+    res.header('Access-Control-Allow-Origin', origin || '*');
+    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+    res.header('Access-Control-Allow-Credentials', 'true');
     
-    return originalSend.call(this, data);
-  };
-  
-  res.json = function(data) {
-    // Force CORS headers just before sending JSON
-    if (!origin || 
-        origin.includes('localhost') || 
-        origin.includes('consensusai.netlify.app') ||
-        (origin.startsWith('https://') && origin.endsWith('--consensusai.netlify.app'))) {
-      
-      this.header('Access-Control-Allow-Origin', origin || '*');
-      this.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
-      this.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-      this.header('Access-Control-Allow-Credentials', 'true');
-      
-      console.log('☢️ NUCLEAR CORS HEADERS INJECTED at JSON response time for:', origin);
-    }
+    console.log('✅ CORS headers set for origin:', origin || 'no-origin');
     
-    return originalJson.call(this, data);
-  };
+    // Handle preflight OPTIONS requests
+    if (req.method === 'OPTIONS') {
+      console.log('🟢 OPTIONS preflight handled');
+      return res.sendStatus(200);
+    }
+  } else {
+    console.log('❌ CORS blocked for origin:', origin);
+    if (req.method === 'OPTIONS') {
+      return res.sendStatus(403);
+    }
+  }
   
   next();
 });
@@ -124,27 +86,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Railway-specific CORS headers (override proxy interference) - DEBUG VERSION
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  console.log('🔍 CORS middleware check for origin:', origin);
-  console.log('🔍 allowedOrigins array:', allowedOrigins);
-  console.log('🔍 origin in allowedOrigins?', allowedOrigins.includes(origin));
-  console.log('🔍 origin type:', typeof origin);
-  console.log('🔍 origin length:', origin ? origin.length : 'null');
-  
-  // Set CORS headers for allowed origins
-  if (!origin || origin.includes('consensusai.netlify.app') || origin.includes('localhost')) {
-    res.header('Access-Control-Allow-Origin', origin || '*');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-    console.log('✅ CORS headers set for origin:', origin || 'no-origin');
-  } else {
-    console.log('❌ CORS blocked for origin:', origin);
-  }
-  next();
-});
+
 
 // Routes
 app.use('/api/consensus', require('./routes/consensus'));
