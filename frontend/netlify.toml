@@ -18,6 +18,13 @@
   # API URL for production backend on Railway
   VITE_API_URL = "https://consensusai-production-up.railway.app"
 
+# Test proxy for health check
+[[redirects]]
+  from = "/test-proxy"
+  to = "https://consensusai-production-up.railway.app/health"
+  status = 200
+  force = true
+
 # API Proxy - Route all /api requests to Railway backend
 # This bypasses CORS issues by making the backend appear to be on the same domain
 [[redirects]]
@@ -25,7 +32,6 @@
   to = "https://consensusai-production-up.railway.app/api/:splat"
   status = 200
   force = true
-  headers = {Access-Control-Allow-Origin = "*"}
 
 # Redirects for React Router (SPA) - MUST come after API proxy
 [[redirects]]
