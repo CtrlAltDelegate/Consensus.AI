@@ -50,12 +50,13 @@ app.use((req, res, next) => {
   
   if (isAllowedOrigin) {
     // Set CORS headers for allowed origins
-    res.header('Access-Control-Allow-Origin', origin || '*');
+    // Note: Cannot use '*' with credentials=true, must specify exact origin
+    res.header('Access-Control-Allow-Origin', origin || 'https://consensusai.netlify.app');
     res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
     res.header('Access-Control-Allow-Credentials', 'true');
     
-    console.log('✅ CORS headers set for origin:', origin || 'no-origin');
+    console.log('✅ CORS headers set for origin:', origin || 'default-netlify');
     
     // Handle preflight OPTIONS requests
     if (req.method === 'OPTIONS') {
@@ -98,7 +99,7 @@ app.use('/api/webhooks', require('./routes/webhooks'));
 // TEST ENDPOINT - debug connectivity
 app.get('/test', (req, res) => {
   console.log('🔥 TEST ENDPOINT HIT from:', req.headers.origin);
-  res.header('Access-Control-Allow-Origin', '*');
+  // CORS headers are already set by middleware above
   res.json({ message: 'BACKEND IS REACHABLE!', origin: req.headers.origin });
 });
 
@@ -106,15 +107,7 @@ app.get('/test', (req, res) => {
 app.get('/health', (req, res) => {
   console.log('🏥 Health check requested from origin:', req.headers.origin);
   
-  // Manually set CORS headers for testing
-  const origin = req.headers.origin;
-  res.header('Access-Control-Allow-Origin', origin || '*');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-  
-  console.log('🏥 CORS headers manually set for origin:', origin);
-  
+  // CORS headers are already set by middleware above
   res.status(200).json({ 
     status: 'OK',
     timestamp: new Date().toISOString(),
