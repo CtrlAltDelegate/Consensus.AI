@@ -3,7 +3,7 @@ import axios from 'axios';
 // API Configuration
 const API_CONFIG = {
   // Use Netlify proxy for production, localhost for development
-  // Netlify proxy makes API calls appear to come from same domain (bypasses CORS)
+  // Try redirects first, fallback to Netlify functions if needed
   baseURL: import.meta.env.PROD ? '' : 'http://localhost:3001',
   timeout: 120000, // 2 minutes for 4-LLM consensus generation
   headers: {
