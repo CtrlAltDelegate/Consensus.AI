@@ -32,25 +32,21 @@ const validOrigins = [
 ];
 console.log('🚂 Valid origins for Railway:', validOrigins);
 
-// Simplified CORS middleware - ALLOW ALL FOR DEBUGGING
+// Ultra-permissive CORS middleware - NO CREDENTIALS
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   
   console.log('🔍 CORS Check - Origin:', origin);
   console.log('🔍 Method:', req.method);
   console.log('🔍 Path:', req.path);
-  console.log('🔍 All Headers:', JSON.stringify(req.headers, null, 2));
   
-  // TEMPORARILY ALLOW ALL ORIGINS FOR DEBUGGING
-  console.log('🚨 ALLOWING ALL ORIGINS FOR DEBUGGING');
-  
-  // Set CORS headers for ALL origins (debugging)
-  res.header('Access-Control-Allow-Origin', origin || '*');
+  // ALLOW ALL ORIGINS - NO CREDENTIALS TO AVOID WILDCARD ISSUES
+  res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-  res.header('Access-Control-Allow-Credentials', origin ? 'true' : 'false'); // Only set credentials if we have an origin
+  // NO CREDENTIALS - this allows wildcard origin
   
-  console.log('✅ CORS headers set for origin:', origin || 'no-origin');
+  console.log('✅ CORS headers set - Allow all origins, no credentials');
   
   // Handle preflight OPTIONS requests
   if (req.method === 'OPTIONS') {

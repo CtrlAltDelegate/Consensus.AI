@@ -2,9 +2,8 @@ import axios from 'axios';
 
 // API Configuration
 const API_CONFIG = {
-  // Use Netlify proxy for production, localhost for development
-  // Try redirects first, fallback to Netlify functions if needed
-  baseURL: import.meta.env.PROD ? '' : 'http://localhost:3001',
+  // Direct connection to Railway backend - CORS should be handled by backend
+  baseURL: import.meta.env.PROD ? 'https://consensusai-production-up.railway.app' : 'http://localhost:3001',
   timeout: 120000, // 2 minutes for 4-LLM consensus generation
   headers: {
     'Content-Type': 'application/json',
