@@ -84,11 +84,37 @@ app.use('/api/billing', require('./routes/billing'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/webhooks', require('./routes/webhooks'));
 
-// TEST ENDPOINT - debug connectivity
+// TEST ENDPOINT - debug connectivity - BYPASS ALL MIDDLEWARE
 app.get('/test', (req, res) => {
   console.log('🔥 TEST ENDPOINT HIT from:', req.headers.origin);
-  // CORS headers are already set by middleware above
-  res.json({ message: 'BACKEND IS REACHABLE!', origin: req.headers.origin });
+  
+  // MANUALLY SET CORS HEADERS - BYPASS ALL MIDDLEWARE
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'false');
+  
+  console.log('🔥 Manual CORS headers set for test endpoint');
+  
+  res.json({ 
+    message: 'BACKEND IS REACHABLE!', 
+    origin: req.headers.origin,
+    timestamp: new Date().toISOString(),
+    headers: req.headers
+  });
+});
+
+// CORS TEST ENDPOINT - Handle OPTIONS manually
+app.options('/test', (req, res) => {
+  console.log('🔥 TEST OPTIONS HIT from:', req.headers.origin);
+  
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'false');
+  
+  console.log('🔥 Manual OPTIONS response sent');
+  res.sendStatus(200);
 });
 
 // Health check endpoint for Railway
