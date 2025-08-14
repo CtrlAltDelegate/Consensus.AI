@@ -2,8 +2,9 @@ import axios from 'axios';
 
 // API Configuration
 const API_CONFIG = {
-  // Use environment variable for Railway backend URL
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3001',
+  // Use Netlify proxy for production, localhost for development
+  // Netlify proxy makes API calls appear to come from same domain (bypasses CORS)
+  baseURL: import.meta.env.PROD ? '' : 'http://localhost:3001',
   timeout: 120000, // 2 minutes for 4-LLM consensus generation
   headers: {
     'Content-Type': 'application/json',
