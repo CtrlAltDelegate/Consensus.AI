@@ -32,42 +32,30 @@ const validOrigins = [
 ];
 console.log('🚂 Valid origins for Railway:', validOrigins);
 
-// Simplified CORS middleware
+// Simplified CORS middleware - ALLOW ALL FOR DEBUGGING
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   
   console.log('🔍 CORS Check - Origin:', origin);
   console.log('🔍 Method:', req.method);
   console.log('🔍 Path:', req.path);
+  console.log('🔍 All Headers:', JSON.stringify(req.headers, null, 2));
   
-  // Check if origin is allowed
-  const isAllowedOrigin = !origin || 
-    validOrigins.includes(origin) || 
-    origin.includes('localhost') || 
-    origin.includes('consensusai.netlify.app') ||
-    origin.includes('railway.app') ||
-    (origin.startsWith('https://') && origin.endsWith('.netlify.app'));
+  // TEMPORARILY ALLOW ALL ORIGINS FOR DEBUGGING
+  console.log('🚨 ALLOWING ALL ORIGINS FOR DEBUGGING');
   
-  if (isAllowedOrigin) {
-    // Set CORS headers for allowed origins
-    // Note: Cannot use '*' with credentials=true, must specify exact origin
-    res.header('Access-Control-Allow-Origin', origin || 'https://consensusai.netlify.app');
-    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    
-    console.log('✅ CORS headers set for origin:', origin || 'default-netlify');
-    
-    // Handle preflight OPTIONS requests
-    if (req.method === 'OPTIONS') {
-      console.log('🟢 OPTIONS preflight handled');
-      return res.sendStatus(200);
-    }
-  } else {
-    console.log('❌ CORS blocked for origin:', origin);
-    if (req.method === 'OPTIONS') {
-      return res.sendStatus(403);
-    }
+  // Set CORS headers for ALL origins (debugging)
+  res.header('Access-Control-Allow-Origin', origin || '*');
+  res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+  res.header('Access-Control-Allow-Credentials', origin ? 'true' : 'false'); // Only set credentials if we have an origin
+  
+  console.log('✅ CORS headers set for origin:', origin || 'no-origin');
+  
+  // Handle preflight OPTIONS requests
+  if (req.method === 'OPTIONS') {
+    console.log('🟢 OPTIONS preflight handled');
+    return res.sendStatus(200);
   }
   
   next();
