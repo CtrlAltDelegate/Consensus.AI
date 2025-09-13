@@ -41,22 +41,26 @@ app.use((req, res, next) => {
   console.log('🔍 Path:', req.path);
   console.log('🚨 Railway is overriding CORS headers! Forcing our headers...');
   
-  // FORCE CORS HEADERS - Multiple methods to override Railway
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  // FORCE CORS HEADERS - Explicitly set the Netlify origin to override Railway
+  const allowedOrigin = origin || 'https://consensusai.netlify.app';
+  
+  res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
   res.setHeader('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
   
-  // Also try the old method
-  res.header('Access-Control-Allow-Origin', '*');
+  // Also try the old method with explicit origin
+  res.header('Access-Control-Allow-Origin', allowedOrigin);
   res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
   
   console.log('✅ FORCED CORS headers - Multiple methods to override Railway proxy');
+  console.log('🔍 Set origin to:', allowedOrigin);
+  console.log('🔍 Request origin was:', origin);
   
   // Handle preflight OPTIONS requests IMMEDIATELY
   if (req.method === 'OPTIONS') {
     console.log('🟢 OPTIONS preflight - IMMEDIATE RESPONSE');
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
     res.setHeader('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
     return res.status(200).end();
