@@ -32,26 +32,34 @@ const validOrigins = [
 ];
 console.log('🚂 Valid origins for Railway:', validOrigins);
 
-// Ultra-permissive CORS middleware - NO CREDENTIALS
+// Ultra-permissive CORS middleware - FORCE HEADERS TO OVERRIDE RAILWAY
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   
   console.log('🔍 CORS Check - Origin:', origin);
   console.log('🔍 Method:', req.method);
   console.log('🔍 Path:', req.path);
+  console.log('🚨 Railway is overriding CORS headers! Forcing our headers...');
   
-  // ALLOW ALL ORIGINS - NO CREDENTIALS TO AVOID WILDCARD ISSUES
+  // FORCE CORS HEADERS - Multiple methods to override Railway
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+  
+  // Also try the old method
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-  // NO CREDENTIALS - this allows wildcard origin
   
-  console.log('✅ CORS headers set - Allow all origins, no credentials');
+  console.log('✅ FORCED CORS headers - Multiple methods to override Railway proxy');
   
-  // Handle preflight OPTIONS requests
+  // Handle preflight OPTIONS requests IMMEDIATELY
   if (req.method === 'OPTIONS') {
-    console.log('🟢 OPTIONS preflight handled');
-    return res.sendStatus(200);
+    console.log('🟢 OPTIONS preflight - IMMEDIATE RESPONSE');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+    return res.status(200).end();
   }
   
   next();
