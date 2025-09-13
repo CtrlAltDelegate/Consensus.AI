@@ -3,7 +3,7 @@ import axios from 'axios';
 // API Configuration
 const API_CONFIG = {
   // Direct connection to Railway backend - CORS should be handled by backend
-  baseURL: import.meta.env.PROD ? 'https://consensusai-production-up.railway.app' : 'http://localhost:3001',
+  baseURL: import.meta.env.PROD ? 'https://consensusai-production.up.railway.app' : 'http://localhost:3001',
   timeout: 120000, // 2 minutes for 4-LLM consensus generation
   headers: {
     'Content-Type': 'application/json',

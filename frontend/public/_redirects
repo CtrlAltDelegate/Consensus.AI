@@ -1,9 +1,9 @@
 # API Proxy - Route all /api requests to Railway backend
 # This bypasses CORS issues by making the backend appear to be on the same domain
-/api/*  https://consensusai-production-up.railway.app/api/:splat  200
+/api/*  https://consensusai-production.up.railway.app/api/:splat  200
 
 # Test proxy for debugging
-/test-proxy  https://consensusai-production-up.railway.app/health  200
+/test-proxy  https://consensusai-production.up.railway.app/health  200
 
 # SPA fallback - MUST be last
 /*  /index.html  200
