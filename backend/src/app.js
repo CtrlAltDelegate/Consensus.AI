@@ -26,7 +26,7 @@ console.log('🚂 STARTING WITH RAILWAY-OPTIMIZED CORS LOGIC');
 const validOrigins = [
   'https://consensusai.netlify.app',
   'https://consensus-ai.netlify.app',
-  'https://consensusai-production-up.railway.app',
+  'https://consensusai-production.up.railway.app',
   'http://localhost:5173',
   'http://localhost:3000'
 ];
@@ -173,8 +173,45 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     environment: process.env.NODE_ENV || 'development',
-    version: require('../package.json').version
+    version: require('../package.json').version,
+    database: process.env.MONGODB_URI ? 'configured' : 'not configured'
   });
+});
+
+// Database test endpoint
+app.get('/test-db', async (req, res) => {
+  console.log('🗄️ Database test requested');
+  
+  try {
+    const mongoose = require('mongoose');
+    
+    if (!mongoose.connection.readyState) {
+      return res.status(500).json({
+        error: 'Database not connected',
+        readyState: mongoose.connection.readyState,
+        hasUri: !!process.env.MONGODB_URI
+      });
+    }
+    
+    // Test database connection
+    const dbStats = await mongoose.connection.db.admin().ping();
+    
+    res.json({
+      status: 'Database connected successfully',
+      connectionState: mongoose.connection.readyState,
+      host: mongoose.connection.host,
+      name: mongoose.connection.name,
+      ping: dbStats
+    });
+    
+  } catch (error) {
+    console.error('Database test failed:', error);
+    res.status(500).json({
+      error: 'Database test failed',
+      message: error.message,
+      hasUri: !!process.env.MONGODB_URI
+    });
+  }
 });
 
 // Root endpoint
