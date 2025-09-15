@@ -105,7 +105,7 @@ try {
 
       const response = await axios.post(endpoint, requestBody, {
         headers: providerConfig.headers,
-        timeout: options.timeout || 30000
+        timeout: options.timeout || 60000
       });
 
       console.log(`✅ ${provider} response received successfully`);
