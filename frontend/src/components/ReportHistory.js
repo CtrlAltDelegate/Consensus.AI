@@ -11,7 +11,35 @@ function ReportHistory({ onViewReport, onExportReport }) {
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
   const [isLoading, setIsLoading] = useState(true);
 
-  // Mock data - would connect to real API
+  // Load reports from API
+  useEffect(() => {
+    loadReports();
+  }, []);
+
+  const loadReports = async () => {
+    setIsLoading(true);
+    try {
+      console.log('📊 Loading reports from API...');
+      const response = await apiHelpers.getConsensusHistory();
+      console.log('📊 API Response:', response.data);
+      
+      if (response.data.success && response.data.analyses) {
+        setReports(response.data.analyses);
+        console.log(`✅ Loaded ${response.data.analyses.length} reports from database`);
+      } else {
+        console.log('📊 No reports found, using mock data for demo');
+        setReports(mockReports);
+      }
+    } catch (error) {
+      console.error('❌ Error loading reports:', error);
+      console.log('📊 Falling back to mock data');
+      setReports(mockReports);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Mock data - fallback for demo
   const mockReports = [
     {
       id: 'rep_001',
