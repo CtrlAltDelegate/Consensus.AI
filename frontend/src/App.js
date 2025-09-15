@@ -136,10 +136,13 @@ function App() {
         }),
         React.createElement(Route, { 
           path: '/reports', 
-          element: React.createElement(ReportHistory, {
-            onViewReport: handleViewReport,
-            onExportReport: handleExportReport
-          })
+          element: React.createElement('div', { className: 'p-8' },
+            React.createElement('h1', { className: 'text-2xl font-bold mb-4' }, 'DEBUG: Reports Route Working'),
+            React.createElement(ReportHistory, {
+              onViewReport: handleViewReport,
+              onExportReport: handleExportReport
+            })
+          )
         }),
         React.createElement(Route, { path: '*', element: React.createElement('div', { className: 'flex flex-col items-center justify-center min-h-screen' },
           React.createElement('h1', { className: 'text-4xl font-bold text-slate-900 mb-4' }, '404'),
@@ -217,45 +220,5 @@ function App() {
   );
 }
 
-// Enhanced Navigation Link Component
-function NavLink({ to, children }) {
-  const location = useLocation();
-  const isActive = location.pathname === to;
-  
-  return React.createElement(Link, {
-    to: to,
-    className: `px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-      isActive
-        ? 'bg-indigo-100 text-indigo-700 shadow-sm'
-        : 'text-slate-700 hover:text-indigo-600 hover:bg-slate-100'
-    }`
-  }, children);
-}
-
-// Enhanced 404 Not Found Component
-function NotFound() {
-  return React.createElement('div', { className: 'min-h-screen bg-slate-50/50 flex items-center justify-center' },
-    React.createElement('div', { className: 'max-w-md mx-auto text-center py-16' },
-      React.createElement('div', { className: 'text-6xl mb-6' }, '🤖'),
-      React.createElement('div', { className: 'text-6xl font-bold text-slate-300 mb-4' }, '404'),
-      React.createElement('h1', { className: 'text-2xl font-bold text-slate-900 mb-4' },
-        'Page Not Found'
-      ),
-      React.createElement('p', { className: 'text-slate-600 mb-8' }, 
-        "The page you're looking for doesn't exist or has been moved to a different location."
-      ),
-      React.createElement('div', { className: 'space-y-3' },
-        React.createElement(Link, { 
-          to: '/dashboard', 
-          className: 'inline-flex items-center px-6 py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors duration-200 shadow-sm'
-        }, 'Go to Dashboard'),
-        React.createElement(Link, { 
-          to: '/consensus', 
-          className: 'inline-flex items-center px-6 py-3 bg-white border border-slate-200 text-slate-700 rounded-lg font-medium hover:bg-slate-50 transition-colors duration-200 ml-3'
-        }, 'Generate Report')
-      )
-    )
-  );
-}
 
 export default App; 
