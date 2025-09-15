@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Routes, Route, Navigate, Link, NavLink, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 
 // Enhanced Components
 import TokenDashboard from './components/TokenDashboard';
@@ -16,7 +16,7 @@ const CustomNavLink = ({ to, children }) => {
   const location = useLocation();
   const isActive = location.pathname === to;
   
-  return React.createElement(NavLink, {
+  return React.createElement(Link, {
     to,
     className: `px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
       isActive 
