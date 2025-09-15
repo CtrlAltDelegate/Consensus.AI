@@ -177,17 +177,6 @@ async function processConsensusJob(jobId, topic, sources, options, estimatedToke
     });
 
     console.log(`🎉 Job ${jobId} completed successfully in ${duration} seconds`);
-
-  } catch (error) {
-    console.error(`💥 Job ${jobId} failed:`, error);
-    updateJob({
-      status: 'failed',
-      error: error.message,
-      completedAt: new Date().toISOString()
-    });
-    throw error;
-  }
-}
     
     console.log(`✅ Consensus generated successfully for job ${jobId}!`);
     console.log(`🔥 Tokens used: ${consensus.totalTokens || estimatedTokens}`);
@@ -348,6 +337,17 @@ async function processConsensusJob(jobId, topic, sources, options, estimatedToke
 
   } catch (error) {
     console.error(`💥 Job ${jobId} failed:`, error);
+    const updateJob = (updates) => {
+      const currentJob = jobs.get(jobId);
+      if (currentJob) {
+        jobs.set(jobId, { ...currentJob, ...updates });
+      }
+    };
+    updateJob({
+      status: 'failed',
+      error: error.message,
+      completedAt: new Date().toISOString()
+    });
     throw error;
   }
 }
