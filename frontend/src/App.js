@@ -136,13 +136,10 @@ function App() {
         }),
         React.createElement(Route, { 
           path: '/reports', 
-          element: React.createElement('div', { className: 'p-8' },
-            React.createElement('h1', { className: 'text-2xl font-bold mb-4' }, 'DEBUG: Reports Route Working'),
-            React.createElement(ReportHistory, {
-              onViewReport: handleViewReport,
-              onExportReport: handleExportReport
-            })
-          )
+          element: React.createElement(ReportHistory, {
+            onViewReport: handleViewReport,
+            onExportReport: handleExportReport
+          })
         }),
         React.createElement(Route, { path: '*', element: React.createElement('div', { className: 'flex flex-col items-center justify-center min-h-screen' },
           React.createElement('h1', { className: 'text-4xl font-bold text-slate-900 mb-4' }, '404'),

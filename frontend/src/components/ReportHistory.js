@@ -16,24 +16,40 @@ function ReportHistory({ onViewReport, onExportReport }) {
     loadReports();
   }, []);
 
+  // Refresh reports manually
+  const refreshReports = () => {
+    console.log('🔄 Manual refresh triggered');
+    loadReports();
+  };
+
   const loadReports = async () => {
     setIsLoading(true);
     try {
       console.log('📊 Loading reports from API...');
+      console.log('📊 API URL:', import.meta.env.VITE_API_URL);
+      console.log('📊 Calling endpoint: /api/consensus/history');
+      
       const response = await apiHelpers.getConsensusHistory();
-      console.log('📊 API Response:', response.data);
+      console.log('📊 API Response status:', response.status);
+      console.log('📊 API Response data:', response.data);
       
       if (response.data.success && response.data.analyses) {
+        console.log(`✅ Found ${response.data.analyses.length} reports in database`);
         setReports(response.data.analyses);
-        console.log(`✅ Loaded ${response.data.analyses.length} reports from database`);
+        setFilteredReports(response.data.analyses);
       } else {
-        console.log('📊 No reports found, using mock data for demo');
+        console.log('📊 API returned success=false or no analyses array');
+        console.log('📊 Response structure:', Object.keys(response.data));
+        console.log('📊 Using mock data for demo');
         setReports(mockReports);
+        setFilteredReports(mockReports);
       }
     } catch (error) {
       console.error('❌ Error loading reports:', error);
+      console.error('❌ Error details:', error.response?.data || error.message);
       console.log('📊 Falling back to mock data');
       setReports(mockReports);
+      setFilteredReports(mockReports);
     } finally {
       setIsLoading(false);
     }
@@ -548,6 +564,16 @@ The transition requires coordinated policy responses that balance urban vitality
             
             // Controls
             React.createElement('div', { className: 'flex items-center space-x-4' },
+              // Refresh Button
+              React.createElement('button', {
+                onClick: refreshReports,
+                disabled: isLoading,
+                className: `px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-indigo-400 disabled:cursor-not-allowed transition-all duration-200 flex items-center space-x-2 ${isLoading ? 'opacity-50' : ''}`,
+                title: 'Refresh reports'
+              },
+                React.createElement('span', { className: 'text-sm font-medium' }, isLoading ? 'Refreshing...' : 'Refresh'),
+                !isLoading && React.createElement('span', { className: 'text-lg' }, '🔄')
+              ),
               // Sort
               React.createElement('select', {
                 value: `${sortBy}-${sortOrder}`,
