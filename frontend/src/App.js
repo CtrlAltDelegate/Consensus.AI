@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, Link, NavLink, useLocation } from 'react-router-dom';
 
 // Enhanced Components
 import TokenDashboard from './components/TokenDashboard';
@@ -10,6 +10,21 @@ import ReportHistory from './components/ReportHistory';
 
 // Services
 import exportService from './utils/exportService';
+
+// NavLink component with proper styling
+const StyledNavLink = ({ to, children }) => {
+  const location = useLocation();
+  const isActive = location.pathname === to;
+  
+  return React.createElement(NavLink, {
+    to,
+    className: `px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+      isActive 
+        ? 'bg-indigo-100 text-indigo-700 border border-indigo-200' 
+        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+    }`
+  }, children);
+};
 
 function App() {
   const [currentReport, setCurrentReport] = useState(null);
@@ -72,9 +87,9 @@ function App() {
             
             // Navigation Links
             React.createElement('div', { className: 'hidden md:flex items-center space-x-2' },
-              React.createElement(NavLink, { to: '/dashboard' }, 'Dashboard'),
-              React.createElement(NavLink, { to: '/consensus' }, 'Generate Report'),
-              React.createElement(NavLink, { to: '/reports' }, 'Report Library')
+              React.createElement(StyledNavLink, { to: '/dashboard' }, 'Dashboard'),
+              React.createElement(StyledNavLink, { to: '/consensus' }, 'Generate Report'),
+              React.createElement(StyledNavLink, { to: '/reports' }, 'Report Library')
             )
           ),
           
@@ -126,7 +141,14 @@ function App() {
             onExportReport: handleExportReport
           })
         }),
-        React.createElement(Route, { path: '*', element: React.createElement(NotFound) })
+        React.createElement(Route, { path: '*', element: React.createElement('div', { className: 'flex flex-col items-center justify-center min-h-screen' },
+          React.createElement('h1', { className: 'text-4xl font-bold text-slate-900 mb-4' }, '404'),
+          React.createElement('p', { className: 'text-slate-600 mb-8' }, 'Page not found'),
+          React.createElement(Link, { 
+            to: '/dashboard', 
+            className: 'bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700'
+          }, 'Go to Dashboard')
+        ) })
       )
     ),
 
