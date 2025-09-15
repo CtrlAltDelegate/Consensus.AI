@@ -21,27 +21,24 @@ class ConsensusEngine {
 
   async generateConsensus(topic, sources, options = {}) {
     try {
-      console.log('🚀 DEMO MODE: Starting mock consensus generation for testing...');
+      console.log('🚀 Starting 3-phase consensus generation with real LLM APIs...');
       console.log('💡 Topic:', topic);
       console.log('📚 Sources:', sources?.length || 0, 'provided');
       
-      // DEMO: Simulate processing time
-      await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay
+      // Phase 1: Independent Drafting
+      console.log('📝 Phase 1: Independent Drafting...');
+      const initialDrafts = await this.phase1_IndependentDrafting(topic, sources);
+      console.log(`✅ Phase 1 Complete: ${initialDrafts.length} independent drafts generated`);
       
-      // Phase 1: Mock Independent Drafting
-      console.log('📝 Phase 1: Mock Independent Drafting...');
-      const initialDrafts = await this.mockPhase1_IndependentDrafting(topic, sources);
-      console.log(`✅ Phase 1 Complete: ${initialDrafts.length} mock drafts generated`);
+      // Phase 2: Peer Review
+      console.log('🔍 Phase 2: Peer Review...');
+      const peerReviews = await this.phase2_PeerReview(topic, initialDrafts);
+      console.log(`✅ Phase 2 Complete: ${peerReviews.length} peer reviews generated`);
       
-      // Phase 2: Mock Peer Review  
-      console.log('🔍 Phase 2: Mock Peer Review...');
-      const peerReviews = await this.mockPhase2_PeerReview(topic, initialDrafts);
-      console.log(`✅ Phase 2 Complete: ${peerReviews.length} mock reviews generated`);
-      
-      // Phase 3: Mock Final Arbitration
-      console.log('⚖️ Phase 3: Mock Final Arbitration...');
-      const finalConsensus = await this.mockPhase3_FinalArbitration(topic, sources, initialDrafts, peerReviews);
-      console.log('✅ Phase 3 Complete: Mock consensus report generated');
+      // Phase 3: Final Arbitration
+      console.log('⚖️ Phase 3: Final Arbitration...');
+      const finalConsensus = await this.phase3_FinalArbitration(topic, sources, initialDrafts, peerReviews);
+      console.log('✅ Phase 3 Complete: Final consensus report generated');
       
       // Calculate total token usage
       const allResponses = [...initialDrafts, ...peerReviews, finalConsensus];
@@ -292,103 +289,6 @@ Generate the final consensus report:`;
     };
   }
 
-  // MOCK METHODS FOR TESTING (without real LLM API calls)
-  async mockPhase1_IndependentDrafting(topic, sources) {
-    // Simulate 3 LLM drafts
-    const mockDrafts = [
-      {
-        provider: 'openai',
-        model: 'gpt-4o',
-        content: `# Analysis: ${topic}\n\n## GPT-4o Perspective\n\nBased on the provided context, this topic presents several key considerations:\n\n1. **Primary Analysis**: The core issue involves multiple stakeholders and complex interdependencies.\n2. **Key Findings**: Evidence suggests a balanced approach considering both immediate and long-term implications.\n3. **Recommendations**: Strategic implementation with phased rollout and continuous monitoring.\n\nThis analysis considers the sources provided and applies systematic reasoning to develop actionable insights.`,
-        tokenUsage: { total: 850 }
-      },
-      {
-        provider: 'anthropic', 
-        model: 'claude-3-5-sonnet',
-        content: `# Comprehensive Assessment: ${topic}\n\n## Claude 3.5 Sonnet Analysis\n\nThrough careful examination of the available information, several critical patterns emerge:\n\n**Analytical Framework:**\n- Systematic evaluation of key variables\n- Risk-benefit assessment across stakeholders\n- Evidence-based reasoning with uncertainty acknowledgment\n\n**Core Insights:**\nThe situation requires nuanced understanding that balances competing priorities while maintaining ethical considerations and practical feasibility.\n\n**Strategic Implications:**\nImplementation should prioritize stakeholder alignment and iterative improvement based on measurable outcomes.`,
-        tokenUsage: { total: 920 }
-      },
-      {
-        provider: 'google',
-        model: 'gemini-1.5-pro', 
-        content: `# Structured Analysis: ${topic}\n\n## Gemini 1.5 Pro Evaluation\n\n**Executive Summary:**\nThis analysis examines multiple dimensions of the topic through data-driven reasoning and systematic evaluation.\n\n**Key Dimensions:**\n1. **Feasibility Assessment**: Technical and practical considerations\n2. **Impact Analysis**: Short-term and long-term consequences\n3. **Resource Requirements**: Cost-benefit evaluation\n4. **Risk Mitigation**: Potential challenges and solutions\n\n**Conclusion:**\nA measured approach that incorporates stakeholder feedback and maintains flexibility for adaptation based on emerging evidence represents the optimal path forward.`,
-        tokenUsage: { total: 780 }
-      }
-    ];
-
-    // Simulate processing delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    return mockDrafts;
-  }
-
-  async mockPhase2_PeerReview(topic, drafts) {
-    const mockReviews = [
-      {
-        reviewer: 'claude-3-5-sonnet',
-        content: `**Peer Review of GPT-4o Analysis:**\n\nStrengths: Clear structure and logical progression. Good identification of key stakeholders.\n\nSuggestions: Could benefit from more specific examples and quantitative analysis where possible.\n\nOverall Assessment: Solid foundation that aligns well with evidence-based approach.`,
-        tokenUsage: { total: 320 }
-      },
-      {
-        reviewer: 'gemini-1.5-pro',
-        content: `**Peer Review of Claude Analysis:**\n\nStrengths: Excellent ethical considerations and nuanced understanding of complexity.\n\nSuggestions: Implementation timeline could be more specific with concrete milestones.\n\nOverall Assessment: Comprehensive analysis with strong methodological approach.`,
-        tokenUsage: { total: 290 }
-      }
-    ];
-
-    await new Promise(resolve => setTimeout(resolve, 800));
-    return mockReviews;
-  }
-
-  async mockPhase3_FinalArbitration(topic, sources, drafts, reviews) {
-    const mockConsensus = {
-      provider: 'cohere',
-      model: 'command-r-plus',
-      content: `# Consensus Analysis: ${topic}
-
-## Executive Summary
-
-After comprehensive multi-perspective analysis and peer review, the following consensus emerges regarding ${topic}:
-
-## Key Findings
-
-**Convergent Insights:**
-All analytical perspectives agree on the importance of a balanced, evidence-based approach that considers multiple stakeholder interests while maintaining practical feasibility.
-
-**Primary Recommendations:**
-
-1. **Phased Implementation Strategy**
-   - Begin with pilot programs to test assumptions
-   - Establish clear metrics for success evaluation
-   - Build in feedback loops for continuous improvement
-
-2. **Stakeholder Engagement**
-   - Ensure transparent communication throughout process
-   - Create mechanisms for ongoing input and adjustment
-   - Address concerns proactively with evidence-based responses
-
-3. **Risk Management**
-   - Identify potential challenges early in implementation
-   - Develop contingency plans for key risk scenarios
-   - Maintain flexibility to adapt based on emerging evidence
-
-## Confidence Assessment
-
-This consensus represents high confidence in the general approach (85% confidence level) while acknowledging that specific implementation details may require adjustment based on real-world feedback and changing circumstances.
-
-## Next Steps
-
-1. Develop detailed implementation timeline
-2. Establish success metrics and monitoring systems  
-3. Begin stakeholder engagement process
-4. Initiate pilot program planning
-
-This analysis synthesizes insights from multiple AI perspectives to provide a balanced, actionable framework for decision-making.`,
-      tokenUsage: { total: 1200 }
-    };
-
-    await new Promise(resolve => setTimeout(resolve, 1200));
-    return mockConsensus;
-  }
 }
 
 module.exports = new ConsensusEngine(); 
