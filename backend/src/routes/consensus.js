@@ -152,31 +152,8 @@ async function processConsensusJob(jobId, topic, sources, options, estimatedToke
     // Generate consensus (this is the actual work)
     const consensus = await consensusEngine.generateConsensus(topic, sources, options);
     
-    // Mark as completed with the real result
-    const result = {
-      success: true,
-      consensus: consensus.consensus,
-      confidence: consensus.confidence,
-      metadata: consensus.metadata,
-      phases: consensus.phases,
-      tokensRemaining: 25000 - (consensus.totalTokens || estimatedTokens)
-    };
-
-    jobResults.set(jobId, result);
-    
-    const endTime = new Date();
     const startTime = new Date(jobs.get(jobId).startedAt);
-    const duration = Math.round((endTime - startTime) / 1000);
-
-    updateJob({
-      status: 'completed',
-      progress: 100,
-      phase: 'completed',
-      completedAt: endTime.toISOString(),
-      duration: `${duration} seconds`
-    });
-
-    console.log(`🎉 Job ${jobId} completed successfully in ${duration} seconds`);
+    const duration = Math.round((new Date() - startTime) / 1000);
     
     console.log(`✅ Consensus generated successfully for job ${jobId}!`);
     console.log(`🔥 Tokens used: ${consensus.totalTokens || estimatedTokens}`);
@@ -257,8 +234,6 @@ async function processConsensusJob(jobId, topic, sources, options, estimatedToke
     // Store result and mark job complete
     jobResults.set(jobId, result);
     const endTime = new Date();
-    const startTime = new Date(jobs.get(jobId).startedAt);
-    const duration = Math.round((endTime - startTime) / 1000);
 
     updateJob({
       status: 'completed',
