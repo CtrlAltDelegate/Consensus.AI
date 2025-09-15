@@ -141,33 +141,6 @@ async function processConsensusJob(jobId, topic, sources, options, estimatedToke
   try {
     console.log(`🔄 Processing job ${jobId}...`);
     
-    // Update job progress
-    const updateJob = (updates) => {
-      const currentJob = jobs.get(jobId);
-      jobs.set(jobId, { ...currentJob, ...updates });
-    };
-
-    // Phase 1: Independent Drafting
-    updateJob({ 
-      status: 'processing', 
-      progress: 10, 
-      phase: 'phase1',
-      phases: {
-        ...jobs.get(jobId).phases,
-        phase1: { status: 'processing', startedAt: new Date().toISOString(), completedAt: null }
-      }
-    });
-    
-    console.log(`🤖 Starting consensus generation for job ${jobId}...`);
-    
-    // Generate consensus
-    const consensus = await consensusEngine.generateConsensus(topic, sources, options);
-    
-    // Update after phase 1
-    async function processConsensusJob(jobId, topic, sources, options, estimatedTokens, user) {
-  try {
-    console.log(`🔄 Processing job ${jobId}...`);
-    
     const updateJob = (updates) => {
       const currentJob = jobs.get(jobId);
       jobs.set(jobId, { ...currentJob, ...updates });
