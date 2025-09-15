@@ -11,8 +11,8 @@ import ReportHistory from './components/ReportHistory';
 // Services
 import exportService from './utils/exportService';
 
-// NavLink component with proper styling
-const StyledNavLink = ({ to, children }) => {
+// Custom NavLink component with proper styling
+const CustomNavLink = ({ to, children }) => {
   const location = useLocation();
   const isActive = location.pathname === to;
   
@@ -87,9 +87,9 @@ function App() {
             
             // Navigation Links
             React.createElement('div', { className: 'hidden md:flex items-center space-x-2' },
-              React.createElement(StyledNavLink, { to: '/dashboard' }, 'Dashboard'),
-              React.createElement(StyledNavLink, { to: '/consensus' }, 'Generate Report'),
-              React.createElement(StyledNavLink, { to: '/reports' }, 'Report Library')
+              React.createElement(CustomNavLink, { to: '/dashboard' }, 'Dashboard'),
+              React.createElement(CustomNavLink, { to: '/consensus' }, 'Generate Report'),
+              React.createElement(CustomNavLink, { to: '/reports' }, 'Report Library')
             )
           ),
           
