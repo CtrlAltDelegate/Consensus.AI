@@ -28,7 +28,7 @@ router.get('/test-llms', async (req, res) => {
       { provider: 'openai', model: 'gpt-4o' },
       { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022' },
       { provider: 'google', model: 'gemini-1.5-pro' },
-      { provider: 'cohere', model: 'command-r-plus' }
+      { provider: 'cohere', model: 'command-r-plus-08-2024' }
     ];
     
     for (const { provider, model } of providers) {

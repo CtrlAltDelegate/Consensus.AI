@@ -12,7 +12,7 @@ class ConsensusEngine {
     
     this.arbiterLLM = {
       provider: 'cohere',
-      model: 'command-r-plus',
+      model: 'command-r-plus-08-2024',
       name: 'Command R+'
     };
 

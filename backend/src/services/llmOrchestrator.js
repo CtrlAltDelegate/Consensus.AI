@@ -50,7 +50,7 @@ class LLMOrchestrator {
     if (process.env.COHERE_API_KEY) {
       this.providers.set('cohere', {
         name: 'Cohere',
-        models: ['command-r-plus', 'command-r', 'command'],
+        models: ['command-r-plus-08-2024', 'command-r-plus', 'command-r', 'command'],
         endpoint: 'https://api.cohere.ai/v1/chat',
         headers: {
           'Authorization': `Bearer ${process.env.COHERE_API_KEY}`,
@@ -119,7 +119,9 @@ try {
         statusText: error.response?.statusText,
         data: error.response?.data,
         endpoint: endpoint || 'UNDEFINED',
-        requestBodyPreview: JSON.stringify(requestBody).substring(0, 200) + '...'
+        requestBodyPreview: JSON.stringify(requestBody).substring(0, 200) + '...',
+        headers: providerConfig.headers,
+        fullErrorData: error.response?.data ? JSON.stringify(error.response.data, null, 2) : 'No response data'
       });
       throw new Error(`${provider} (${model}) API failed: ${error.message}`);
     }
