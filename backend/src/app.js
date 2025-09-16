@@ -124,6 +124,7 @@ app.use((req, res, next) => {
 
 
 // Routes
+app.use('/api/auth', require('./routes/auth'));
 app.use('/api/consensus', require('./routes/consensus'));
 app.use('/api/tokens', require('./routes/tokens'));
 app.use('/api/billing', require('./routes/billing'));
@@ -222,6 +223,7 @@ app.get('/', (req, res) => {
     environment: process.env.NODE_ENV || 'development',
     endpoints: {
       health: '/health',
+      auth: '/api/auth',
       consensus: '/api/consensus',
       tokens: '/api/tokens',
       billing: '/api/billing',

@@ -55,6 +55,16 @@ export const API_ENDPOINTS = {
   // Health check
   health: '/health',
   
+  // Authentication endpoints
+  auth: {
+    register: '/api/auth/register',
+    login: '/api/auth/login',
+    logout: '/api/auth/logout',
+    profile: '/api/auth/profile',
+    verify: '/api/auth/verify',
+    changePassword: '/api/auth/password',
+  },
+  
   // Consensus endpoints
   consensus: {
     generate: '/api/consensus/generate',
@@ -106,6 +116,15 @@ export const API_ENDPOINTS = {
 export const apiHelpers = {
   // Health check
   checkHealth: () => api.get(API_ENDPOINTS.health),
+  
+  // Authentication helpers
+  register: (data) => api.post(API_ENDPOINTS.auth.register, data),
+  login: (data) => api.post(API_ENDPOINTS.auth.login, data),
+  logout: () => api.post(API_ENDPOINTS.auth.logout),
+  getProfile: () => api.get(API_ENDPOINTS.auth.profile),
+  updateProfile: (data) => api.put(API_ENDPOINTS.auth.profile, data),
+  changePassword: (data) => api.put(API_ENDPOINTS.auth.changePassword, data),
+  verifyToken: () => api.get(API_ENDPOINTS.auth.verify),
   
   // Consensus helpers
   generateConsensus: (data) => api.post(API_ENDPOINTS.consensus.generate, data),
