@@ -13,8 +13,7 @@ const reportSchema = new mongoose.Schema({
     trim: true
   },
   userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    type: mongoose.Schema.Types.Mixed, // Allow both ObjectId and String for demo purposes
     required: true,
     index: true
   },
@@ -155,8 +154,13 @@ reportSchema.statics.findByUser = function(userId, options = {}) {
 
 // Static method to get user's report statistics
 reportSchema.statics.getUserStats = function(userId) {
+  // Handle both ObjectId and string userIds
+  const userIdQuery = mongoose.Types.ObjectId.isValid(userId) 
+    ? mongoose.Types.ObjectId(userId) 
+    : userId;
+    
   return this.aggregate([
-    { $match: { userId: mongoose.Types.ObjectId(userId) } },
+    { $match: { userId: userIdQuery } },
     {
       $group: {
         _id: '$status',
