@@ -12,8 +12,8 @@ class ConsensusEngine {
     
     this.arbiterLLM = {
       provider: 'cohere',
-      model: 'command-r-plus-08-2024',
-      name: 'Command R+'
+      model: 'command-r',
+      name: 'Command R'
     };
 
     // Always use real API calls - no demo mode
