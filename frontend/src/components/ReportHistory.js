@@ -63,8 +63,8 @@ function ReportHistory({ onViewReport, onExportReport }) {
   useEffect(() => {
     let filtered = reports.filter(report =>
       report.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      report.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      report.summary.toLowerCase().includes(searchQuery.toLowerCase())
+      (report.tags || []).some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (report.summary || '').toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     // Sort
@@ -397,18 +397,18 @@ function ReportCard({ report, isSelected, onSelect, onView, onExport, formatDate
         onClick: onView
       }, report.title),
       
-      React.createElement('p', { className: 'text-sm text-slate-600 mb-4 line-clamp-3' }, report.summary),
+      React.createElement('p', { className: 'text-sm text-slate-600 mb-4 line-clamp-3' }, report.summary || 'No summary available'),
       
       React.createElement('div', { className: 'flex flex-wrap gap-2 mb-4' },
-        ...report.tags.slice(0, 3).map(tag =>
+        ...(report.tags || []).slice(0, 3).map(tag =>
           React.createElement('span', { 
             key: tag,
             className: 'inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-slate-100 text-slate-700'
           }, tag)
         ),
-        report.tags.length > 3 && React.createElement('span', { 
+        (report.tags || []).length > 3 && React.createElement('span', { 
           className: 'inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-slate-100 text-slate-700'
-        }, `+${report.tags.length - 3}`)
+        }, `+${(report.tags || []).length - 3}`)
       ),
       
       // Enhanced Token Usage Metadata
@@ -482,7 +482,7 @@ function ReportListItem({ report, isSelected, onSelect, onView, onExport, format
                 className: 'text-lg font-semibold text-slate-900 mb-2 cursor-pointer hover:text-indigo-600 transition-colors duration-200',
                 onClick: onView
               }, report.title),
-              React.createElement('p', { className: 'text-sm text-slate-600 mb-3' }, report.summary),
+              React.createElement('p', { className: 'text-sm text-slate-600 mb-3' }, report.summary || 'No summary available'),
               
               // Enhanced metadata with icons
               React.createElement('div', { className: 'flex items-center space-x-6 text-sm mb-2' },
