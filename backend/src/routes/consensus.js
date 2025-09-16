@@ -14,6 +14,78 @@ const jobs = new Map();
 const jobResults = new Map();
 const jobPdfs = new Map(); // Store PDFs temporarily
 
+// Test endpoint to verify LLM API connectivity
+router.get('/test-llms', async (req, res) => {
+  try {
+    console.log('🧪 Testing LLM API connectivity...');
+    const llmOrchestrator = require('../services/llmOrchestrator');
+    
+    const testPrompt = "Hello, please respond with 'API connection successful'";
+    const testResults = {};
+    
+    // Test each provider individually
+    const providers = [
+      { provider: 'openai', model: 'gpt-4o' },
+      { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022' },
+      { provider: 'google', model: 'gemini-1.5-pro' },
+      { provider: 'cohere', model: 'command-r-plus' }
+    ];
+    
+    for (const { provider, model } of providers) {
+      try {
+        console.log(`🔍 Testing ${provider} with model ${model}...`);
+        const result = await llmOrchestrator.executeQuery(
+          provider, 
+          model, 
+          testPrompt, 
+          { maxTokens: 50, temperature: 0.1, timeout: 30000 }
+        );
+        testResults[provider] = {
+          status: 'success',
+          model,
+          response: result.content?.substring(0, 100) || 'No content',
+          tokenUsage: result.tokenUsage
+        };
+        console.log(`✅ ${provider} test successful`);
+      } catch (error) {
+        console.error(`❌ ${provider} test failed:`, error.message);
+        testResults[provider] = {
+          status: 'failed',
+          model,
+          error: error.message,
+          details: {
+            status: error.response?.status,
+            statusText: error.response?.statusText,
+            data: error.response?.data
+          }
+        };
+      }
+    }
+    
+    // Check which providers are available
+    const availableProviders = llmOrchestrator.getAvailableProviders();
+    
+    res.json({
+      success: true,
+      testResults,
+      availableProviders,
+      apiKeysConfigured: {
+        openai: !!process.env.OPENAI_API_KEY,
+        anthropic: !!process.env.ANTHROPIC_API_KEY,
+        google: !!process.env.GOOGLE_API_KEY,
+        cohere: !!process.env.COHERE_API_KEY
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ LLM test endpoint failed:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // Generate consensus analysis (ASYNC VERSION to avoid Railway timeouts)
 router.post('/generate', async (req, res) => {
   try {

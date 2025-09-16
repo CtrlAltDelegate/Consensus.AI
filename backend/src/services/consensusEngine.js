@@ -28,17 +28,44 @@ class ConsensusEngine {
       // Phase 1: Independent Drafting
       console.log('📝 Phase 1: Independent Drafting...');
       const initialDrafts = await this.phase1_IndependentDrafting(topic, sources);
-      console.log(`✅ Phase 1 Complete: ${initialDrafts.length} independent drafts generated`);
+      const successfulDrafts = initialDrafts.filter(d => !d.error);
+      console.log(`✅ Phase 1 Complete: ${successfulDrafts.length}/${initialDrafts.length} independent drafts generated successfully`);
       
-      // Phase 2: Peer Review
-      console.log('🔍 Phase 2: Peer Review...');
-      const peerReviews = await this.phase2_PeerReview(topic, initialDrafts);
-      console.log(`✅ Phase 2 Complete: ${peerReviews.length} peer reviews generated`);
+      // Check if we have at least one successful draft
+      if (successfulDrafts.length === 0) {
+        throw new Error('All LLM providers failed in Phase 1. Cannot proceed with consensus generation.');
+      }
       
-      // Phase 3: Final Arbitration
+      // Phase 2: Peer Review (only if we have multiple successful drafts)
+      let peerReviews = [];
+      if (successfulDrafts.length > 1) {
+        console.log('🔍 Phase 2: Peer Review...');
+        peerReviews = await this.phase2_PeerReview(topic, initialDrafts);
+        const successfulReviews = peerReviews.filter(r => !r.error);
+        console.log(`✅ Phase 2 Complete: ${successfulReviews.length}/${peerReviews.length} peer reviews generated successfully`);
+      } else {
+        console.log('⏭️ Phase 2 Skipped: Only one successful draft available');
+      }
+      
+      // Phase 3: Final Arbitration with fallback
       console.log('⚖️ Phase 3: Final Arbitration...');
-      const finalConsensus = await this.phase3_FinalArbitration(topic, sources, initialDrafts, peerReviews);
-      console.log('✅ Phase 3 Complete: Final consensus report generated');
+      let finalConsensus;
+      try {
+        finalConsensus = await this.phase3_FinalArbitration(topic, sources, initialDrafts, peerReviews);
+        console.log('✅ Phase 3 Complete: Final consensus report generated');
+      } catch (arbitrationError) {
+        console.warn('⚠️ Phase 3 arbitration failed, using best available draft as fallback:', arbitrationError.message);
+        // Fallback to the best successful draft
+        const bestDraft = successfulDrafts[0];
+        finalConsensus = {
+          provider: bestDraft.provider,
+          model: bestDraft.model,
+          name: bestDraft.name,
+          content: `**Note: This is a single-model analysis due to arbitration issues.**\n\n${bestDraft.content}`,
+          tokenUsage: bestDraft.tokenUsage,
+          fallback: true
+        };
+      }
       
       // Calculate total token usage
       const allResponses = [...initialDrafts, ...peerReviews, finalConsensus];
@@ -53,20 +80,23 @@ class ConsensusEngine {
             model: d.model,
             name: d.name,
             content: d.content,
-            tokenUsage: d.tokenUsage
+            tokenUsage: d.tokenUsage,
+            error: d.error || false
           })),
           phase2_reviews: peerReviews.map(r => ({
             reviewer: r.reviewer,
             reviewedModel: r.reviewedModel,
             content: r.content,
-            tokenUsage: r.tokenUsage
+            tokenUsage: r.tokenUsage,
+            error: r.error || false
           })),
           phase3_consensus: {
             provider: finalConsensus.provider,
             model: finalConsensus.model,
             name: finalConsensus.name,
             content: finalConsensus.content,
-            tokenUsage: finalConsensus.tokenUsage
+            tokenUsage: finalConsensus.tokenUsage,
+            fallback: finalConsensus.fallback || false
           }
         },
         totalTokens,
@@ -75,7 +105,10 @@ class ConsensusEngine {
           sourcesCount: sources.length,
           processingTime: Date.now(),
           llmsUsed: [...this.draftingLLMs, this.arbiterLLM].map(llm => llm.name),
-          workflow: '3-phase'
+          workflow: '3-phase',
+          successfulDrafts: successfulDrafts.length,
+          totalDrafts: initialDrafts.length,
+          arbitrationFallback: finalConsensus.fallback || false
         }
       };
     } catch (error) {
