@@ -1,4 +1,4 @@
-// frontend/src/App.js
+// frontend/src/App.js - Complete Integration
 import React, { useState } from 'react';
 import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { UserProvider, useUser } from './contexts/UserContext';
@@ -10,6 +10,8 @@ import ProfessionalReportViewer from './components/ProfessionalReportViewer';
 import ProgressLoadingModal, { useProgressModal } from './components/ProgressLoadingModal';
 import ReportHistory from './components/ReportHistory';
 import AuthModal from './components/AuthModal';
+import BillingModal from './components/BillingModal';
+import UserProfileModal from './components/UserProfileModal';
 
 // Services
 import exportService from './utils/exportService';
@@ -30,7 +32,7 @@ const CustomNavLink = ({ to, children }) => {
 };
 
 // User menu dropdown component
-const UserMenu = ({ user, onLogout, onProfile }) => {
+const UserMenu = ({ user, onLogout, onProfile, onBilling }) => {
   const [isOpen, setIsOpen] = useState(false);
   
   return React.createElement('div', { className: 'relative' },
@@ -83,7 +85,7 @@ const UserMenu = ({ user, onLogout, onProfile }) => {
         className: 'w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50'
       }, 'Profile & Settings'),
       React.createElement('button', {
-        onClick: () => {}, // TODO: Add billing modal
+        onClick: onBilling,
         className: 'w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50'
       }, 'Billing & Subscription'),
       React.createElement('hr', { className: 'my-1' }),
@@ -116,6 +118,7 @@ function AuthenticatedApp() {
   const [currentReport, setCurrentReport] = useState(null);
   const [showReportViewer, setShowReportViewer] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showBillingModal, setShowBillingModal] = useState(false);
   
   const progressModal = useProgressModal();
 
@@ -165,7 +168,8 @@ function AuthenticatedApp() {
   };
 
   const availableTokens = getAvailableTokens();
-  const tokenPercentage = Math.min((availableTokens / (user?.subscription?.tokenLimit || 25000)) * 100, 100);
+  const tokenLimit = user?.subscription?.tokenLimit || 25000;
+  const tokenPercentage = Math.min((availableTokens / tokenLimit) * 100, 100);
 
   return React.createElement('div', { className: 'min-h-screen bg-slate-50/50' },
     // Enhanced Navigation Header
@@ -211,7 +215,8 @@ function AuthenticatedApp() {
             React.createElement(UserMenu, {
               user,
               onLogout: handleLogout,
-              onProfile: () => setShowProfileModal(true)
+              onProfile: () => setShowProfileModal(true),
+              onBilling: () => setShowBillingModal(true)
             })
           )
         )
@@ -247,7 +252,7 @@ function AuthenticatedApp() {
       )
     ),
 
-    // Professional Report Viewer Modal
+    // Modals
     showReportViewer && currentReport && React.createElement(ProfessionalReportViewer, {
       report: currentReport,
       onClose: handleCloseReportViewer,
@@ -255,7 +260,6 @@ function AuthenticatedApp() {
       onSave: handleSaveReport
     }),
 
-    // Progress Loading Modal
     React.createElement(ProgressLoadingModal, {
       isVisible: progressModal.isVisible,
       currentStage: progressModal.currentStage,
@@ -263,11 +267,20 @@ function AuthenticatedApp() {
       onClose: () => progressModal.hideProgress()
     }),
 
+    React.createElement(UserProfileModal, {
+      isVisible: showProfileModal,
+      onClose: () => setShowProfileModal(false)
+    }),
+
+    React.createElement(BillingModal, {
+      isVisible: showBillingModal,
+      onClose: () => setShowBillingModal(false)
+    }),
+
     // Enhanced Footer
     React.createElement('footer', { className: 'bg-white border-t border-slate-200/60 mt-20' },
       React.createElement('div', { className: 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12' },
         React.createElement('div', { className: 'grid grid-cols-1 md:grid-cols-4 gap-8' },
-          // Brand Column
           React.createElement('div', { className: 'col-span-1 md:col-span-2' },
             React.createElement('div', { className: 'flex items-center mb-4' },
               React.createElement('div', { className: 'w-8 h-8 bg-gradient-to-br from-indigo-600 to-violet-600 rounded-lg flex items-center justify-center mr-3' },
@@ -276,34 +289,26 @@ function AuthenticatedApp() {
               React.createElement('span', { className: 'text-xl font-bold text-slate-900' }, 'Consensus.AI')
             ),
             React.createElement('p', { className: 'text-slate-600 max-w-md mb-6' },
-              'Advanced AI consensus analysis platform for researchers, analysts, and professionals. Generate comprehensive reports through our proprietary 4-LLM methodology.'
+              'Advanced AI consensus analysis platform for researchers, analysts, and professionals.'
             ),
-            React.createElement('div', { className: 'flex items-center space-x-4' },
-              React.createElement('div', { className: 'text-sm text-slate-500' }, 
-                '© 2024 Consensus.AI. All rights reserved.'
-              )
+            React.createElement('div', { className: 'text-sm text-slate-500' }, 
+              '© 2024 Consensus.AI. All rights reserved.'
             )
           ),
-          
-          // Product Column
           React.createElement('div', null,
             React.createElement('h3', { className: 'text-sm font-semibold text-slate-900 mb-4' }, 'Product'),
             React.createElement('div', { className: 'space-y-3' },
-              React.createElement('a', { href: '#', className: 'block text-sm text-slate-600 hover:text-indigo-600 transition-colors duration-200' }, 'Features'),
-              React.createElement('a', { href: '#', className: 'block text-sm text-slate-600 hover:text-indigo-600 transition-colors duration-200' }, 'Pricing'),
-              React.createElement('a', { href: '#', className: 'block text-sm text-slate-600 hover:text-indigo-600 transition-colors duration-200' }, 'API Access'),
-              React.createElement('a', { href: '#', className: 'block text-sm text-slate-600 hover:text-indigo-600 transition-colors duration-200' }, 'Documentation')
+              React.createElement('a', { href: '#', className: 'block text-sm text-slate-600 hover:text-indigo-600' }, 'Features'),
+              React.createElement('a', { href: '#', className: 'block text-sm text-slate-600 hover:text-indigo-600' }, 'Pricing'),
+              React.createElement('a', { href: '#', className: 'block text-sm text-slate-600 hover:text-indigo-600' }, 'API Access')
             )
           ),
-          
-          // Support Column
           React.createElement('div', null,
             React.createElement('h3', { className: 'text-sm font-semibold text-slate-900 mb-4' }, 'Support'),
             React.createElement('div', { className: 'space-y-3' },
-              React.createElement('a', { href: '#', className: 'block text-sm text-slate-600 hover:text-indigo-600 transition-colors duration-200' }, 'Help Center'),
-              React.createElement('a', { href: '#', className: 'block text-sm text-slate-600 hover:text-indigo-600 transition-colors duration-200' }, 'Contact Us'),
-              React.createElement('a', { href: '#', className: 'block text-sm text-slate-600 hover:text-indigo-600 transition-colors duration-200' }, 'Privacy Policy'),
-              React.createElement('a', { href: '#', className: 'block text-sm text-slate-600 hover:text-indigo-600 transition-colors duration-200' }, 'Terms of Service')
+              React.createElement('a', { href: '#', className: 'block text-sm text-slate-600 hover:text-indigo-600' }, 'Help Center'),
+              React.createElement('a', { href: '#', className: 'block text-sm text-slate-600 hover:text-indigo-600' }, 'Contact Us'),
+              React.createElement('a', { href: '#', className: 'block text-sm text-slate-600 hover:text-indigo-600' }, 'Privacy Policy')
             )
           )
         )
@@ -315,7 +320,6 @@ function AuthenticatedApp() {
 // Login/Landing page component
 function UnauthenticatedApp() {
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const { login, register } = useUser();
 
   const handleAuthSuccess = async (user, token) => {
     console.log('✅ Authentication successful:', user.email);
