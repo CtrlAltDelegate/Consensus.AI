@@ -34,4 +34,10 @@
   "keywords": ["ai", "consensus", "api", "nodejs"],
   "author": "Consensus.AI Team",
   "license": "MIT"
-} 
+  {
+  "scripts": {
+    "seed-tiers": "node scripts/seedSubscriptionTiers.js",
+    "seed-dev": "NODE_ENV=development node scripts/seedSubscriptionTiers.js",
+    "seed-prod": "NODE_ENV=production node scripts/seedSubscriptionTiers.js"
+  }
+}
