@@ -6,7 +6,7 @@ const subscriptionTierSchema = new mongoose.Schema({
     type: String,
     required: true,
     unique: true,
-    enum: ['Free', 'Lite', 'Pro', 'Expert']
+    enum: ['PayAsYouGo', 'Starter', 'Professional', 'Business']
   },
   displayName: {
     type: String,
@@ -16,7 +16,14 @@ const subscriptionTierSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  tokenLimit: {
+  // Report-based pricing fields
+  reportsIncluded: {
+    type: Number,
+    required: true,
+    min: 0,
+    default: 0
+  },
+  pricePerReport: {
     type: Number,
     required: true,
     min: 0
@@ -31,6 +38,11 @@ const subscriptionTierSchema = new mongoose.Schema({
     required: true,
     min: 0
   },
+  // Overage pricing for additional reports beyond included amount
+  overageRate: {
+    type: Number,
+    default: 0 // Price per additional report
+  },
   features: [{
     type: String,
     required: true
@@ -43,7 +55,16 @@ const subscriptionTierSchema = new mongoose.Schema({
     yearly: {
       type: String,
       default: null
+    },
+    perReport: {
+      type: String,
+      default: null // For pay-as-you-go single report purchases
     }
+  },
+  billingType: {
+    type: String,
+    enum: ['subscription', 'per_report'],
+    default: 'subscription'
   },
   isActive: {
     type: Boolean,
@@ -53,15 +74,14 @@ const subscriptionTierSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
-  // Token overage pricing (per token above limit)
-  overageRate: {
+  // Legacy token fields (for migration compatibility)
+  tokenLimit: {
     type: Number,
-    default: 0.001 // $0.001 per token
+    default: 0
   },
-  // Maximum tokens that can be purchased as overage
   maxOverageTokens: {
     type: Number,
-    default: 100000
+    default: 0
   }
 }, {
   timestamps: true
@@ -100,16 +120,36 @@ subscriptionTierSchema.methods.hasFeature = function(feature) {
   return this.features.includes(feature);
 };
 
-// Instance method to calculate overage cost
-subscriptionTierSchema.methods.calculateOverageCost = function(tokensUsed) {
-  if (tokensUsed <= this.tokenLimit) return 0;
+// Instance method to calculate overage cost for additional reports
+subscriptionTierSchema.methods.calculateOverageCost = function(reportsUsed) {
+  if (this.billingType === 'per_report') {
+    // Pay-as-you-go: each report costs the full price
+    return reportsUsed * this.pricePerReport;
+  }
   
-  const overageTokens = Math.min(
-    tokensUsed - this.tokenLimit,
-    this.maxOverageTokens
-  );
+  if (reportsUsed <= this.reportsIncluded) return 0;
   
-  return overageTokens * this.overageRate;
+  const overageReports = reportsUsed - this.reportsIncluded;
+  return overageReports * this.overageRate;
+};
+
+// Instance method to get effective price per report
+subscriptionTierSchema.methods.getEffectivePricePerReport = function() {
+  if (this.billingType === 'per_report') {
+    return this.pricePerReport;
+  }
+  
+  if (this.reportsIncluded === 0) return 0;
+  return this.monthlyPrice / this.reportsIncluded;
+};
+
+// Instance method to calculate savings vs pay-as-you-go
+subscriptionTierSchema.methods.calculateSavings = function(payAsYouGoPrice = 15) {
+  if (this.billingType === 'per_report') return 0;
+  
+  const effectivePrice = this.getEffectivePricePerReport();
+  const savings = ((payAsYouGoPrice - effectivePrice) / payAsYouGoPrice) * 100;
+  return Math.round(savings);
 };
 
 module.exports = mongoose.model('SubscriptionTier', subscriptionTierSchema);
