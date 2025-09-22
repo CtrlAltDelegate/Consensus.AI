@@ -125,9 +125,10 @@ app.use((req, res, next) => {
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
+app.use('/api/admin', require('./routes/admin'));
+app.use('/api/billing', require('./routes/billing'));
 app.use('/api/consensus', require('./routes/consensus'));
 app.use('/api/tokens', require('./routes/tokens'));
-app.use('/api/billing', require('./routes/billing'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/webhooks', require('./routes/webhooks'));
 
@@ -224,9 +225,11 @@ app.get('/', (req, res) => {
     endpoints: {
       health: '/health',
       auth: '/api/auth',
+      admin: '/api/admin',
+      billing: '/api/billing',
       consensus: '/api/consensus',
       tokens: '/api/tokens',
-      billing: '/api/billing',
+      reports: '/api/reports',
       webhooks: '/api/webhooks'
     }
   });

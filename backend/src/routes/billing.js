@@ -1,161 +1,296 @@
 const express = require('express');
 const router = express.Router();
-const billingService = require('../services/billingService');
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const User = require('../models/userModel');
+const SubscriptionTier = require('../models/subscriptionTiers');
 const auth = require('../middleware/auth');
 const { validateSubscriptionUpdate } = require('../utils/validation');
 
-// Get current subscription status
-router.get('/subscription', auth, async (req, res) => {
-  try {
-    const User = require('../models/userModel');
-    const user = await User.findById(req.user.id);
-    
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
+// All billing routes require authentication
+router.use(auth);
 
-    let subscriptionDetails = null;
-    if (user.subscription.stripeSubscriptionId) {
-      subscriptionDetails = await billingService.getSubscriptionStatus(
-        user.subscription.stripeSubscriptionId
-      );
-    }
+// @route   GET /api/billing/plans
+// @desc    Get available subscription plans
+// @access  Private
+router.get('/plans', async (req, res) => {
+  try {
+    const plans = await SubscriptionTier.getActiveTiers();
+    
+    const plansWithPricing = plans.map(plan => ({
+      id: plan._id,
+      name: plan.name,
+      displayName: plan.displayName,
+      description: plan.description,
+      monthlyPrice: plan.monthlyPrice,
+      yearlyPrice: plan.yearlyPrice,
+      yearlySavings: plan.yearlySavings,
+      yearlySavingsPercent: plan.yearlySavingsPercent,
+      tokenLimit: plan.tokenLimit,
+      features: plan.features,
+      stripePriceIds: plan.stripePriceIds
+    }));
 
     res.json({
       success: true,
-      subscription: {
-        tier: user.subscription.tier,
-        status: user.subscription.status,
-        currentPeriodStart: user.subscription.currentPeriodStart,
-        currentPeriodEnd: user.subscription.currentPeriodEnd,
-        stripeSubscriptionId: user.subscription.stripeSubscriptionId,
-        ...subscriptionDetails
-      }
+      plans: plansWithPricing
     });
 
   } catch (error) {
-    console.error('Subscription status error:', error);
-    res.status(500).json({ error: 'Failed to retrieve subscription status' });
+    console.error('Get plans error:', error);
+    res.status(500).json({ error: 'Failed to retrieve subscription plans' });
   }
 });
 
-// Update subscription (upgrade/downgrade)
-router.put('/subscription', auth, async (req, res) => {
+// @route   POST /api/billing/create-checkout-session
+// @desc    Create Stripe checkout session for subscription
+// @access  Private
+router.post('/create-checkout-session', async (req, res) => {
   try {
-    const { tier, billingPeriod = 'monthly' } = req.body;
-    
-    // Validate request
     const { error } = validateSubscriptionUpdate(req.body);
     if (error) {
       return res.status(400).json({ error: error.details[0].message });
     }
 
-    const User = require('../models/userModel');
+    const { tier, billingPeriod = 'monthly' } = req.body;
     const user = await User.findById(req.user.id);
-    
+
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const stripeConfig = require('../config/stripe');
-    const tierConfig = stripeConfig.subscriptionTiers[tier];
+    // Get the subscription tier
+    const subscriptionTier = await SubscriptionTier.findById(tier);
+    if (!subscriptionTier) {
+      return res.status(404).json({ error: 'Subscription tier not found' });
+    }
+
+    // Check if it's the free tier
+    if (subscriptionTier.name === 'Free') {
+      return res.status(400).json({ error: 'Cannot create checkout session for free tier' });
+    }
+
+    // Get the appropriate Stripe price ID
+    const priceId = billingPeriod === 'yearly' 
+      ? subscriptionTier.stripePriceIds.yearly 
+      : subscriptionTier.stripePriceIds.monthly;
+
+    if (!priceId) {
+      return res.status(400).json({ 
+        error: `${billingPeriod} billing not available for this plan` 
+      });
+    }
+
+    // Create or get Stripe customer
+    let customerId = user.subscription.stripeCustomerId;
     
-    if (!tierConfig) {
-      return res.status(400).json({ error: 'Invalid subscription tier' });
-    }
-
-    const priceId = billingPeriod === 'yearly' ? tierConfig.yearlyPriceId : tierConfig.monthlyPriceId;
-
-    let subscription;
-    if (user.subscription.stripeSubscriptionId) {
-      // Update existing subscription
-      subscription = await billingService.updateSubscription(
-        user.subscription.stripeSubscriptionId,
-        priceId
-      );
-    } else {
-      // Create new subscription
-      if (!user.subscription.stripeCustomerId) {
-        return res.status(400).json({ error: 'No payment method on file' });
-      }
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: user.email,
+        metadata: {
+          userId: user._id.toString()
+        }
+      });
+      customerId = customer.id;
       
-      subscription = await billingService.createSubscription(
-        user.subscription.stripeCustomerId,
-        priceId,
-        tier
-      );
+      // Update user with Stripe customer ID
+      user.subscription.stripeCustomerId = customerId;
+      await user.save();
     }
 
-    // Update user subscription in database
-    user.subscription.tier = tier;
-    user.subscription.stripeSubscriptionId = subscription.id;
-    user.subscription.status = subscription.status;
-    await user.save();
-
-    res.json({
-      success: true,
-      message: 'Subscription updated successfully',
-      subscription: {
-        tier,
-        status: subscription.status,
-        stripeSubscriptionId: subscription.id
+    // Create checkout session
+    const session = await stripe.checkout.sessions.create({
+      customer: customerId,
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1,
+        },
+      ],
+      mode: 'subscription',
+      success_url: `${process.env.FRONTEND_URL}/billing?session_id={CHECKOUT_SESSION_ID}&success=true`,
+      cancel_url: `${process.env.FRONTEND_URL}/billing?canceled=true`,
+      metadata: {
+        userId: user._id.toString(),
+        tierId: subscriptionTier._id.toString(),
+        billingPeriod
       }
     });
 
+    res.json({
+      success: true,
+      sessionId: session.id,
+      url: session.url
+    });
+
   } catch (error) {
-    console.error('Subscription update error:', error);
-    res.status(500).json({ error: 'Failed to update subscription' });
+    console.error('Create checkout session error:', error);
+    res.status(500).json({ error: 'Failed to create checkout session' });
   }
 });
 
-// Cancel subscription
-router.delete('/subscription', auth, async (req, res) => {
+// @route   POST /api/billing/create-portal-session
+// @desc    Create Stripe customer portal session
+// @access  Private
+router.post('/create-portal-session', async (req, res) => {
   try {
-    const { immediate = false } = req.body;
-    
-    const User = require('../models/userModel');
     const user = await User.findById(req.user.id);
-    
+
+    if (!user || !user.subscription.stripeCustomerId) {
+      return res.status(404).json({ error: 'No billing account found' });
+    }
+
+    const session = await stripe.billingPortal.sessions.create({
+      customer: user.subscription.stripeCustomerId,
+      return_url: `${process.env.FRONTEND_URL}/billing`,
+    });
+
+    res.json({
+      success: true,
+      url: session.url
+    });
+
+  } catch (error) {
+    console.error('Create portal session error:', error);
+    res.status(500).json({ error: 'Failed to create portal session' });
+  }
+});
+
+// @route   GET /api/billing/subscription
+// @desc    Get current subscription details
+// @access  Private
+router.get('/subscription', async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id)
+      .populate('subscription.tier', 'name displayName monthlyPrice yearlyPrice tokenLimit features');
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    let stripeSubscription = null;
+    if (user.subscription.stripeSubscriptionId) {
+      try {
+        stripeSubscription = await stripe.subscriptions.retrieve(
+          user.subscription.stripeSubscriptionId
+        );
+      } catch (error) {
+        console.warn('Failed to retrieve Stripe subscription:', error.message);
+      }
+    }
+
+    const subscriptionDetails = {
+      tier: user.subscription.tier,
+      status: user.subscription.status,
+      currentPeriodStart: user.subscription.currentPeriodStart,
+      currentPeriodEnd: user.subscription.currentPeriodEnd,
+      nextBillingDate: user.subscription.nextBillingDate,
+      stripeData: stripeSubscription ? {
+        id: stripeSubscription.id,
+        status: stripeSubscription.status,
+        current_period_start: new Date(stripeSubscription.current_period_start * 1000),
+        current_period_end: new Date(stripeSubscription.current_period_end * 1000),
+        cancel_at_period_end: stripeSubscription.cancel_at_period_end
+      } : null,
+      tokenUsage: {
+        available: user.getAvailableTokens(),
+        expiringSoon: user.getTokensExpiringSoon(30)
+      }
+    };
+
+    res.json({
+      success: true,
+      subscription: subscriptionDetails
+    });
+
+  } catch (error) {
+    console.error('Get subscription error:', error);
+    res.status(500).json({ error: 'Failed to retrieve subscription details' });
+  }
+});
+
+// @route   POST /api/billing/cancel-subscription
+// @desc    Cancel subscription at end of billing period
+// @access  Private
+router.post('/cancel-subscription', async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+
     if (!user || !user.subscription.stripeSubscriptionId) {
       return res.status(404).json({ error: 'No active subscription found' });
     }
 
-    const subscription = await billingService.cancelSubscription(
+    // Cancel subscription at period end in Stripe
+    const subscription = await stripe.subscriptions.update(
       user.subscription.stripeSubscriptionId,
-      immediate
+      {
+        cancel_at_period_end: true
+      }
     );
 
-    // Update user status
-    if (immediate) {
-      user.subscription.status = 'canceled';
-      user.subscription.tier = 'basic';
-    } else {
-      user.subscription.status = 'active'; // Still active until period end
-    }
-    
+    // Update user subscription status
+    user.subscription.status = 'canceled';
     await user.save();
 
     res.json({
       success: true,
-      message: immediate ? 'Subscription canceled immediately' : 'Subscription will cancel at period end',
+      message: 'Subscription will be canceled at the end of the current billing period',
       cancelAtPeriodEnd: subscription.cancel_at_period_end,
-      currentPeriodEnd: user.subscription.currentPeriodEnd
+      currentPeriodEnd: new Date(subscription.current_period_end * 1000)
     });
 
   } catch (error) {
-    console.error('Subscription cancellation error:', error);
+    console.error('Cancel subscription error:', error);
     res.status(500).json({ error: 'Failed to cancel subscription' });
   }
 });
 
-// Get billing history
-router.get('/history', auth, async (req, res) => {
+// @route   POST /api/billing/reactivate-subscription
+// @desc    Reactivate a canceled subscription
+// @access  Private
+router.post('/reactivate-subscription', async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+
+    if (!user || !user.subscription.stripeSubscriptionId) {
+      return res.status(404).json({ error: 'No subscription found' });
+    }
+
+    // Reactivate subscription in Stripe
+    const subscription = await stripe.subscriptions.update(
+      user.subscription.stripeSubscriptionId,
+      {
+        cancel_at_period_end: false
+      }
+    );
+
+    // Update user subscription status
+    user.subscription.status = 'active';
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Subscription reactivated successfully',
+      subscription: {
+        status: subscription.status,
+        cancelAtPeriodEnd: subscription.cancel_at_period_end
+      }
+    });
+
+  } catch (error) {
+    console.error('Reactivate subscription error:', error);
+    res.status(500).json({ error: 'Failed to reactivate subscription' });
+  }
+});
+
+// @route   GET /api/billing/invoices
+// @desc    Get billing history/invoices
+// @access  Private
+router.get('/invoices', async (req, res) => {
   try {
     const { limit = 10 } = req.query;
-    
-    const User = require('../models/userModel');
     const user = await User.findById(req.user.id);
-    
+
     if (!user || !user.subscription.stripeCustomerId) {
       return res.json({
         success: true,
@@ -163,123 +298,100 @@ router.get('/history', auth, async (req, res) => {
       });
     }
 
-    const invoices = await billingService.getCustomerInvoices(
-      user.subscription.stripeCustomerId,
-      parseInt(limit)
-    );
+    const invoices = await stripe.invoices.list({
+      customer: user.subscription.stripeCustomerId,
+      limit: parseInt(limit)
+    });
+
+    const formattedInvoices = invoices.data.map(invoice => ({
+      id: invoice.id,
+      number: invoice.number,
+      amount_paid: invoice.amount_paid,
+      amount_due: invoice.amount_due,
+      currency: invoice.currency,
+      status: invoice.status,
+      created: invoice.created,
+      period_start: invoice.period_start,
+      period_end: invoice.period_end,
+      hosted_invoice_url: invoice.hosted_invoice_url,
+      invoice_pdf: invoice.invoice_pdf
+    }));
 
     res.json({
       success: true,
-      invoices
+      invoices: formattedInvoices
     });
 
   } catch (error) {
-    console.error('Billing history error:', error);
+    console.error('Get invoices error:', error);
     res.status(500).json({ error: 'Failed to retrieve billing history' });
   }
 });
 
-// Create setup intent for payment method
-router.post('/setup-intent', auth, async (req, res) => {
+// @route   GET /api/billing/usage
+// @desc    Get detailed token usage statistics
+// @access  Private
+router.get('/usage', async (req, res) => {
   try {
-    const stripeConfig = require('../config/stripe');
-    const User = require('../models/userModel');
-    const user = await User.findById(req.user.id);
-    
+    const user = await User.findById(req.user.id)
+      .populate('subscription.tier', 'name tokenLimit');
+
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    let customerId = user.subscription.stripeCustomerId;
-    
-    // Create customer if doesn't exist
-    if (!customerId) {
-      const customer = await billingService.createCustomer(user.email);
-      customerId = customer.id;
-      
-      user.subscription.stripeCustomerId = customerId;
-      await user.save();
-    }
+    // Get current token stats
+    const availableTokens = user.getAvailableTokens();
+    const tokensExpiringSoon = user.getTokensExpiringSoon(30);
 
-    const setupIntent = await stripeConfig.stripe.setupIntents.create({
-      customer: customerId,
-      payment_method_types: ['card'],
-      usage: 'off_session'
-    });
+    // Get usage history for the last 6 months
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+    const monthlyUsage = user.tokenUsage.monthlyUsage
+      .filter(usage => new Date(usage.month + '-01') >= sixMonthsAgo)
+      .sort((a, b) => a.month.localeCompare(b.month));
+
+    // Get recent usage history
+    const recentUsage = user.tokenUsage.usageHistory
+      .slice(-20) // Last 20 operations
+      .reverse(); // Most recent first
+
+    // Calculate total lifetime usage
+    const totalLifetimeUsed = user.tokenUsage.totalLifetimeUsed || 0;
 
     res.json({
       success: true,
-      clientSecret: setupIntent.client_secret,
-      customerId
-    });
-
-  } catch (error) {
-    console.error('Setup intent creation error:', error);
-    res.status(500).json({ error: 'Failed to create setup intent' });
-  }
-});
-
-// Get available subscription plans
-router.get('/plans', async (req, res) => {
-  try {
-    const plans = [
-      {
-        id: 'basic',
-        name: 'Basic',
-        description: 'Perfect for individuals getting started',
-        tokenLimit: 10000,
-        monthlyPrice: 19.99,
-        yearlyPrice: 199.99,
-        features: [
-          '10,000 tokens per month',
-          'Basic consensus analysis',
-          'PDF report generation',
-          'Email support'
-        ]
-      },
-      {
-        id: 'pro',
-        name: 'Pro',
-        description: 'Ideal for professionals and small teams',
-        tokenLimit: 50000,
-        monthlyPrice: 49.99,
-        yearlyPrice: 499.99,
-        features: [
-          '50,000 tokens per month',
-          'Advanced consensus analysis',
-          'Priority processing',
-          'PDF and email reports',
-          'Priority support'
-        ]
-      },
-      {
-        id: 'enterprise',
-        name: 'Enterprise',
-        description: 'For large organizations with high volume needs',
-        tokenLimit: 200000,
-        monthlyPrice: 149.99,
-        yearlyPrice: 1499.99,
-        features: [
-          '200,000 tokens per month',
-          'Premium consensus analysis',
-          'Custom integrations',
-          'Advanced reporting',
-          'Dedicated support',
-          'SLA guarantee'
-        ]
+      usage: {
+        current: {
+          available: availableTokens,
+          limit: user.subscription.tier?.tokenLimit || 0,
+          used: Math.max(0, (user.subscription.tier?.tokenLimit || 0) - availableTokens),
+          expiringSoon: tokensExpiringSoon
+        },
+        monthly: monthlyUsage,
+        recent: recentUsage,
+        lifetime: {
+          totalUsed: totalLifetimeUsed,
+          averageMonthly: monthlyUsage.length > 0 
+            ? Math.round(monthlyUsage.reduce((sum, m) => sum + m.tokens, 0) / monthlyUsage.length)
+            : 0
+        },
+        tokenBuckets: user.tokenUsage.tokenBuckets
+          .filter(bucket => bucket.expiresAt > new Date())
+          .map(bucket => ({
+            balance: bucket.balance,
+            source: bucket.source,
+            addedAt: bucket.addedAt,
+            expiresAt: bucket.expiresAt
+          }))
       }
-    ];
-
-    res.json({
-      success: true,
-      plans,
-      overageRate: 0.001 // $0.001 per token
     });
 
   } catch (error) {
-    console.error('Plans retrieval error:', error);
-    res.status(500).json({ error: 'Failed to retrieve subscription plans' });
+    console.error('Get usage error:', error);
+    res.status(500).json({ error: 'Failed to retrieve usage statistics' });
   }
 });
 
-module.exports = router; 
+module.exports = router;

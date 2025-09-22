@@ -51,7 +51,7 @@ const validateConsensusRequest = (data) => {
 // Subscription update validation
 const validateSubscriptionUpdate = (data) => {
   const schema = Joi.object({
-    tier: Joi.string().valid('basic', 'pro', 'enterprise').required(),
+    tier: Joi.string().pattern(/^[0-9a-fA-F]{24}$/).required(), // MongoDB ObjectId
     billingPeriod: Joi.string().valid('monthly', 'yearly').default('monthly')
   });
 

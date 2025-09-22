@@ -84,12 +84,25 @@ export const API_ENDPOINTS = {
     reset: '/api/tokens/reset', // Admin only
   },
   
+  // Admin endpoints
+  admin: {
+    users: '/api/admin/users',
+    reports: '/api/admin/reports',
+    stats: '/api/admin/stats',
+    userAction: (userId, action) => `/api/admin/users/${userId}/${action}`,
+    systemAction: (action) => `/api/admin/system/${action}`,
+  },
+
   // Billing endpoints
   billing: {
-    subscription: '/api/billing/subscription',
-    history: '/api/billing/history',
-    setupIntent: '/api/billing/setup-intent',
     plans: '/api/billing/plans',
+    subscription: '/api/billing/subscription',
+    createCheckout: '/api/billing/create-checkout-session',
+    createPortal: '/api/billing/create-portal-session',
+    cancel: '/api/billing/cancel-subscription',
+    reactivate: '/api/billing/reactivate-subscription',
+    invoices: '/api/billing/invoices',
+    usage: '/api/billing/usage',
   },
   
   // Reports endpoints
@@ -140,13 +153,22 @@ export const apiHelpers = {
   getTokenPricing: () => api.get(API_ENDPOINTS.tokens.pricing),
   getTokenLimits: () => api.get(API_ENDPOINTS.tokens.limits),
   
+  // Admin helpers
+  getAdminUsers: (params = {}) => api.get(API_ENDPOINTS.admin.users, { params }),
+  getAdminReports: (params = {}) => api.get(API_ENDPOINTS.admin.reports, { params }),
+  getAdminStats: () => api.get(API_ENDPOINTS.admin.stats),
+  performUserAction: (userId, action, data = {}) => api.post(API_ENDPOINTS.admin.userAction(userId, action), data),
+  performSystemAction: (action, data = {}) => api.post(API_ENDPOINTS.admin.systemAction(action), data),
+
   // Billing helpers
-  getSubscription: () => api.get(API_ENDPOINTS.billing.subscription),
-  updateSubscription: (data) => api.put(API_ENDPOINTS.billing.subscription, data),
-  cancelSubscription: () => api.delete(API_ENDPOINTS.billing.subscription),
-  getBillingHistory: (params = {}) => api.get(API_ENDPOINTS.billing.history, { params }),
-  createSetupIntent: () => api.post(API_ENDPOINTS.billing.setupIntent),
   getAvailablePlans: () => api.get(API_ENDPOINTS.billing.plans),
+  getSubscription: () => api.get(API_ENDPOINTS.billing.subscription),
+  createCheckoutSession: (data) => api.post(API_ENDPOINTS.billing.createCheckout, data),
+  createPortalSession: () => api.post(API_ENDPOINTS.billing.createPortal),
+  cancelSubscription: () => api.post(API_ENDPOINTS.billing.cancel),
+  reactivateSubscription: () => api.post(API_ENDPOINTS.billing.reactivate),
+  getBillingHistory: (params = {}) => api.get(API_ENDPOINTS.billing.invoices, { params }),
+  getBillingUsage: () => api.get(API_ENDPOINTS.billing.usage),
   
   // Reports helpers
   getReports: (params = {}) => api.get(API_ENDPOINTS.reports.list, { params }),

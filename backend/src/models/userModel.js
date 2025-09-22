@@ -18,6 +18,11 @@ const userSchema = new mongoose.Schema({
     lastName: String,
     organization: String
   },
+  role: {
+    type: String,
+    enum: ['user', 'admin'],
+    default: 'user'
+  },
   subscription: {
     tier: {
       type: mongoose.Schema.Types.ObjectId,
