@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useUser } from '../contexts/UserContext';
 import { apiHelpers } from '../config/api';
+import { HelpIcon, InfoIcon } from './Tooltip';
 
 function ReportDashboard() {
   const { user, isAuthenticated } = useUser();
@@ -103,7 +104,15 @@ function ReportDashboard() {
         React.createElement('div', { className: 'group relative bg-white rounded-xl border border-slate-200/60 p-6 shadow-sm hover:shadow-md hover:border-slate-300/60 transition-all duration-300' },
           React.createElement('div', { className: 'flex items-center justify-between' },
             React.createElement('div', null,
-              React.createElement('p', { className: 'text-sm font-medium text-slate-600 mb-1' }, 'Current Plan'),
+              React.createElement('div', { className: 'flex items-center space-x-2 mb-1' },
+                React.createElement('p', { className: 'text-sm font-medium text-slate-600' }, 'Current Plan'),
+                React.createElement(InfoIcon, {
+                  tooltip: isPayAsYouGo 
+                    ? 'Pay-as-you-go: You\'re charged per report generated with no monthly commitment.'
+                    : 'Subscription plan: You have a monthly allowance of reports with overage charges for additional reports.',
+                  size: 'xs'
+                })
+              ),
               React.createElement('p', { className: 'text-2xl font-bold text-slate-900' }, currentTier?.displayName || 'Loading...'),
               React.createElement('p', { className: 'text-sm text-slate-500 mt-1' }, 
                 isPayAsYouGo 

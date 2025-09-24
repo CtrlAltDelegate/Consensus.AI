@@ -12,6 +12,9 @@ import ReportHistory from './components/ReportHistory';
 import AuthModal from './components/AuthModal';
 import BillingModal from './components/BillingModal';
 import CookieConsent from './components/CookieConsent';
+import LandingPage from './components/LandingPage';
+import PricingPage from './components/PricingPage';
+import WelcomeFlow from './components/WelcomeFlow';
 import UserProfileModal from './components/UserProfileModal';
 
 // Services
@@ -120,8 +123,37 @@ function AuthenticatedApp() {
   const [showReportViewer, setShowReportViewer] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showBillingModal, setShowBillingModal] = useState(false);
+  const [showWelcomeFlow, setShowWelcomeFlow] = useState(false);
   
   const progressModal = useProgressModal();
+
+  // Check if user is new and should see welcome flow
+  useEffect(() => {
+    const hasSeenWelcome = localStorage.getItem(`welcome_seen_${user?.id}`);
+    if (user && !hasSeenWelcome) {
+      // Show welcome flow after a short delay
+      const timer = setTimeout(() => {
+        setShowWelcomeFlow(true);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [user]);
+
+  // Handle welcome flow completion
+  const handleWelcomeComplete = (action) => {
+    console.log('🎉 Welcome flow completed with action:', action);
+    localStorage.setItem(`welcome_seen_${user?.id}`, 'true');
+    setShowWelcomeFlow(false);
+    
+    // Handle different completion actions
+    if (action === 'start-analysis') {
+      // Navigate to consensus form
+      window.location.hash = '#/consensus';
+    } else if (action === 'explore') {
+      // Stay on dashboard
+      console.log('User chose to explore dashboard');
+    }
+  };
 
   // Handle viewing a report in the professional viewer
   const handleViewReport = (report) => {
@@ -278,6 +310,14 @@ function AuthenticatedApp() {
       onClose: () => setShowBillingModal(false)
     }),
 
+    // Welcome Flow Tutorial
+    React.createElement(WelcomeFlow, {
+      isVisible: showWelcomeFlow,
+      onClose: () => setShowWelcomeFlow(false),
+      onComplete: handleWelcomeComplete,
+      user: user
+    }),
+
     // Cookie Consent Banner
     React.createElement(CookieConsent),
 
@@ -335,10 +375,15 @@ function AuthenticatedApp() {
 // Login/Landing page component
 function UnauthenticatedApp() {
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const location = useLocation();
 
   const handleAuthSuccess = async (user, token) => {
     console.log('✅ Authentication successful:', user.email);
     setShowAuthModal(false);
+  };
+
+  const handleGetStarted = (plan) => {
+    setShowAuthModal(true);
   };
 
   return React.createElement('div', { className: 'min-h-screen bg-gradient-to-br from-indigo-50 to-violet-50' },
@@ -347,42 +392,42 @@ function UnauthenticatedApp() {
       React.createElement('div', { className: 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8' },
         React.createElement('div', { className: 'flex items-center justify-between h-16' },
           React.createElement('div', { className: 'flex items-center' },
-            React.createElement('div', { className: 'w-8 h-8 bg-gradient-to-br from-indigo-600 to-violet-600 rounded-lg flex items-center justify-center mr-3' },
-              React.createElement('span', { className: 'text-white font-bold text-sm' }, 'C')
-            ),
-            React.createElement('h1', { className: 'text-xl font-bold bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent' }, 'Consensus.AI')
+            React.createElement(Link, { to: '/', className: 'flex items-center' },
+              React.createElement('div', { className: 'w-8 h-8 bg-gradient-to-br from-indigo-600 to-violet-600 rounded-lg flex items-center justify-center mr-3' },
+                React.createElement('span', { className: 'text-white font-bold text-sm' }, 'C')
+              ),
+              React.createElement('h1', { className: 'text-xl font-bold bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent' }, 'Consensus.AI')
+            )
           ),
-          React.createElement('button', {
-            onClick: () => setShowAuthModal(true),
-            className: 'bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors duration-200'
-          }, 'Sign In')
+          React.createElement('div', { className: 'flex items-center space-x-6' },
+            React.createElement(Link, {
+              to: '/pricing',
+              className: `text-slate-600 hover:text-slate-900 font-medium ${location.pathname === '/pricing' ? 'text-indigo-600' : ''}`
+            }, 'Pricing'),
+            React.createElement('button', {
+              onClick: () => setShowAuthModal(true),
+              className: 'bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors duration-200'
+            }, 'Sign In')
+          )
         )
       )
     ),
 
-    // Hero Section
-    React.createElement('main', { className: 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20' },
-      React.createElement('div', { className: 'text-center' },
-        React.createElement('h1', { className: 'text-5xl font-bold text-slate-900 mb-6' },
-          'AI Consensus Analysis',
-          React.createElement('br'),
-          React.createElement('span', { className: 'bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent' },
-            'Powered by 4 Leading LLMs'
-          )
-        ),
-        React.createElement('p', { className: 'text-xl text-slate-600 mb-8 max-w-3xl mx-auto' },
-          'Generate comprehensive, unbiased analysis by leveraging multiple AI models. Get consensus-driven insights with professional reports for research, business, and decision-making.'
-        ),
-        React.createElement('div', { className: 'flex items-center justify-center space-x-4' },
-          React.createElement('button', {
-            onClick: () => setShowAuthModal(true),
-            className: 'bg-indigo-600 text-white px-8 py-3 rounded-lg hover:bg-indigo-700 transition-colors duration-200 font-medium'
-          }, 'Get Started Free'),
-          React.createElement('button', {
-            className: 'text-indigo-600 px-8 py-3 rounded-lg border border-indigo-200 hover:bg-indigo-50 transition-colors duration-200 font-medium'
-          }, 'Learn More')
-        )
-      )
+    // Main Content Routes
+    React.createElement(Routes, null,
+      React.createElement(Route, { 
+        path: '/', 
+        element: React.createElement(LandingPage, {
+          onGetStarted: handleGetStarted,
+          onLearnMore: () => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })
+        })
+      }),
+      React.createElement(Route, { 
+        path: '/pricing', 
+        element: React.createElement(PricingPage, {
+          onGetStarted: handleGetStarted
+        })
+      })
     ),
 
     // Auth Modal

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { apiHelpers } from '../config/api';
+import { HelpIcon, InfoIcon } from './Tooltip';
 
 function EnhancedConsensusForm({ progressModal }) {
   const [isGenerating, setIsGenerating] = useState(false);
@@ -323,8 +324,14 @@ function EnhancedConsensusForm({ progressModal }) {
           // Question/Topic Section
           React.createElement('div', { className: 'mb-8' },
             React.createElement('div', { className: 'flex items-center justify-between mb-4' },
-              React.createElement('label', { htmlFor: 'topic', className: 'text-lg font-semibold text-slate-900' },
-                'Your Question or Research Topic'
+              React.createElement('div', { className: 'flex items-center space-x-2' },
+                React.createElement('label', { htmlFor: 'topic', className: 'text-lg font-semibold text-slate-900' },
+                  'Your Question or Research Topic'
+                ),
+                React.createElement(HelpIcon, {
+                  tooltip: 'Be specific and clear. Good examples: "What are the pros and cons of remote work?" or "Should companies invest in AI automation?" Avoid yes/no questions.',
+                  size: 'sm'
+                })
               ),
               React.createElement('span', { className: 'text-sm text-slate-500' }, 'Required')
             ),
@@ -351,8 +358,14 @@ function EnhancedConsensusForm({ progressModal }) {
           // Sources Section
           React.createElement('div', { className: 'mb-8' },
             React.createElement('div', { className: 'flex items-center justify-between mb-4' },
-              React.createElement('label', { className: 'text-lg font-semibold text-slate-900' },
-                'Supporting Sources & References'
+              React.createElement('div', { className: 'flex items-center space-x-2' },
+                React.createElement('label', { className: 'text-lg font-semibold text-slate-900' },
+                  'Supporting Sources & References'
+                ),
+                React.createElement(HelpIcon, {
+                  tooltip: 'Add URLs, document excerpts, research papers, or any relevant information. You can also upload files (PDF, TXT, CSV, JSON) for automatic text extraction.',
+                  size: 'sm'
+                })
               ),
               React.createElement('span', { className: 'text-sm text-slate-500' }, 'Optional')
             ),
@@ -363,7 +376,13 @@ function EnhancedConsensusForm({ progressModal }) {
             // File Upload Section
             React.createElement('div', { className: 'mb-6 p-4 bg-slate-50 rounded-lg border border-slate-200' },
               React.createElement('div', { className: 'flex items-center justify-between mb-3' },
-                React.createElement('h4', { className: 'text-sm font-medium text-slate-900' }, 'Upload Documents'),
+                React.createElement('div', { className: 'flex items-center space-x-2' },
+                  React.createElement('h4', { className: 'text-sm font-medium text-slate-900' }, 'Upload Documents'),
+                  React.createElement(InfoIcon, {
+                    tooltip: 'Upload up to 5 files (PDF, TXT, CSV, JSON) for automatic text extraction. Files are processed securely and deleted after analysis.',
+                    size: 'xs'
+                  })
+                ),
                 React.createElement('span', { className: 'text-xs text-slate-500' }, 
                   supportedTypes ? `${supportedTypes.extensions.join(', ')} • Max ${Math.round(supportedTypes.maxSize / 1024 / 1024)}MB` : 'Loading...'
                 )
