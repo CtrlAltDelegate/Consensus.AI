@@ -11,6 +11,7 @@ import ProgressLoadingModal, { useProgressModal } from './components/ProgressLoa
 import ReportHistory from './components/ReportHistory';
 import AuthModal from './components/AuthModal';
 import BillingModal from './components/BillingModal';
+import CookieConsent from './components/CookieConsent';
 import UserProfileModal from './components/UserProfileModal';
 
 // Services
@@ -277,6 +278,9 @@ function AuthenticatedApp() {
       onClose: () => setShowBillingModal(false)
     }),
 
+    // Cookie Consent Banner
+    React.createElement(CookieConsent),
+
     // Enhanced Footer
     React.createElement('footer', { className: 'bg-white border-t border-slate-200/60 mt-20' },
       React.createElement('div', { className: 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12' },
@@ -304,11 +308,22 @@ function AuthenticatedApp() {
             )
           ),
           React.createElement('div', null,
-            React.createElement('h3', { className: 'text-sm font-semibold text-slate-900 mb-4' }, 'Support'),
+            React.createElement('h3', { className: 'text-sm font-semibold text-slate-900 mb-4' }, 'Legal'),
             React.createElement('div', { className: 'space-y-3' },
-              React.createElement('a', { href: '#', className: 'block text-sm text-slate-600 hover:text-indigo-600' }, 'Help Center'),
-              React.createElement('a', { href: '#', className: 'block text-sm text-slate-600 hover:text-indigo-600' }, 'Contact Us'),
-              React.createElement('a', { href: '#', className: 'block text-sm text-slate-600 hover:text-indigo-600' }, 'Privacy Policy')
+              React.createElement('a', { 
+                href: '/privacy-policy.html', 
+                target: '_blank',
+                className: 'block text-sm text-slate-600 hover:text-indigo-600' 
+              }, 'Privacy Policy'),
+              React.createElement('a', { 
+                href: '/terms-of-use.html', 
+                target: '_blank',
+                className: 'block text-sm text-slate-600 hover:text-indigo-600' 
+              }, 'Terms of Use'),
+              React.createElement('button', { 
+                onClick: () => window.resetCookieConsent && window.resetCookieConsent(),
+                className: 'block text-sm text-slate-600 hover:text-indigo-600 text-left' 
+              }, 'Cookie Settings')
             )
           )
         )

@@ -216,6 +216,21 @@ const userSchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true
+  },
+  
+  // Data retention and deletion tracking
+  deletion: {
+    isDeleted: {
+      type: Boolean,
+      default: false
+    },
+    deletedAt: Date,
+    deletionReason: {
+      type: String,
+      enum: ['user_request', 'admin_action', 'gdpr_request', 'ccpa_request', 'account_closure']
+    },
+    recoveryToken: String, // For account recovery during grace period
+    permanentDeletionDate: Date // When data will be permanently deleted
   }
 }, {
   timestamps: true
@@ -373,6 +388,81 @@ userSchema.methods.getTokensExpiringSoon = function(daysAhead = 30) {
   return this.reportUsage.tokenBuckets
     .filter(bucket => bucket.expiresAt <= cutoffDate && bucket.expiresAt > new Date())
     .reduce((sum, bucket) => sum + bucket.balance, 0);
+};
+
+// Data retention and deletion methods
+userSchema.methods.markForDeletion = function(reason = 'user_request', gracePeriodDays = 30) {
+  const now = new Date();
+  const permanentDeletionDate = new Date(now);
+  permanentDeletionDate.setDate(permanentDeletionDate.getDate() + gracePeriodDays);
+  
+  this.deletion = {
+    isDeleted: true,
+    deletedAt: now,
+    deletionReason: reason,
+    recoveryToken: require('crypto').randomBytes(32).toString('hex'),
+    permanentDeletionDate
+  };
+  
+  // Deactivate account
+  this.isActive = false;
+  
+  return this.save();
+};
+
+userSchema.methods.recoverAccount = function(recoveryToken) {
+  if (!this.deletion.isDeleted) {
+    throw new Error('Account is not marked for deletion');
+  }
+  
+  if (this.deletion.recoveryToken !== recoveryToken) {
+    throw new Error('Invalid recovery token');
+  }
+  
+  if (new Date() > this.deletion.permanentDeletionDate) {
+    throw new Error('Recovery period has expired');
+  }
+  
+  // Restore account
+  this.deletion = {
+    isDeleted: false,
+    deletedAt: null,
+    deletionReason: null,
+    recoveryToken: null,
+    permanentDeletionDate: null
+  };
+  
+  this.isActive = true;
+  
+  return this.save();
+};
+
+userSchema.methods.isRecoverable = function() {
+  return this.deletion.isDeleted && 
+         this.deletion.permanentDeletionDate && 
+         new Date() < this.deletion.permanentDeletionDate;
+};
+
+userSchema.methods.getDaysUntilPermanentDeletion = function() {
+  if (!this.deletion.isDeleted || !this.deletion.permanentDeletionDate) {
+    return null;
+  }
+  
+  const now = new Date();
+  const deletionDate = new Date(this.deletion.permanentDeletionDate);
+  const diffTime = deletionDate - now;
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  return Math.max(0, diffDays);
+};
+
+// Static method to find accounts ready for permanent deletion
+userSchema.statics.findAccountsForPermanentDeletion = function() {
+  const now = new Date();
+  return this.find({
+    'deletion.isDeleted': true,
+    'deletion.permanentDeletionDate': { $lt: now }
+  });
 };
 
 module.exports = mongoose.model('User', userSchema); 

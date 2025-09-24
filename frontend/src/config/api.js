@@ -63,6 +63,10 @@ export const API_ENDPOINTS = {
     profile: '/api/auth/profile',
     verify: '/api/auth/verify',
     changePassword: '/api/auth/password',
+    exportData: '/api/auth/export-data',
+    deleteAccount: '/api/auth/delete-account',
+    recoverAccount: '/api/auth/recover-account',
+    deletionStatus: '/api/auth/deletion-status',
   },
   
   // Consensus endpoints
@@ -93,6 +97,15 @@ export const API_ENDPOINTS = {
     stats: '/api/admin/stats',
     userAction: (userId, action) => `/api/admin/users/${userId}/${action}`,
     systemAction: (action) => `/api/admin/system/${action}`,
+    deletedUsers: '/api/admin/users/deleted',
+    restoreUser: (userId) => `/api/admin/users/${userId}/restore`,
+    permanentDelete: (userId) => `/api/admin/users/${userId}/permanent`,
+    exportUserData: (userId) => `/api/admin/users/${userId}/export`,
+    dataRetention: {
+      policies: '/api/admin/data-retention/policies',
+      stats: '/api/admin/data-retention/stats',
+      cleanup: '/api/admin/data-retention/cleanup',
+    },
   },
 
   // Billing endpoints
@@ -140,6 +153,10 @@ export const apiHelpers = {
   updateProfile: (data) => api.put(API_ENDPOINTS.auth.profile, data),
   changePassword: (data) => api.put(API_ENDPOINTS.auth.changePassword, data),
   verifyToken: () => api.get(API_ENDPOINTS.auth.verify),
+  exportUserData: () => api.get(API_ENDPOINTS.auth.exportData, { responseType: 'blob' }),
+  deleteAccount: (data) => api.post(API_ENDPOINTS.auth.deleteAccount, data),
+  recoverAccount: (data) => api.post(API_ENDPOINTS.auth.recoverAccount, data),
+  getDeletionStatus: () => api.get(API_ENDPOINTS.auth.deletionStatus),
   
   // Consensus helpers
   generateConsensus: (data) => api.post(API_ENDPOINTS.consensus.generate, data),
@@ -174,6 +191,13 @@ export const apiHelpers = {
   getAdminStats: () => api.get(API_ENDPOINTS.admin.stats),
   performUserAction: (userId, action, data = {}) => api.post(API_ENDPOINTS.admin.userAction(userId, action), data),
   performSystemAction: (action, data = {}) => api.post(API_ENDPOINTS.admin.systemAction(action), data),
+  getDeletedUsers: (params = {}) => api.get(API_ENDPOINTS.admin.deletedUsers, { params }),
+  restoreUser: (userId) => api.post(API_ENDPOINTS.admin.restoreUser(userId)),
+  permanentDeleteUser: (userId, data) => api.delete(API_ENDPOINTS.admin.permanentDelete(userId), { data }),
+  exportUserDataAdmin: (userId) => api.get(API_ENDPOINTS.admin.exportUserData(userId), { responseType: 'blob' }),
+  getDataRetentionPolicies: () => api.get(API_ENDPOINTS.admin.dataRetention.policies),
+  getDataRetentionStats: () => api.get(API_ENDPOINTS.admin.dataRetention.stats),
+  performDataRetentionCleanup: () => api.post(API_ENDPOINTS.admin.dataRetention.cleanup),
 
   // Billing helpers
   getAvailablePlans: () => api.get(API_ENDPOINTS.billing.plans),

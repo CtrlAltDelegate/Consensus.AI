@@ -358,4 +358,180 @@ router.get('/verify', auth, async (req, res) => {
   }
 });
 
+// Export User Data (GDPR/CCPA Compliance)
+router.get('/export-data', auth, async (req, res) => {
+  try {
+    console.log(`📦 Data export requested by user: ${req.user.id}`);
+    
+    const dataRetentionService = require('../services/dataRetentionService');
+    const exportData = await dataRetentionService.exportUserData(req.user.id);
+    
+    // Set headers for file download
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename="consensus-ai-data-export-${Date.now()}.json"`);
+    
+    res.json({
+      success: true,
+      message: 'Data export completed successfully',
+      data: exportData
+    });
+    
+  } catch (error) {
+    console.error('❌ Data export error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to export user data'
+    });
+  }
+});
+
+// Request Account Deletion (GDPR/CCPA Compliance)
+router.post('/delete-account', auth, async (req, res) => {
+  try {
+    const { reason, confirmEmail } = req.body;
+    
+    // Verify email confirmation
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+    
+    if (confirmEmail !== user.email) {
+      return res.status(400).json({
+        success: false,
+        error: 'Email confirmation does not match account email'
+      });
+    }
+    
+    console.log(`🗑️ Account deletion requested by user: ${user.email}`);
+    
+    // Mark account for deletion with 30-day grace period
+    await user.markForDeletion(reason || 'user_request', 30);
+    
+    // Send confirmation email (optional - implement email service)
+    console.log(`📧 Account deletion confirmation email should be sent to: ${user.email}`);
+    console.log(`🔑 Recovery token: ${user.deletion.recoveryToken}`);
+    console.log(`📅 Permanent deletion date: ${user.deletion.permanentDeletionDate}`);
+    
+    res.json({
+      success: true,
+      message: 'Account marked for deletion successfully',
+      gracePeriod: {
+        days: 30,
+        permanentDeletionDate: user.deletion.permanentDeletionDate,
+        recoveryInstructions: 'Contact support with your recovery token to restore your account within 30 days'
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Account deletion error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to process account deletion request'
+    });
+  }
+});
+
+// Recover Deleted Account
+router.post('/recover-account', async (req, res) => {
+  try {
+    const { email, recoveryToken } = req.body;
+    
+    if (!email || !recoveryToken) {
+      return res.status(400).json({
+        success: false,
+        error: 'Email and recovery token are required'
+      });
+    }
+    
+    // Find the deleted account
+    const user = await User.findOne({ 
+      email: email.toLowerCase(),
+      'deletion.isDeleted': true 
+    });
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'No deleted account found with this email'
+      });
+    }
+    
+    // Attempt to recover the account
+    await user.recoverAccount(recoveryToken);
+    
+    console.log(`✅ Account recovered successfully: ${user.email}`);
+    
+    res.json({
+      success: true,
+      message: 'Account recovered successfully',
+      user: {
+        email: user.email,
+        profile: user.profile,
+        recoveredAt: new Date().toISOString()
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Account recovery error:', error);
+    
+    if (error.message.includes('Invalid recovery token')) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid recovery token'
+      });
+    }
+    
+    if (error.message.includes('Recovery period has expired')) {
+      return res.status(400).json({
+        success: false,
+        error: 'Recovery period has expired. Account data has been permanently deleted.'
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      error: 'Failed to recover account'
+    });
+  }
+});
+
+// Get Account Deletion Status
+router.get('/deletion-status', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+    
+    const deletionStatus = {
+      isMarkedForDeletion: user.deletion.isDeleted,
+      deletedAt: user.deletion.deletedAt,
+      deletionReason: user.deletion.deletionReason,
+      permanentDeletionDate: user.deletion.permanentDeletionDate,
+      isRecoverable: user.isRecoverable(),
+      daysUntilPermanentDeletion: user.getDaysUntilPermanentDeletion()
+    };
+    
+    res.json({
+      success: true,
+      deletionStatus
+    });
+    
+  } catch (error) {
+    console.error('❌ Deletion status error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get deletion status'
+    });
+  }
+});
+
 module.exports = router;

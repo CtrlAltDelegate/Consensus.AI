@@ -492,4 +492,225 @@ router.post('/system/bulk-token-grant', async (req, res) => {
   }
 });
 
+// @route   GET /api/admin/data-retention/policies
+// @desc    Get data retention policies
+// @access  Admin only
+router.get('/data-retention/policies', async (req, res) => {
+  try {
+    const dataRetentionService = require('../services/dataRetentionService');
+    const policies = dataRetentionService.getRetentionPolicies();
+    
+    res.json({
+      success: true,
+      policies
+    });
+    
+  } catch (error) {
+    console.error('Admin data retention policies error:', error);
+    res.status(500).json({ error: 'Failed to get data retention policies' });
+  }
+});
+
+// @route   GET /api/admin/data-retention/stats
+// @desc    Get data retention statistics
+// @access  Admin only
+router.get('/data-retention/stats', async (req, res) => {
+  try {
+    const dataRetentionService = require('../services/dataRetentionService');
+    const stats = await dataRetentionService.getRetentionStats();
+    
+    res.json({
+      success: true,
+      stats
+    });
+    
+  } catch (error) {
+    console.error('Admin data retention stats error:', error);
+    res.status(500).json({ error: 'Failed to get data retention statistics' });
+  }
+});
+
+// @route   POST /api/admin/data-retention/cleanup
+// @desc    Perform data retention cleanup
+// @access  Admin only
+router.post('/data-retention/cleanup', async (req, res) => {
+  try {
+    console.log('🧹 Admin initiated data retention cleanup');
+    const dataRetentionService = require('../services/dataRetentionService');
+    const results = await dataRetentionService.performDataCleanup();
+    
+    res.json({
+      success: true,
+      message: 'Data retention cleanup completed',
+      results
+    });
+    
+  } catch (error) {
+    console.error('Admin data retention cleanup error:', error);
+    res.status(500).json({ error: 'Failed to perform data retention cleanup' });
+  }
+});
+
+// @route   GET /api/admin/users/deleted
+// @desc    Get all deleted accounts
+// @access  Admin only
+router.get('/users/deleted', async (req, res) => {
+  try {
+    const { page = 1, limit = 20 } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    const deletedUsers = await User.find({ 'deletion.isDeleted': true })
+      .select('email profile deletion createdAt')
+      .sort({ 'deletion.deletedAt': -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+    
+    const totalDeleted = await User.countDocuments({ 'deletion.isDeleted': true });
+    
+    // Add recovery status to each user
+    const usersWithStatus = deletedUsers.map(user => ({
+      id: user._id,
+      email: user.email,
+      profile: user.profile,
+      deletion: user.deletion,
+      createdAt: user.createdAt,
+      isRecoverable: user.isRecoverable(),
+      daysUntilPermanentDeletion: user.getDaysUntilPermanentDeletion()
+    }));
+    
+    res.json({
+      success: true,
+      users: usersWithStatus,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: totalDeleted,
+        pages: Math.ceil(totalDeleted / parseInt(limit))
+      }
+    });
+    
+  } catch (error) {
+    console.error('Admin deleted users error:', error);
+    res.status(500).json({ error: 'Failed to get deleted users' });
+  }
+});
+
+// @route   POST /api/admin/users/:userId/restore
+// @desc    Restore a deleted user account (admin override)
+// @access  Admin only
+router.post('/users/:userId/restore', async (req, res) => {
+  try {
+    const user = await User.findById(req.params.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    if (!user.deletion.isDeleted) {
+      return res.status(400).json({ error: 'User account is not deleted' });
+    }
+    
+    // Admin can restore even expired accounts
+    user.deletion = {
+      isDeleted: false,
+      deletedAt: null,
+      deletionReason: null,
+      recoveryToken: null,
+      permanentDeletionDate: null
+    };
+    
+    user.isActive = true;
+    await user.save();
+    
+    console.log(`✅ Admin restored account: ${user.email}`);
+    
+    res.json({
+      success: true,
+      message: 'User account restored successfully',
+      user: {
+        id: user._id,
+        email: user.email,
+        profile: user.profile,
+        restoredAt: new Date().toISOString()
+      }
+    });
+    
+  } catch (error) {
+    console.error('Admin restore user error:', error);
+    res.status(500).json({ error: 'Failed to restore user account' });
+  }
+});
+
+// @route   DELETE /api/admin/users/:userId/permanent
+// @desc    Permanently delete a user account and all data
+// @access  Admin only
+router.delete('/users/:userId/permanent', async (req, res) => {
+  try {
+    const { confirmEmail } = req.body;
+    
+    const user = await User.findById(req.params.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Require email confirmation for permanent deletion
+    if (confirmEmail !== user.email) {
+      return res.status(400).json({ 
+        error: 'Email confirmation required for permanent deletion' 
+      });
+    }
+    
+    console.log(`🗑️ Admin permanently deleting account: ${user.email}`);
+    
+    // Delete all user reports
+    const Report = require('../models/reportModel');
+    const deletedReports = await Report.deleteMany({ userId: user._id });
+    
+    // Permanently delete the user
+    await User.deleteOne({ _id: user._id });
+    
+    console.log(`✅ Permanently deleted user ${user.email} and ${deletedReports.deletedCount} reports`);
+    
+    res.json({
+      success: true,
+      message: 'User account and all data permanently deleted',
+      deletedData: {
+        user: user.email,
+        reports: deletedReports.deletedCount,
+        deletedAt: new Date().toISOString()
+      }
+    });
+    
+  } catch (error) {
+    console.error('Admin permanent delete error:', error);
+    res.status(500).json({ error: 'Failed to permanently delete user account' });
+  }
+});
+
+// @route   GET /api/admin/users/:userId/export
+// @desc    Export user data (admin version)
+// @access  Admin only
+router.get('/users/:userId/export', async (req, res) => {
+  try {
+    const dataRetentionService = require('../services/dataRetentionService');
+    const exportData = await dataRetentionService.exportUserData(req.params.userId);
+    
+    // Set headers for file download
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename="admin-data-export-${req.params.userId}-${Date.now()}.json"`);
+    
+    res.json({
+      success: true,
+      message: 'Admin data export completed successfully',
+      data: exportData
+    });
+    
+  } catch (error) {
+    console.error('Admin data export error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to export user data'
+    });
+  }
+});
+
 module.exports = router;
