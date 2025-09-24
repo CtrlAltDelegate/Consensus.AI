@@ -368,6 +368,67 @@ async function processConsensusJob(jobId, topic, sources, options, estimatedToke
         await report.save();
         console.log(`✅ Report auto-saved with ID: ${report._id}`);
         
+        // Handle billing for authenticated users (skip for demo users)
+        if (user.id !== 'demo-user-123') {
+          try {
+            console.log('💰 Processing billing for report generation...');
+            
+            // Load full user with subscription tier
+            const User = require('../models/userModel');
+            const fullUser = await User.findById(user.id).populate('subscription.tier');
+            
+            if (fullUser && fullUser.subscription.tier) {
+              const tier = fullUser.subscription.tier;
+              let cost = 0;
+              let billingType = 'included';
+              
+              // Determine billing type and cost
+              if (tier.billingType === 'per_report') {
+                // Pay-as-you-go: charge per report
+                cost = tier.pricePerReport;
+                billingType = 'pay_per_report';
+                console.log(`💳 Pay-as-you-go user: $${cost} per report`);
+              } else {
+                // Subscription user: check if within included reports
+                const reportsUsed = fullUser.getReportsUsedThisPeriod();
+                const includedReports = tier.reportsIncluded || 0;
+                
+                if (reportsUsed < includedReports) {
+                  // Within included reports
+                  cost = 0;
+                  billingType = 'included';
+                  console.log(`📊 Subscription user: Report ${reportsUsed + 1}/${includedReports} (included)`);
+                } else {
+                  // Overage report
+                  cost = tier.overageRate || 0;
+                  billingType = 'overage';
+                  console.log(`📊 Subscription user: Overage report at $${cost}`);
+                }
+              }
+              
+              // Record the report generation in user's billing history
+              await fullUser.recordReportGeneration(report._id, cost, billingType);
+              console.log(`✅ Billing recorded: ${billingType}, cost: $${cost}`);
+              
+              // For pay-as-you-go, we would create a Stripe payment intent here
+              // For now, we'll just log it
+              if (billingType === 'pay_per_report' && cost > 0) {
+                console.log(`🔔 TODO: Create Stripe payment intent for $${cost}`);
+                // TODO: Implement Stripe payment intent creation
+              }
+              
+            } else {
+              console.warn('⚠️ User has no subscription tier - skipping billing');
+            }
+            
+          } catch (billingError) {
+            console.error('❌ Billing processing failed:', billingError);
+            // Don't fail the report generation if billing fails
+          }
+        } else {
+          console.log('🧪 Demo user - skipping billing');
+        }
+        
         // Add report ID to the job result
         const currentResult = jobResults.get(jobId);
         if (currentResult) {

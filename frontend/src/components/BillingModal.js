@@ -145,10 +145,14 @@ function BillingModal({ isVisible, onClose }) {
               React.createElement('div', null,
                 React.createElement('p', {
                   className: 'text-2xl font-bold text-indigo-600'
-                }, user?.subscription?.tier || 'Free'),
+                }, user?.subscription?.tier?.displayName || 'Pay-As-You-Go'),
                 React.createElement('p', {
                   className: 'text-gray-600'
-                }, `${user?.availableTokens?.toLocaleString() || 0} tokens remaining`)
+                }, 
+                  user?.subscription?.tier?.billingType === 'per_report'
+                    ? `$${user?.subscription?.tier?.pricePerReport || 0} per report`
+                    : `${user?.subscription?.reportUsage?.availableReports >= 0 ? user.subscription.reportUsage.availableReports : 'Unlimited'} reports remaining`
+                )
               ),
               user?.subscription?.tier !== 'Free' && React.createElement('button', {
                 onClick: handleCancelSubscription,
@@ -176,10 +180,17 @@ function BillingModal({ isVisible, onClose }) {
               },
                 React.createElement('h4', {
                   className: 'font-semibold text-lg mb-2'
-                }, plan.name),
+                }, plan.displayName),
                 React.createElement('p', {
                   className: 'text-2xl font-bold text-gray-900 mb-2'
-                }, `$${plan.monthlyPrice}/mo`),
+                }, 
+                  plan.billingType === 'per_report'
+                    ? `$${plan.pricePerReport}/report`
+                    : `$${plan.monthlyPrice}/mo`
+                ),
+                plan.billingType !== 'per_report' && React.createElement('p', {
+                  className: 'text-sm text-gray-500 mb-2'
+                }, `${plan.reportsIncluded} reports included`),
                 React.createElement('p', {
                   className: 'text-sm text-gray-600 mb-4'
                 }, plan.description),
@@ -263,7 +274,7 @@ function BillingModal({ isVisible, onClose }) {
         activeTab === 'usage' && React.createElement('div', null,
           React.createElement('h3', {
             className: 'text-lg font-semibold text-gray-900 mb-4'
-          }, 'Token Usage'),
+          }, 'Report Usage'),
           React.createElement('div', {
             className: 'grid grid-cols-1 md:grid-cols-2 gap-6'
           },
@@ -273,7 +284,7 @@ function BillingModal({ isVisible, onClose }) {
             },
               React.createElement('h4', {
                 className: 'font-medium text-gray-900 mb-3'
-              }, 'Current Period'),
+              }, 'Current Billing Period'),
               React.createElement('div', {
                 className: 'space-y-2'
               },
@@ -282,34 +293,69 @@ function BillingModal({ isVisible, onClose }) {
                 },
                   React.createElement('span', {
                     className: 'text-gray-600'
-                  }, 'Available Tokens'),
+                  }, 'Reports Generated'),
                   React.createElement('span', {
                     className: 'font-medium'
-                  }, user?.availableTokens?.toLocaleString() || '0')
+                  }, user?.subscription?.reportUsage?.reportsUsedThisPeriod || '0')
                 ),
-                React.createElement('div', {
+                user?.subscription?.tier?.billingType !== 'per_report' && React.createElement('div', {
                   className: 'flex justify-between'
                 },
                   React.createElement('span', {
                     className: 'text-gray-600'
-                  }, 'Plan Limit'),
+                  }, 'Reports Included'),
                   React.createElement('span', {
                     className: 'font-medium'
-                  }, user?.subscription?.tokenLimit?.toLocaleString() || '25,000')
+                  }, user?.subscription?.tier?.reportsIncluded || '0')
+                ),
+                user?.subscription?.tier?.billingType !== 'per_report' && React.createElement('div', {
+                  className: 'flex justify-between'
+                },
+                  React.createElement('span', {
+                    className: 'text-gray-600'
+                  }, 'Available Reports'),
+                  React.createElement('span', {
+                    className: 'font-medium'
+                  }, user?.subscription?.reportUsage?.availableReports >= 0 ? user.subscription.reportUsage.availableReports : 'Unlimited')
+                ),
+                user?.subscription?.reportUsage?.overageReports > 0 && React.createElement('div', {
+                  className: 'flex justify-between text-orange-600'
+                },
+                  React.createElement('span', null, 'Overage Reports'),
+                  React.createElement('span', {
+                    className: 'font-medium'
+                  }, user.subscription.reportUsage.overageReports)
                 )
               )
             ),
             
-            // Token Expiration Warning
+            // Billing Information
             React.createElement('div', {
-              className: 'bg-yellow-50 rounded-lg p-4'
+              className: user?.subscription?.reportUsage?.overageReports > 0 ? 'bg-orange-50 rounded-lg p-4' : 'bg-blue-50 rounded-lg p-4'
             },
               React.createElement('h4', {
-                className: 'font-medium text-yellow-800 mb-3'
-              }, 'Token Expiration'),
-              React.createElement('p', {
-                className: 'text-sm text-yellow-700'
-              }, 'Tokens expire after 90 days. Use them before they expire to avoid losing them.')
+                className: `font-medium mb-3 ${user?.subscription?.reportUsage?.overageReports > 0 ? 'text-orange-800' : 'text-blue-800'}`
+              }, user?.subscription?.tier?.billingType === 'per_report' ? 'Pay-As-You-Go' : 'Billing Information'),
+              React.createElement('div', {
+                className: 'space-y-2'
+              },
+                user?.subscription?.tier?.billingType === 'per_report' 
+                  ? React.createElement('p', {
+                      className: 'text-sm text-blue-700'
+                    }, `You pay $${user?.subscription?.tier?.pricePerReport || 0} per report generated. No monthly commitment required.`)
+                  : React.createElement('div', null,
+                      user?.subscription?.reportUsage?.overageReports > 0 && React.createElement('p', {
+                        className: 'text-sm text-orange-700 font-medium'
+                      }, `Overage Cost: $${user?.subscription?.reportUsage?.currentOverageCost || 0} this period`),
+                      React.createElement('p', {
+                        className: `text-sm ${user?.subscription?.reportUsage?.overageReports > 0 ? 'text-orange-700' : 'text-blue-700'}`
+                      }, 
+                        user?.subscription?.reportUsage?.overageReports > 0
+                          ? `Additional reports cost $${user?.subscription?.tier?.overageRate || 0} each.`
+                          : `Your plan includes ${user?.subscription?.tier?.reportsIncluded || 0} reports per month.`
+                      )
+                    )
+              )
             )
           )
         )

@@ -25,9 +25,18 @@ router.get('/plans', async (req, res) => {
       yearlyPrice: plan.yearlyPrice,
       yearlySavings: plan.yearlySavings,
       yearlySavingsPercent: plan.yearlySavingsPercent,
-      tokenLimit: plan.tokenLimit,
+      // Report-based pricing fields
+      reportsIncluded: plan.reportsIncluded,
+      pricePerReport: plan.pricePerReport,
+      overageRate: plan.overageRate,
+      billingType: plan.billingType,
+      // Legacy token fields for backward compatibility
+      tokenLimit: plan.tokenLimit || 0,
       features: plan.features,
-      stripePriceIds: plan.stripePriceIds
+      stripePriceIds: plan.stripePriceIds,
+      // Calculated fields
+      effectivePricePerReport: plan.getEffectivePricePerReport(),
+      savingsVsPayAsYouGo: plan.calculateSavings()
     }));
 
     res.json({
@@ -64,9 +73,9 @@ router.post('/create-checkout-session', async (req, res) => {
       return res.status(404).json({ error: 'Subscription tier not found' });
     }
 
-    // Check if it's the free tier
-    if (subscriptionTier.name === 'Free') {
-      return res.status(400).json({ error: 'Cannot create checkout session for free tier' });
+    // Check if it's the pay-as-you-go tier (no subscription needed)
+    if (subscriptionTier.name === 'PayAsYouGo') {
+      return res.status(400).json({ error: 'Pay-As-You-Go users pay per report, no subscription needed' });
     }
 
     // Get the appropriate Stripe price ID
@@ -162,7 +171,7 @@ router.post('/create-portal-session', async (req, res) => {
 router.get('/subscription', async (req, res) => {
   try {
     const user = await User.findById(req.user.id)
-      .populate('subscription.tier', 'name displayName monthlyPrice yearlyPrice tokenLimit features');
+      .populate('subscription.tier', 'name displayName monthlyPrice yearlyPrice reportsIncluded pricePerReport overageRate billingType features tokenLimit');
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -192,6 +201,19 @@ router.get('/subscription', async (req, res) => {
         current_period_end: new Date(stripeSubscription.current_period_end * 1000),
         cancel_at_period_end: stripeSubscription.cancel_at_period_end
       } : null,
+      // Report-based usage tracking
+      reportUsage: {
+        availableReports: user.getAvailableReports(),
+        reportsUsedThisPeriod: user.getReportsUsedThisPeriod(),
+        overageReports: user.getOverageReports(),
+        currentOverageCost: user.getCurrentOverageCost(),
+        canGenerateReport: user.canGenerateReport(),
+        billingPeriod: {
+          start: user.reportUsage.currentPeriod.periodStart,
+          end: user.reportUsage.currentPeriod.periodEnd
+        }
+      },
+      // Legacy token usage for backward compatibility
       tokenUsage: {
         available: user.getAvailableTokens(),
         expiringSoon: user.getTokensExpiringSoon(30)

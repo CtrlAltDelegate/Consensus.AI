@@ -31,14 +31,18 @@ router.post('/register', async (req, res) => {
       return res.status(409).json({ error: 'Email already registered' });
     }
 
-    // Get default subscription tier (free tier)
-    const defaultTier = await SubscriptionTier.findOne({ name: 'Free' });
+    // Get default subscription tier (Pay-As-You-Go)
+    const defaultTier = await SubscriptionTier.findOne({ name: 'PayAsYouGo' });
     if (!defaultTier) {
-      console.error('❌ Default subscription tier not found');
-      return res.status(500).json({ error: 'System configuration error' });
+      console.error('❌ Default "PayAsYouGo" subscription tier not found. Please seed the database.');
+      return res.status(500).json({ error: 'Server configuration error: Default subscription tier missing.' });
     }
 
-    // Create new user
+    // Create new user with report-based billing
+    const now = new Date();
+    const nextPeriodEnd = new Date(now);
+    nextPeriodEnd.setMonth(nextPeriodEnd.getMonth() + 1);
+
     const user = new User({
       email: email.toLowerCase(),
       password, // Will be hashed by pre-save middleware
@@ -49,18 +53,24 @@ router.post('/register', async (req, res) => {
       },
       subscription: {
         tier: defaultTier._id,
-        status: 'active'
+        status: 'active',
+        currentPeriodStart: now,
+        currentPeriodEnd: nextPeriodEnd,
+        nextBillingDate: nextPeriodEnd
       },
-      tokenUsage: {
-        tokenBuckets: [{
-          balance: defaultTier.tokenLimit,
-          addedAt: new Date(),
-          expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90 days
-          source: 'monthly_allocation'
-        }],
+      reportUsage: {
+        currentPeriod: {
+          reportsGenerated: 0,
+          periodStart: now,
+          periodEnd: nextPeriodEnd
+        },
+        reportHistory: [],
+        monthlyStats: [],
+        // Legacy token fields for backward compatibility
+        tokenBuckets: [],
         usageHistory: [],
-        monthlyUsage: [],
-        overageHistory: []
+        totalLifetimeUsed: 0,
+        lastAllocationDate: now
       }
     });
 

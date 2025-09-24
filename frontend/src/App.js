@@ -4,7 +4,7 @@ import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { UserProvider, useUser } from './contexts/UserContext';
 
 // Enhanced Components
-import TokenDashboard from './components/TokenDashboard';
+import ReportDashboard from './components/ReportDashboard';
 import EnhancedConsensusForm from './components/EnhancedConsensusForm';
 import ProfessionalReportViewer from './components/ProfessionalReportViewer';
 import ProgressLoadingModal, { useProgressModal } from './components/ProgressLoadingModal';
@@ -227,7 +227,7 @@ function AuthenticatedApp() {
     React.createElement('main', { className: 'relative' },
       React.createElement(Routes, null,
         React.createElement(Route, { path: '/', element: React.createElement(Navigate, { to: '/dashboard', replace: true }) }),
-        React.createElement(Route, { path: '/dashboard', element: React.createElement(TokenDashboard) }),
+              React.createElement(Route, { path: '/dashboard', element: React.createElement(ReportDashboard) }),
         React.createElement(Route, { 
           path: '/consensus', 
           element: React.createElement(EnhancedConsensusForm, {
