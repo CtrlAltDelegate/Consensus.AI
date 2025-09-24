@@ -133,6 +133,13 @@ export const API_ENDPOINTS = {
     downloadPdf: (jobId) => `/api/consensus/report/${jobId}/pdf`,
   },
   
+  // Support endpoints
+  support: {
+    contact: '/api/support/contact',
+    feedback: '/api/support/feedback',
+    stats: '/api/support/stats',
+  },
+
   // Webhook endpoints (for testing)
   webhooks: {
     stripe: '/api/webhooks/stripe',
@@ -219,6 +226,11 @@ export const apiHelpers = {
   getReportStats: () => api.get(API_ENDPOINTS.reports.stats),
   exportReports: (reportIds, format) => api.post(API_ENDPOINTS.reports.export, { reportIds, format }, { responseType: 'blob' }),
   downloadReportPdf: (jobId) => api.get(API_ENDPOINTS.reports.downloadPdf(jobId), { responseType: 'blob' }),
+
+  // Support helpers
+  submitContactForm: (data) => api.post(API_ENDPOINTS.support.contact, data),
+  submitFeedback: (data) => api.post(API_ENDPOINTS.support.feedback, data),
+  getSupportStats: () => api.get(API_ENDPOINTS.support.stats),
 };
 
 // Export the configured axios instance

@@ -14,6 +14,10 @@ import BillingModal from './components/BillingModal';
 import CookieConsent from './components/CookieConsent';
 import LandingPage from './components/LandingPage';
 import PricingPage from './components/PricingPage';
+import ContactPage from './components/ContactPage';
+import HelpPage from './components/HelpPage';
+import FeedbackPage from './components/FeedbackPage';
+import KnowledgeBase from './components/KnowledgeBase';
 import WelcomeFlow from './components/WelcomeFlow';
 import UserProfileModal from './components/UserProfileModal';
 
@@ -404,6 +408,14 @@ function UnauthenticatedApp() {
               to: '/pricing',
               className: `text-slate-600 hover:text-slate-900 font-medium ${location.pathname === '/pricing' ? 'text-indigo-600' : ''}`
             }, 'Pricing'),
+            React.createElement(Link, {
+              to: '/help',
+              className: `text-slate-600 hover:text-slate-900 font-medium ${location.pathname === '/help' ? 'text-indigo-600' : ''}`
+            }, 'Help'),
+            React.createElement(Link, {
+              to: '/contact',
+              className: `text-slate-600 hover:text-slate-900 font-medium ${location.pathname === '/contact' ? 'text-indigo-600' : ''}`
+            }, 'Contact'),
             React.createElement('button', {
               onClick: () => setShowAuthModal(true),
               className: 'bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors duration-200'
@@ -427,6 +439,22 @@ function UnauthenticatedApp() {
         element: React.createElement(PricingPage, {
           onGetStarted: handleGetStarted
         })
+      }),
+      React.createElement(Route, { 
+        path: '/contact', 
+        element: React.createElement(ContactPage)
+      }),
+      React.createElement(Route, { 
+        path: '/help', 
+        element: React.createElement(HelpPage)
+      }),
+      React.createElement(Route, { 
+        path: '/feedback', 
+        element: React.createElement(FeedbackPage)
+      }),
+      React.createElement(Route, { 
+        path: '/knowledge-base', 
+        element: React.createElement(KnowledgeBase)
       })
     ),
 

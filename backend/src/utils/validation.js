@@ -196,6 +196,35 @@ const validatePagination = (page, limit) => {
   };
 };
 
+// Contact form validation
+const validateContactForm = (data) => {
+  const schema = Joi.object({
+    name: Joi.string().min(2).max(100).required(),
+    email: Joi.string().email().required(),
+    subject: Joi.string().min(5).max(200).required(),
+    category: Joi.string().valid('general', 'technical', 'billing', 'feature', 'bug', 'account').required(),
+    message: Joi.string().min(10).max(2000).required(),
+    priority: Joi.string().valid('low', 'normal', 'high', 'critical').required()
+  });
+
+  return schema.validate(data);
+};
+
+// Feedback form validation
+const validateFeedbackForm = (data) => {
+  const schema = Joi.object({
+    type: Joi.string().valid('feature', 'bug', 'improvement', 'general').required(),
+    title: Joi.string().min(5).max(200).required(),
+    description: Joi.string().min(10).max(2000).required(),
+    category: Joi.string().valid('general', 'consensus', 'reports', 'dashboard', 'billing', 'api', 'mobile', 'performance').required(),
+    priority: Joi.string().valid('low', 'medium', 'high', 'critical').required(),
+    email: Joi.string().email().allow('').optional(),
+    allowContact: Joi.boolean().optional()
+  });
+
+  return schema.validate(data);
+};
+
 module.exports = {
   validateUserRegistration,
   validateUserLogin,
@@ -209,6 +238,8 @@ module.exports = {
   validateFileUpload,
   validateEmailTemplate,
   validateWebhookPayload,
+  validateContactForm,
+  validateFeedbackForm,
   isValidEmail,
   isValidObjectId,
   sanitizeString,

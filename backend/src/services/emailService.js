@@ -216,6 +216,88 @@ class EmailService {
       throw new Error(`Report email sending failed: ${error.message}`);
     }
   }
+
+  // Send support notification to team
+  async sendSupportNotification({ name, email, subject, category, message, priority, submittedAt }) {
+    try {
+      console.log('📧 Sending support notification to team...');
+      
+      // In a real implementation, you would send this to your support team
+      // For now, we'll just log it
+      console.log('📧 Support Notification:', {
+        from: `${name} <${email}>`,
+        subject: `[${category.toUpperCase()}] ${subject}`,
+        priority,
+        message: message.substring(0, 100) + '...',
+        submittedAt
+      });
+      
+      return { success: true };
+    } catch (error) {
+      console.error('❌ Failed to send support notification:', error);
+      throw error;
+    }
+  }
+
+  // Send contact confirmation to user
+  async sendContactConfirmation({ name, email, subject }) {
+    try {
+      console.log('📧 Sending contact confirmation to user...');
+      
+      // In a real implementation, you would send a confirmation email
+      console.log('📧 Contact Confirmation:', {
+        to: email,
+        subject: `We received your message: ${subject}`,
+        name
+      });
+      
+      return { success: true };
+    } catch (error) {
+      console.error('❌ Failed to send contact confirmation:', error);
+      throw error;
+    }
+  }
+
+  // Send feedback notification to product team
+  async sendFeedbackNotification({ type, title, description, category, priority, email, allowContact, submittedAt }) {
+    try {
+      console.log('💡 Sending feedback notification to product team...');
+      
+      // In a real implementation, you would send this to your product team
+      console.log('💡 Feedback Notification:', {
+        type,
+        title,
+        category,
+        priority,
+        hasContact: email && allowContact,
+        submittedAt
+      });
+      
+      return { success: true };
+    } catch (error) {
+      console.error('❌ Failed to send feedback notification:', error);
+      throw error;
+    }
+  }
+
+  // Send feedback confirmation to user
+  async sendFeedbackConfirmation({ email, title, type }) {
+    try {
+      console.log('💡 Sending feedback confirmation to user...');
+      
+      // In a real implementation, you would send a confirmation email
+      console.log('💡 Feedback Confirmation:', {
+        to: email,
+        subject: `Thank you for your ${type} feedback: ${title}`,
+        type
+      });
+      
+      return { success: true };
+    } catch (error) {
+      console.error('❌ Failed to send feedback confirmation:', error);
+      throw error;
+    }
+  }
 }
 
 module.exports = new EmailService(); 
