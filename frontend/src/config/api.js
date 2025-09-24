@@ -71,6 +71,8 @@ export const API_ENDPOINTS = {
     history: '/api/consensus/history',
     estimate: '/api/consensus/estimate',
     downloadPdf: (analysisId) => `/api/consensus/report/${analysisId}/pdf`,
+    upload: '/api/consensus/upload',
+    supportedTypes: '/api/consensus/upload/supported-types',
   },
   
   // Token endpoints
@@ -144,6 +146,19 @@ export const apiHelpers = {
   getConsensusHistory: (params = {}) => api.get(API_ENDPOINTS.consensus.history, { params }),
   estimateTokens: (data) => api.post(API_ENDPOINTS.consensus.estimate, data),
   downloadConsensusReport: (analysisId) => api.get(API_ENDPOINTS.consensus.downloadPdf(analysisId), { responseType: 'blob' }),
+  uploadFiles: (files) => {
+    const formData = new FormData();
+    files.forEach(file => {
+      formData.append('files', file);
+    });
+    return api.post(API_ENDPOINTS.consensus.upload, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+      timeout: 60000, // 1 minute timeout for file uploads
+    });
+  },
+  getSupportedFileTypes: () => api.get(API_ENDPOINTS.consensus.supportedTypes),
   
   // Token helpers
   getTokenUsage: () => api.get(API_ENDPOINTS.tokens.usage),

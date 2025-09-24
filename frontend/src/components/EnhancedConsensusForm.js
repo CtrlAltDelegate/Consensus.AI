@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { apiHelpers } from '../config/api';
 
@@ -6,6 +6,10 @@ function EnhancedConsensusForm({ progressModal }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState(null);
   const [sources, setSources] = useState(['']);
+  const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const [supportedTypes, setSupportedTypes] = useState(null);
   
   const { register, handleSubmit, watch, formState: { errors } } = useForm({
     defaultValues: {
@@ -22,6 +26,83 @@ function EnhancedConsensusForm({ progressModal }) {
   const removeSource = (index) => {
     if (sources.length > 1) {
       const newSources = sources.filter((_, i) => i !== index);
+      setSources(newSources);
+    }
+  };
+
+  // Load supported file types on component mount
+  useEffect(() => {
+    const loadSupportedTypes = async () => {
+      try {
+        const response = await apiHelpers.getSupportedFileTypes();
+        setSupportedTypes(response.data.supportedTypes);
+      } catch (error) {
+        console.error('Failed to load supported file types:', error);
+      }
+    };
+    loadSupportedTypes();
+  }, []);
+
+  // Handle file upload
+  const handleFileUpload = async (event) => {
+    const files = Array.from(event.target.files);
+    if (files.length === 0) return;
+
+    setIsUploading(true);
+    setUploadError('');
+
+    try {
+      console.log('📁 Uploading files:', files.map(f => f.name));
+      const response = await apiHelpers.uploadFiles(files);
+      
+      if (response.data.success) {
+        const newUploadedFiles = response.data.processedFiles.map(file => ({
+          id: Date.now() + Math.random(),
+          filename: file.filename,
+          text: file.text,
+          size: file.size,
+          extractedLength: file.extractedLength,
+          mimeType: file.mimeType
+        }));
+        
+        setUploadedFiles(prev => [...prev, ...newUploadedFiles]);
+        
+        // Add extracted text to sources
+        const newSources = [...sources];
+        newUploadedFiles.forEach(file => {
+          newSources.push(`[From ${file.filename}]\n${file.text}`);
+        });
+        setSources(newSources);
+        
+        console.log(`✅ Successfully uploaded ${newUploadedFiles.length} files`);
+        
+        // Show errors if any
+        if (response.data.errors && response.data.errors.length > 0) {
+          const errorMessages = response.data.errors.map(err => `${err.filename}: ${err.error}`).join('\n');
+          setUploadError(`Some files had issues:\n${errorMessages}`);
+        }
+      } else {
+        setUploadError(response.data.error || 'Upload failed');
+      }
+    } catch (error) {
+      console.error('File upload error:', error);
+      setUploadError(error.response?.data?.error || 'Upload failed. Please try again.');
+    } finally {
+      setIsUploading(false);
+      // Clear the file input
+      event.target.value = '';
+    }
+  };
+
+  // Remove uploaded file
+  const removeUploadedFile = (fileId) => {
+    setUploadedFiles(prev => prev.filter(f => f.id !== fileId));
+    
+    // Remove corresponding source
+    const fileToRemove = uploadedFiles.find(f => f.id === fileId);
+    if (fileToRemove) {
+      const sourceToRemove = `[From ${fileToRemove.filename}]`;
+      const newSources = sources.filter(source => !source.startsWith(sourceToRemove));
       setSources(newSources);
     }
   };
@@ -277,6 +358,60 @@ function EnhancedConsensusForm({ progressModal }) {
             ),
             React.createElement('p', { className: 'text-sm text-slate-600 mb-4' },
               'Add relevant sources, documents, or context to improve analysis quality'
+            ),
+            
+            // File Upload Section
+            React.createElement('div', { className: 'mb-6 p-4 bg-slate-50 rounded-lg border border-slate-200' },
+              React.createElement('div', { className: 'flex items-center justify-between mb-3' },
+                React.createElement('h4', { className: 'text-sm font-medium text-slate-900' }, 'Upload Documents'),
+                React.createElement('span', { className: 'text-xs text-slate-500' }, 
+                  supportedTypes ? `${supportedTypes.extensions.join(', ')} • Max ${Math.round(supportedTypes.maxSize / 1024 / 1024)}MB` : 'Loading...'
+                )
+              ),
+              
+              // File Upload Input
+              React.createElement('div', { className: 'mb-3' },
+                React.createElement('input', {
+                  type: 'file',
+                  multiple: true,
+                  accept: supportedTypes ? supportedTypes.extensions.join(',') : '.txt,.pdf,.csv,.json',
+                  onChange: handleFileUpload,
+                  disabled: isUploading,
+                  className: 'block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed'
+                })
+              ),
+              
+              // Upload Status
+              isUploading && React.createElement('div', { className: 'flex items-center text-sm text-indigo-600 mb-2' },
+                React.createElement('svg', { className: 'animate-spin -ml-1 mr-2 h-4 w-4 text-indigo-600', fill: 'none', viewBox: '0 0 24 24' },
+                  React.createElement('circle', { className: 'opacity-25', cx: '12', cy: '12', r: '10', stroke: 'currentColor', strokeWidth: '4' }),
+                  React.createElement('path', { className: 'opacity-75', fill: 'currentColor', d: 'M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z' })
+                ),
+                'Processing files...'
+              ),
+              
+              // Upload Error
+              uploadError && React.createElement('div', { className: 'text-sm text-red-600 mb-2 whitespace-pre-line' }, uploadError),
+              
+              // Uploaded Files List
+              uploadedFiles.length > 0 && React.createElement('div', { className: 'space-y-2' },
+                React.createElement('h5', { className: 'text-xs font-medium text-slate-700 mb-2' }, 'Uploaded Files:'),
+                ...uploadedFiles.map(file =>
+                  React.createElement('div', { key: file.id, className: 'flex items-center justify-between p-2 bg-white rounded border border-slate-200' },
+                    React.createElement('div', { className: 'flex-1' },
+                      React.createElement('div', { className: 'text-sm font-medium text-slate-900' }, file.filename),
+                      React.createElement('div', { className: 'text-xs text-slate-500' }, 
+                        `${Math.round(file.size / 1024)}KB • ${file.extractedLength} characters extracted`
+                      )
+                    ),
+                    React.createElement('button', {
+                      type: 'button',
+                      onClick: () => removeUploadedFile(file.id),
+                      className: 'ml-2 text-red-500 hover:text-red-700 text-sm'
+                    }, '×')
+                  )
+                )
+              )
             ),
             
             // Dynamic Sources

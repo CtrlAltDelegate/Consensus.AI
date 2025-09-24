@@ -1,13 +1,44 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
+const path = require('path');
 const consensusEngine = require('../services/consensusEngine');
 const tokenManager = require('../services/tokenManager');
 const pdfGenerator = require('../services/pdfGenerator');
 const emailService = require('../services/emailService');
+const fileProcessor = require('../services/fileProcessor');
 const Report = require('../models/reportModel');
 const auth = require('../middleware/auth');
 const tokenCheck = require('../middleware/tokenCheck');
-const { validateConsensusRequest } = require('../utils/validation');
+const { validateConsensusRequest, validateFileUpload } = require('../utils/validation');
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/');
+  },
+  filename: (req, file, cb) => {
+    // Generate unique filename with timestamp and random string
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+    files: 5 // Maximum 5 files at once
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['text/plain', 'application/pdf', 'text/csv', 'application/json'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error(`Invalid file type: ${file.mimetype}. Allowed types: ${allowedTypes.join(', ')}`), false);
+    }
+  }
+});
 
 // In-memory job storage (in production, use Redis or database)
 const jobs = new Map();
@@ -82,6 +113,123 @@ router.get('/test-llms', async (req, res) => {
     res.status(500).json({
       success: false,
       error: error.message
+    });
+  }
+});
+
+// Get supported file types for upload
+router.get('/upload/supported-types', (req, res) => {
+  try {
+    const supportedTypes = fileProcessor.getSupportedTypes();
+    res.json({
+      success: true,
+      supportedTypes
+    });
+  } catch (error) {
+    console.error('❌ Error getting supported types:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get supported file types'
+    });
+  }
+});
+
+// Upload and process files for consensus sources
+router.post('/upload', auth, upload.array('files', 5), async (req, res) => {
+  try {
+    console.log('📁 File upload request received');
+    
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'No files uploaded'
+      });
+    }
+
+    console.log(`📁 Processing ${req.files.length} uploaded files...`);
+    
+    const processedFiles = [];
+    const errors = [];
+
+    // Process each uploaded file
+    for (const file of req.files) {
+      try {
+        console.log(`📄 Processing: ${file.originalname} (${file.mimetype})`);
+        
+        // Validate file
+        const validation = fileProcessor.validateFile(file);
+        if (!validation.valid) {
+          errors.push({
+            filename: file.originalname,
+            error: validation.error
+          });
+          continue;
+        }
+
+        // Process file and extract text
+        const result = await fileProcessor.processFile(
+          file.path,
+          file.mimetype,
+          file.originalname
+        );
+
+        processedFiles.push({
+          filename: result.originalName,
+          text: result.text,
+          size: result.fileSize,
+          extractedLength: result.extractedLength,
+          mimeType: result.mimeType
+        });
+
+        console.log(`✅ Successfully processed: ${file.originalname}`);
+
+      } catch (fileError) {
+        console.error(`❌ Error processing ${file.originalname}:`, fileError.message);
+        errors.push({
+          filename: file.originalname,
+          error: fileError.message
+        });
+      }
+    }
+
+    // Return results
+    const response = {
+      success: processedFiles.length > 0,
+      processedFiles,
+      totalFiles: req.files.length,
+      successCount: processedFiles.length,
+      errorCount: errors.length
+    };
+
+    if (errors.length > 0) {
+      response.errors = errors;
+    }
+
+    if (processedFiles.length === 0) {
+      return res.status(400).json({
+        ...response,
+        error: 'No files could be processed successfully'
+      });
+    }
+
+    console.log(`🎉 File upload complete: ${processedFiles.length}/${req.files.length} files processed successfully`);
+    res.json(response);
+
+  } catch (error) {
+    console.error('❌ File upload endpoint failed:', error);
+    
+    // Clean up any uploaded files on error
+    if (req.files) {
+      req.files.forEach(file => {
+        require('fs').unlink(file.path, (err) => {
+          if (err) console.warn(`Failed to cleanup ${file.path}:`, err.message);
+        });
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      error: 'File upload failed: ' + error.message
     });
   }
 });
