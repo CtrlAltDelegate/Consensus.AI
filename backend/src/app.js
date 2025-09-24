@@ -10,6 +10,12 @@ const PORT = process.env.PORT || 3000;
 const connectDB = require('./config/database');
 connectDB();
 
+// Performance monitoring
+const { performanceMonitor, getMetrics, resetMetrics } = require('./middleware/performanceMonitor');
+
+// Error monitoring
+const errorMonitor = require('./services/errorMonitor');
+
 // Security middleware
 app.use(helmet({
   crossOriginEmbedderPolicy: false,
@@ -111,6 +117,14 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Performance monitoring middleware
+app.use(performanceMonitor({
+  slowThreshold: 2000, // 2 seconds
+  logSlowRequests: true,
+  trackMemory: true,
+  excludePaths: ['/health', '/test', '/metrics']
+}));
+
 // Increase server timeout for long-running LLM requests (4-LLM consensus can take 60-90 seconds)
 app.use((req, res, next) => {
   // Set timeout to 3 minutes for consensus generation
@@ -122,6 +136,229 @@ app.use((req, res, next) => {
 });
 
 
+
+// Health Check Endpoint - Monitor all system components
+app.get('/health', async (req, res) => {
+  const startTime = Date.now();
+  const healthCheck = {
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'development',
+    version: require('../package.json').version,
+    services: {},
+    performance: {}
+  };
+
+  try {
+    // Check Database Connection
+    try {
+      const mongoose = require('mongoose');
+      if (mongoose.connection.readyState === 1) {
+        healthCheck.services.database = {
+          status: 'healthy',
+          connection: 'connected',
+          readyState: mongoose.connection.readyState
+        };
+      } else {
+        healthCheck.services.database = {
+          status: 'unhealthy',
+          connection: 'disconnected',
+          readyState: mongoose.connection.readyState
+        };
+        healthCheck.status = 'degraded';
+      }
+    } catch (dbError) {
+      healthCheck.services.database = {
+        status: 'error',
+        error: dbError.message
+      };
+      healthCheck.status = 'unhealthy';
+    }
+
+    // Check LLM API Keys Configuration
+    const llmStatus = {
+      openai: !!process.env.OPENAI_API_KEY,
+      anthropic: !!process.env.ANTHROPIC_API_KEY,
+      google: !!process.env.GOOGLE_API_KEY,
+      cohere: !!process.env.COHERE_API_KEY
+    };
+    const configuredLLMs = Object.values(llmStatus).filter(Boolean).length;
+    
+    healthCheck.services.llm_apis = {
+      status: configuredLLMs >= 2 ? 'healthy' : 'degraded',
+      configured: configuredLLMs,
+      total: 4,
+      details: llmStatus
+    };
+
+    // Check Stripe Configuration
+    healthCheck.services.stripe = {
+      status: process.env.STRIPE_SECRET_KEY ? 'healthy' : 'not_configured',
+      configured: !!process.env.STRIPE_SECRET_KEY
+    };
+
+    // Check File Upload Directory
+    try {
+      const fs = require('fs');
+      const uploadDir = 'uploads';
+      if (fs.existsSync(uploadDir)) {
+        const stats = fs.statSync(uploadDir);
+        healthCheck.services.file_upload = {
+          status: 'healthy',
+          directory_exists: true,
+          is_writable: stats.isDirectory()
+        };
+      } else {
+        healthCheck.services.file_upload = {
+          status: 'degraded',
+          directory_exists: false,
+          message: 'Upload directory does not exist'
+        };
+      }
+    } catch (fsError) {
+      healthCheck.services.file_upload = {
+        status: 'error',
+        error: fsError.message
+      };
+    }
+
+    // Performance Metrics
+    const responseTime = Date.now() - startTime;
+    healthCheck.performance = {
+      response_time_ms: responseTime,
+      memory_usage: {
+        rss: Math.round(process.memoryUsage().rss / 1024 / 1024),
+        heap_used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+        heap_total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024)
+      },
+      cpu_usage: process.cpuUsage()
+    };
+
+    // Overall Status
+    const unhealthyServices = Object.values(healthCheck.services).filter(service => service.status === 'error' || service.status === 'unhealthy');
+    if (unhealthyServices.length > 0) {
+      healthCheck.status = 'unhealthy';
+    } else {
+      const degradedServices = Object.values(healthCheck.services).filter(service => service.status === 'degraded');
+      if (degradedServices.length > 0) {
+        healthCheck.status = 'degraded';
+      }
+    }
+
+    // Set appropriate HTTP status code
+    const statusCode = healthCheck.status === 'ok' ? 200 : 
+                      healthCheck.status === 'degraded' ? 200 : 503;
+
+    res.status(statusCode).json(healthCheck);
+
+  } catch (error) {
+    console.error('Health check error:', error);
+    res.status(503).json({
+      status: 'error',
+      timestamp: new Date().toISOString(),
+      error: error.message,
+      uptime: process.uptime()
+    });
+  }
+});
+
+// Performance Metrics Endpoint
+app.get('/metrics', (req, res) => {
+  try {
+    const metrics = getMetrics();
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      ...metrics
+    });
+  } catch (error) {
+    console.error('Metrics endpoint error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve metrics'
+    });
+  }
+});
+
+// Reset Metrics Endpoint (Admin only)
+app.post('/metrics/reset', (req, res) => {
+  try {
+    resetMetrics();
+    res.json({
+      success: true,
+      message: 'Performance metrics reset successfully',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Metrics reset error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to reset metrics'
+    });
+  }
+});
+
+// Error Monitoring Endpoints
+app.get('/errors', (req, res) => {
+  try {
+    const { limit, severity, type, since } = req.query;
+    const errors = errorMonitor.getErrors({
+      limit: limit ? parseInt(limit) : 50,
+      severity,
+      type,
+      since
+    });
+    
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      errors,
+      stats: errorMonitor.getErrorStats()
+    });
+  } catch (error) {
+    console.error('Error monitoring endpoint error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve error logs'
+    });
+  }
+});
+
+app.get('/errors/stats', (req, res) => {
+  try {
+    const stats = errorMonitor.getErrorStats();
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      stats
+    });
+  } catch (error) {
+    console.error('Error stats endpoint error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve error statistics'
+    });
+  }
+});
+
+app.post('/errors/clear', (req, res) => {
+  try {
+    errorMonitor.clearErrors();
+    res.json({
+      success: true,
+      message: 'Error logs cleared successfully',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error clear endpoint error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to clear error logs'
+    });
+  }
+});
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
@@ -234,6 +471,9 @@ app.get('/', (req, res) => {
     }
   });
 });
+
+// Error monitoring middleware
+app.use(errorMonitor.middleware());
 
 // Error handling middleware
 app.use((err, req, res, next) => {
