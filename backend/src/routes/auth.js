@@ -32,10 +32,21 @@ router.post('/register', async (req, res) => {
     }
 
     // Get default subscription tier (Pay-As-You-Go)
+    console.log('🔍 Looking for PayAsYouGo subscription tier...');
+    const allTiers = await SubscriptionTier.find({});
+    console.log('📊 Available tiers:', allTiers.map(t => ({ name: t.name, id: t._id })));
+    
     const defaultTier = await SubscriptionTier.findOne({ name: 'PayAsYouGo' });
+    console.log('🎯 PayAsYouGo tier found:', !!defaultTier, defaultTier?._id);
+    
     if (!defaultTier) {
       console.error('❌ Default "PayAsYouGo" subscription tier not found. Please seed the database.');
-      return res.status(500).json({ error: 'Server configuration error: Default subscription tier missing.' });
+      console.error('📋 Available tiers:', allTiers.map(t => t.name));
+      return res.status(500).json({ 
+        error: 'Server configuration error: Default subscription tier missing.',
+        availableTiers: allTiers.map(t => t.name),
+        debug: 'PayAsYouGo tier not found in database'
+      });
     }
 
     // Create new user with report-based billing

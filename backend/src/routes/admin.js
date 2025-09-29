@@ -229,4 +229,27 @@ router.get('/stats', auth, adminAuth, async (req, res) => {
   }
 });
 
+// Debug endpoint to check what's in the database
+router.get('/debug-tiers', async (req, res) => {
+  try {
+    const tiers = await SubscriptionTier.find({});
+    const payAsYouGoTier = await SubscriptionTier.findOne({ name: 'PayAsYouGo' });
+    
+    res.json({
+      success: true,
+      totalTiers: tiers.length,
+      payAsYouGoExists: !!payAsYouGoTier,
+      payAsYouGoId: payAsYouGoTier?._id,
+      allTiers: tiers.map(tier => ({
+        id: tier._id,
+        name: tier.name,
+        displayName: tier.displayName,
+        billingType: tier.billingType
+      }))
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;
