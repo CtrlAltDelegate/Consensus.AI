@@ -5,7 +5,7 @@ const subscriptionTierSchema = new mongoose.Schema({
     type: String,
     required: true,
     unique: true,
-    enum: ['lite', 'pro', 'expert']
+    enum: ['PayAsYouGo', 'Starter', 'Professional', 'Business']
   },
   displayName: {
     type: String,
@@ -15,25 +15,40 @@ const subscriptionTierSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  // Report-based billing
+  billingType: {
+    type: String,
+    enum: ['per_report', 'subscription'],
+    required: true
+  },
   monthlyPrice: {
     type: Number,
-    required: true // in dollars
+    required: function() { return this.billingType === 'subscription'; } // in dollars
   },
+  pricePerReport: {
+    type: Number,
+    required: function() { return this.billingType === 'per_report'; } // for pay-as-you-go
+  },
+  reportsIncluded: {
+    type: Number,
+    default: 0 // reports included in subscription (0 for pay-as-you-go)
+  },
+  overageRate: {
+    type: Number,
+    default: 0 // price per additional report beyond included
+  },
+  // Legacy token fields for backward compatibility
   tokensPerMonth: {
     type: Number,
-    required: true // monthly token allocation
-  },
-  estimatedReports: {
-    type: Number,
-    required: true // estimated reports per month
+    default: 0
   },
   maxRollover: {
     type: Number,
-    required: true // maximum tokens that can be accumulated
+    default: 0
   },
   tokenOveragePrice: {
     type: Number,
-    required: true // price per token when exceeding limit
+    default: 0
   },
   features: [{
     type: String
@@ -66,71 +81,88 @@ const subscriptionTierSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Default subscription tiers based on specification
+// Default subscription tiers - Report-based billing
 subscriptionTierSchema.statics.getDefaultTiers = function() {
   return [
     {
-      name: 'lite',
-      displayName: 'Lite',
-      description: 'Perfect for individual researchers and students',
-      monthlyPrice: 14,
-      tokensPerMonth: 25000,
-      estimatedReports: 2,
-      maxRollover: 75000, // 3 months worth
-      tokenOveragePrice: 0.01, // $0.01 per token
+      name: 'PayAsYouGo',
+      displayName: 'Pay-As-You-Go',
+      description: 'Perfect for occasional analysis',
+      billingType: 'per_report',
+      pricePerReport: 15,
+      reportsIncluded: 0,
+      overageRate: 0,
       features: [
-        '~2 consensus reports per month',
-        '25,000 tokens included',
-        'Access to all 4 LLMs',
-        '3-phase consensus workflow',
-        'PDF report downloads',
-        'Basic dashboard',
-        'Token rollover (90 days)'
+        'No monthly commitment',
+        'Pay only for what you use',
+        '4-LLM consensus analysis',
+        'Professional PDF reports',
+        'Report history & storage',
+        'Email support',
+        'GDPR compliant data handling'
       ]
     },
     {
-      name: 'pro',
-      displayName: 'Pro',
-      description: 'Ideal for professionals and small teams',
+      name: 'Starter',
+      displayName: 'Starter',
+      description: 'Great for individuals and small teams',
+      billingType: 'subscription',
       monthlyPrice: 29,
-      tokensPerMonth: 60000,
-      estimatedReports: 5,
-      maxRollover: 180000, // 3 months worth
-      tokenOveragePrice: 0.009, // $0.009 per token
+      reportsIncluded: 3,
+      overageRate: 12,
       features: [
-        '~5 consensus reports per month',
-        '60,000 tokens included',
-        'Access to all 4 LLMs',
-        '3-phase consensus workflow',
-        'PDF report downloads',
-        'Enhanced dashboard',
-        'Token rollover (90 days)',
-        'Priority processing',
-        'Email report delivery'
+        '3 reports per month included',
+        '$12 per additional report',
+        '4-LLM consensus analysis',
+        'Professional PDF reports',
+        'Report history & storage',
+        'Priority email support',
+        'Advanced export options',
+        'GDPR compliant data handling'
       ]
     },
     {
-      name: 'expert',
-      displayName: 'Expert',
-      description: 'For organizations and heavy users',
-      monthlyPrice: 59,
-      tokensPerMonth: 150000,
-      estimatedReports: 12,
-      maxRollover: 450000, // 3 months worth
-      tokenOveragePrice: 0.008, // $0.008 per token
+      name: 'Professional',
+      displayName: 'Professional',
+      description: 'Perfect for professionals and growing teams',
+      billingType: 'subscription',
+      monthlyPrice: 79,
+      reportsIncluded: 10,
+      overageRate: 10,
       features: [
-        '~12 consensus reports per month',
-        '150,000 tokens included',
-        'Access to all 4 LLMs',
-        '3-phase consensus workflow',
-        'PDF report downloads',
-        'Advanced analytics dashboard',
-        'Token rollover (90 days)',
-        'Priority processing',
-        'Email report delivery',
-        'API access',
-        'Custom report templates',
-        'Bulk processing'
+        '10 reports per month included',
+        '$10 per additional report',
+        '4-LLM consensus analysis',
+        'Professional PDF reports',
+        'Report history & storage',
+        'Priority support',
+        'Custom report branding',
+        'Advanced analytics',
+        'Team collaboration tools',
+        'GDPR compliant data handling'
+      ]
+    },
+    {
+      name: 'Business',
+      displayName: 'Business',
+      description: 'For organizations with high-volume needs',
+      billingType: 'subscription',
+      monthlyPrice: 199,
+      reportsIncluded: 30,
+      overageRate: 8,
+      features: [
+        '30 reports per month included',
+        '$8 per additional report',
+        '4-LLM consensus analysis',
+        'Professional PDF reports',
+        'Report history & storage',
+        'Dedicated account manager',
+        'Custom report branding',
+        'Advanced analytics',
+        'Team collaboration tools',
+        'Priority API access',
+        'Custom integrations',
+        'GDPR compliant data handling'
       ]
     }
   ];
