@@ -6,9 +6,9 @@ const validateUserRegistration = (data) => {
     email: Joi.string().email().required(),
     password: Joi.string().min(6).required(),
     profile: Joi.object({
-      firstName: Joi.string().min(1).max(50),
-      lastName: Joi.string().min(1).max(50),
-      organization: Joi.string().max(100)
+      firstName: Joi.string().min(1).max(50).allow(''),
+      lastName: Joi.string().min(1).max(50).allow(''),
+      organization: Joi.string().max(100).allow('')
     }).optional()
   });
 
