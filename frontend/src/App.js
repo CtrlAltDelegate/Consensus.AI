@@ -1,4 +1,4 @@
-// frontend/src/App.js - Complete Integration
+// frontend/src/App.js - Complete Integration v2
 import React, { useState } from 'react';
 import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { UserProvider, useUser } from './contexts/UserContext';
