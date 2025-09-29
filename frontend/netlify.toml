@@ -36,6 +36,12 @@
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 
+# Disable caching for JS files temporarily to fix deployment issues
+[[headers]]
+  for = "/assets/*.js"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
 # Headers for API requests
 [[headers]]
   for = "/api/*"
