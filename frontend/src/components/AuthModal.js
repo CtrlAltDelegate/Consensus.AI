@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { apiHelpers } from '../config/api';
+import { useUser } from '../contexts/UserContext';
 
 function AuthModal({ isVisible, onClose, onAuthSuccess }) {
+  const { login, register } = useUser();
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({
     email: '',
@@ -70,17 +72,17 @@ function AuthModal({ isVisible, onClose, onAuthSuccess }) {
     setErrors({});
 
     try {
-      let response;
+      let result;
       
       if (isLogin) {
-        // Login
-        response = await apiHelpers.login({
+        // Login using UserContext
+        result = await login({
           email: formData.email,
           password: formData.password
         });
       } else {
-        // Register
-        response = await apiHelpers.register({
+        // Register using UserContext
+        result = await register({
           email: formData.email,
           password: formData.password,
           profile: {
@@ -91,15 +93,11 @@ function AuthModal({ isVisible, onClose, onAuthSuccess }) {
         });
       }
 
-      if (response.data.success) {
-        // Store token
-        localStorage.setItem('auth_token', response.data.token);
-        localStorage.setItem('user_data', JSON.stringify(response.data.user));
-        
+      if (result.success) {
         console.log(`✅ ${isLogin ? 'Login' : 'Registration'} successful`);
         
         // Call success callback
-        onAuthSuccess(response.data.user, response.data.token);
+        onAuthSuccess(result.user, result.token);
         
         // Close modal
         onClose();
@@ -112,6 +110,9 @@ function AuthModal({ isVisible, onClose, onAuthSuccess }) {
           lastName: '',
           organization: ''
         });
+      } else {
+        // Handle UserContext error
+        setErrors({ general: result.error || `${isLogin ? 'Login' : 'Registration'} failed. Please try again.` });
       }
     } catch (error) {
       console.error(`❌ ${isLogin ? 'Login' : 'Registration'} failed:`, error);

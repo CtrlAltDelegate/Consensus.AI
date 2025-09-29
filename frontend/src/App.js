@@ -380,10 +380,15 @@ function AuthenticatedApp() {
 function UnauthenticatedApp() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const location = useLocation();
+  const { login, register } = useUser();
 
   const handleAuthSuccess = async (user, token) => {
     console.log('✅ Authentication successful:', user.email);
     setShowAuthModal(false);
+    
+    // The UserContext should already be updated by the AuthModal,
+    // but let's ensure the state is properly synchronized
+    // No need to call login/register again as AuthModal already handles this
   };
 
   const handleGetStarted = (plan) => {
