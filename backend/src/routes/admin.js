@@ -60,20 +60,26 @@ router.post('/public-seed-tiers', async (req, res) => {
   try {
     console.log('🌱 Public seeding subscription tiers (temporary fix)...');
     
-    // Check if tiers already exist
-    const existingTiers = await SubscriptionTier.find({});
-    if (existingTiers.length > 0) {
+    // Check if correct tiers exist
+    const payAsYouGoTier = await SubscriptionTier.findOne({ name: 'PayAsYouGo' });
+    if (payAsYouGoTier) {
+      const allTiers = await SubscriptionTier.find({});
       return res.json({
         success: true,
-        message: 'Subscription tiers already exist',
-        count: existingTiers.length,
-        tiers: existingTiers.map(tier => ({
+        message: 'Correct subscription tiers already exist',
+        count: allTiers.length,
+        tiers: allTiers.map(tier => ({
           id: tier._id,
           name: tier.name,
-          displayName: tier.displayName
+          displayName: tier.displayName,
+          billingType: tier.billingType
         }))
       });
     }
+    
+    // Clear existing tiers and create new ones
+    console.log('🗑️ Clearing existing tiers and creating new ones...');
+    await SubscriptionTier.deleteMany({});
     
     // Get default tiers
     const defaultTiers = SubscriptionTier.getDefaultTiers();
@@ -99,6 +105,46 @@ router.post('/public-seed-tiers', async (req, res) => {
     res.status(500).json({ 
       success: false,
       error: 'Failed to seed subscription tiers',
+      details: error.message 
+    });
+  }
+});
+
+// Force refresh subscription tiers (public endpoint for debugging)
+router.post('/force-refresh-tiers', async (req, res) => {
+  try {
+    console.log('🔄 Force refreshing subscription tiers...');
+    
+    // Clear ALL existing tiers
+    const deleteResult = await SubscriptionTier.deleteMany({});
+    console.log(`🗑️ Deleted ${deleteResult.deletedCount} existing tiers`);
+    
+    // Get default tiers
+    const defaultTiers = SubscriptionTier.getDefaultTiers();
+    
+    // Create new tiers
+    const createdTiers = await SubscriptionTier.insertMany(defaultTiers);
+    console.log(`✅ Created ${createdTiers.length} new subscription tiers`);
+
+    res.json({
+      success: true,
+      message: `Force refreshed ${createdTiers.length} subscription tiers`,
+      deleted: deleteResult.deletedCount,
+      created: createdTiers.length,
+      tiers: createdTiers.map(tier => ({
+        id: tier._id,
+        name: tier.name,
+        displayName: tier.displayName,
+        billingType: tier.billingType,
+        price: tier.billingType === 'per_report' ? tier.pricePerReport : tier.monthlyPrice
+      }))
+    });
+
+  } catch (error) {
+    console.error('❌ Error force refreshing subscription tiers:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to force refresh subscription tiers',
       details: error.message 
     });
   }
