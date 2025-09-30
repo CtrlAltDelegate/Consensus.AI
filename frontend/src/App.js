@@ -1,5 +1,5 @@
 // frontend/src/App.js - Complete Integration v4 - CACHE BUSTER: 2024-09-30T21:45:00Z
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { UserProvider, useUser } from './contexts/UserContext';
 
