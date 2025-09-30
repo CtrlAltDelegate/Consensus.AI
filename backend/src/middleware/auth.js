@@ -7,7 +7,11 @@ const auth = async (req, res, next) => {
     // Skip database-dependent auth if no database configured
     if (!env.hasDatabase()) {
       console.warn('⚠️  No database configured - using demo authentication');
-      req.user = { id: 'demo-user', email: 'demo@example.com' };
+      req.user = { 
+        id: 'demo-user', 
+        userId: 'demo-user', 
+        email: 'demo@example.com' 
+      };
       return next();
     }
 
@@ -28,7 +32,9 @@ const auth = async (req, res, next) => {
       return res.status(401).json({ error: 'Account is deactivated.' });
     }
 
+    // Set both user object and userId for compatibility
     req.user = user;
+    req.user.userId = user._id;
     next();
   } catch (error) {
     if (error.name === 'JsonWebTokenError') {
