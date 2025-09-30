@@ -273,6 +273,10 @@ function AuthenticatedApp() {
           path: '/help', 
           element: React.createElement(HelpPage)
         }),
+        React.createElement(Route, { 
+          path: '/knowledge-base', 
+          element: React.createElement(KnowledgeBase)
+        }),
         React.createElement(Route, { path: '*', element: React.createElement('div', { className: 'flex flex-col items-center justify-center min-h-screen' },
           React.createElement('h1', { className: 'text-4xl font-bold text-slate-900 mb-4' }, '404'),
           React.createElement('p', { className: 'text-slate-600 mb-8' }, 'Page not found'),

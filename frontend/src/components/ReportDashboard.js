@@ -82,27 +82,14 @@ function ReportDashboard({ onUpgrade }) {
             )
           ),
           React.createElement('div', { className: 'flex items-center space-x-3' },
-            React.createElement('button', { 
-              onClick: () => {
-                const reportSummary = `Reports Generated This Month: ${subscriptionData?.reportsGenerated || 0}\nCurrent Plan: ${user?.subscription?.tier || 'Pay-As-You-Go'}\nAccount: ${user?.email}\nExport Date: ${new Date().toLocaleDateString()}`;
-                
-                // Create a simple text file download
-                const blob = new Blob([reportSummary], { type: 'text/plain' });
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `consensus-ai-usage-${new Date().toISOString().split('T')[0]}.txt`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                window.URL.revokeObjectURL(url);
-              },
-              className: 'inline-flex items-center px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 shadow-sm'
-            }, 'Export Usage'),
             !isPayAsYouGo && React.createElement('button', { 
               onClick: onUpgrade,
               className: 'inline-flex items-center px-4 py-2.5 bg-indigo-600 border border-transparent rounded-lg text-sm font-medium text-white hover:bg-indigo-700 transition-all duration-200 shadow-sm'
-            }, 'Upgrade Plan')
+            }, 'Upgrade Plan'),
+            React.createElement('button', { 
+              onClick: onUpgrade,
+              className: 'inline-flex items-center px-4 py-2.5 bg-slate-600 border border-transparent rounded-lg text-sm font-medium text-white hover:bg-slate-700 transition-all duration-200 shadow-sm'
+            }, 'Update Billing Info')
           )
         )
       ),
