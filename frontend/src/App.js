@@ -1,4 +1,4 @@
-// frontend/src/App.js - Complete Integration v2
+// frontend/src/App.js - Complete Integration v3 - Build: 2024-09-30T21:30:00Z
 import React, { useState } from 'react';
 import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { UserProvider, useUser } from './contexts/UserContext';
