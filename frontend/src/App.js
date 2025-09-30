@@ -226,27 +226,13 @@ function AuthenticatedApp() {
             React.createElement('div', { className: 'hidden md:flex items-center space-x-2' },
               React.createElement(CustomNavLink, { to: '/dashboard' }, 'Dashboard'),
               React.createElement(CustomNavLink, { to: '/consensus' }, 'Generate Report'),
-              React.createElement(CustomNavLink, { to: '/reports' }, 'Report Library')
+              React.createElement(CustomNavLink, { to: '/reports' }, 'Report Library'),
+              React.createElement(CustomNavLink, { to: '/help' }, 'Help')
             )
           ),
           
           // User Actions
           React.createElement('div', { className: 'flex items-center space-x-6' },
-            // Token Display
-            React.createElement('div', { className: 'hidden sm:flex items-center space-x-3 px-3 py-2 bg-slate-50 rounded-lg border border-slate-200' },
-              React.createElement('div', { className: 'flex flex-col' },
-                React.createElement('span', { className: 'text-xs text-slate-500 font-medium' }, 'Tokens Remaining'),
-                React.createElement('span', { className: 'text-sm text-slate-900 font-semibold' }, 
-                  availableTokens.toLocaleString()
-                )
-              ),
-              React.createElement('div', { className: 'w-16 h-2 bg-slate-200 rounded-full' },
-                React.createElement('div', { 
-                  className: `h-2 rounded-full ${tokenPercentage > 20 ? 'bg-emerald-500' : 'bg-red-500'}`,
-                  style: { width: `${tokenPercentage}%` }
-                })
-              )
-            ),
             
             // User Menu
             React.createElement(UserMenu, {
@@ -282,6 +268,10 @@ function AuthenticatedApp() {
             onViewReport: handleViewReport,
             onExportReport: handleExportReport
           })
+        }),
+        React.createElement(Route, { 
+          path: '/help', 
+          element: React.createElement(HelpPage)
         }),
         React.createElement(Route, { path: '*', element: React.createElement('div', { className: 'flex flex-col items-center justify-center min-h-screen' },
           React.createElement('h1', { className: 'text-4xl font-bold text-slate-900 mb-4' }, '404'),

@@ -19,22 +19,27 @@ function BillingModal({ isVisible, onClose }) {
 
   const loadBillingData = async () => {
     setLoading(true);
+    setError('');
     try {
-      const [plansResponse, historyResponse] = await Promise.all([
-        apiHelpers.getAvailablePlans(),
-        apiHelpers.getBillingHistory({ limit: 10 })
-      ]);
-
+      // Always load plans
+      const plansResponse = await apiHelpers.getAvailablePlans();
       if (plansResponse.data.success) {
         setPlans(plansResponse.data.plans);
       }
 
-      if (historyResponse.data.success) {
-        setBillingHistory(historyResponse.data.invoices);
+      // Try to load billing history, but don't fail if it doesn't exist
+      try {
+        const historyResponse = await apiHelpers.getBillingHistory({ limit: 10 });
+        if (historyResponse.data.success) {
+          setBillingHistory(historyResponse.data.invoices);
+        }
+      } catch (historyError) {
+        console.log('No billing history yet (user may not have payment setup):', historyError);
+        setBillingHistory([]); // Empty history is fine for new users
       }
     } catch (error) {
       console.error('Failed to load billing data:', error);
-      setError('Failed to load billing information');
+      setError('Unable to load subscription plans. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -45,18 +50,21 @@ function BillingModal({ isVisible, onClose }) {
     setError('');
 
     try {
-      const response = await apiHelpers.updateSubscription({
-        tier: planId,
+      // For users without payment setup, create a Stripe checkout session
+      const response = await apiHelpers.createCheckoutSession({
+        tierId: planId,
         billingPeriod: 'monthly'
       });
-
-      if (response.data.success) {
-        await refreshUserData();
-        alert('Subscription updated successfully!');
+      
+      if (response.data.url) {
+        // Redirect to Stripe checkout - this will handle payment collection
+        window.location.href = response.data.url;
+      } else {
+        throw new Error('No checkout URL received');
       }
     } catch (error) {
-      console.error('Subscription update failed:', error);
-      setError(error.response?.data?.error || 'Failed to update subscription');
+      console.error('Checkout session creation failed:', error);
+      setError(error.response?.data?.error || 'Unable to start checkout process. Please try again.');
     } finally {
       setLoading(false);
     }
