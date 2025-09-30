@@ -61,7 +61,7 @@ router.post('/create-checkout-session', async (req, res) => {
     }
 
     const { tier, billingPeriod = 'monthly' } = req.body;
-    const user = await User.findById(req.user.id);
+    const user = await User.findById(req.user.userId);
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -143,7 +143,7 @@ router.post('/create-checkout-session', async (req, res) => {
 // @access  Private
 router.post('/create-portal-session', async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
+    const user = await User.findById(req.user.userId);
 
     if (!user || !user.subscription.stripeCustomerId) {
       return res.status(404).json({ error: 'No billing account found' });
@@ -170,11 +170,28 @@ router.post('/create-portal-session', async (req, res) => {
 // @access  Private
 router.get('/subscription', async (req, res) => {
   try {
-    const user = await User.findById(req.user.id)
+    const user = await User.findById(req.user.userId)
       .populate('subscription.tier', 'name displayName monthlyPrice yearlyPrice reportsIncluded pricePerReport overageRate billingType features tokenLimit');
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Handle users without subscription setup (default to PayAsYouGo)
+    if (!user.subscription || !user.subscription.tier) {
+      return res.json({
+        success: true,
+        subscription: {
+          tier: 'PayAsYouGo',
+          status: 'active',
+          reportsGenerated: 0,
+          reportsRemaining: 'unlimited',
+          billingPeriod: 'monthly',
+          nextBillingDate: null,
+          stripeCustomerId: null,
+          stripeSubscriptionId: null
+        }
+      });
     }
 
     let stripeSubscription = null;
@@ -236,7 +253,7 @@ router.get('/subscription', async (req, res) => {
 // @access  Private
 router.post('/cancel-subscription', async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
+    const user = await User.findById(req.user.userId);
 
     if (!user || !user.subscription.stripeSubscriptionId) {
       return res.status(404).json({ error: 'No active subscription found' });
@@ -272,7 +289,7 @@ router.post('/cancel-subscription', async (req, res) => {
 // @access  Private
 router.post('/reactivate-subscription', async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
+    const user = await User.findById(req.user.userId);
 
     if (!user || !user.subscription.stripeSubscriptionId) {
       return res.status(404).json({ error: 'No subscription found' });
@@ -311,7 +328,7 @@ router.post('/reactivate-subscription', async (req, res) => {
 router.get('/invoices', async (req, res) => {
   try {
     const { limit = 10 } = req.query;
-    const user = await User.findById(req.user.id);
+    const user = await User.findById(req.user.userId);
 
     if (!user || !user.subscription.stripeCustomerId) {
       return res.json({
