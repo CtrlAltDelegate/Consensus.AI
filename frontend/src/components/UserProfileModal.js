@@ -12,7 +12,6 @@ function UserProfileModal({ isVisible, onClose }) {
     organization: '',
     preferences: {
       emailNotifications: {
-        tokenLowWarning: true,
         reportReady: true,
         billing: true,
         marketing: false
@@ -37,7 +36,6 @@ function UserProfileModal({ isVisible, onClose }) {
         organization: user.profile?.organization || '',
         preferences: {
           emailNotifications: {
-            tokenLowWarning: user.preferences?.emailNotifications?.tokenLowWarning ?? true,
             reportReady: user.preferences?.emailNotifications?.reportReady ?? true,
             billing: user.preferences?.emailNotifications?.billing ?? true,
             marketing: user.preferences?.emailNotifications?.marketing ?? false
@@ -335,7 +333,6 @@ function UserProfileModal({ isVisible, onClose }) {
               className: 'space-y-3'
             },
               [
-                { key: 'tokenLowWarning', label: 'Token low warning (when < 10% remaining)' },
                 { key: 'reportReady', label: 'Report generation complete' },
                 { key: 'billing', label: 'Billing and subscription updates' },
                 { key: 'marketing', label: 'Product updates and marketing emails' }

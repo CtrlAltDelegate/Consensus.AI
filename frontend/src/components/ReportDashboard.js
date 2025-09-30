@@ -3,7 +3,7 @@ import { useUser } from '../contexts/UserContext';
 import { apiHelpers } from '../config/api';
 import { HelpIcon, InfoIcon } from './Tooltip';
 
-function ReportDashboard() {
+function ReportDashboard({ onUpgrade }) {
   const { user, isAuthenticated } = useUser();
   const [subscriptionData, setSubscriptionData] = useState(null);
   const [plans, setPlans] = useState([]);
@@ -83,9 +83,14 @@ function ReportDashboard() {
           ),
           React.createElement('div', { className: 'flex items-center space-x-3' },
             React.createElement('button', { 
+              onClick: () => {
+                // TODO: Implement export functionality
+                alert('Export functionality coming soon!');
+              },
               className: 'inline-flex items-center px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 shadow-sm'
             }, 'Export Usage'),
             !isPayAsYouGo && React.createElement('button', { 
+              onClick: onUpgrade,
               className: 'inline-flex items-center px-4 py-2.5 bg-indigo-600 border border-transparent rounded-lg text-sm font-medium text-white hover:bg-indigo-700 transition-all duration-200 shadow-sm'
             }, 'Upgrade Plan')
           )

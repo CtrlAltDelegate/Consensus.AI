@@ -264,7 +264,12 @@ function AuthenticatedApp() {
     React.createElement('main', { className: 'relative' },
       React.createElement(Routes, null,
         React.createElement(Route, { path: '/', element: React.createElement(Navigate, { to: '/dashboard', replace: true }) }),
-              React.createElement(Route, { path: '/dashboard', element: React.createElement(ReportDashboard) }),
+              React.createElement(Route, { 
+                path: '/dashboard', 
+                element: React.createElement(ReportDashboard, {
+                  onUpgrade: () => setShowBillingModal(true)
+                })
+              }),
         React.createElement(Route, { 
           path: '/consensus', 
           element: React.createElement(EnhancedConsensusForm, {

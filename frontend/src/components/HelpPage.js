@@ -344,6 +344,10 @@ function HelpPage() {
                       )
                     ),
                     React.createElement('button', {
+                      onClick: () => {
+                        // Navigate to knowledge base
+                        window.location.hash = '#/knowledge-base';
+                      },
                       className: 'text-indigo-600 hover:text-indigo-800 font-medium text-sm'
                     }, 'Read Article →')
                   )
