@@ -233,19 +233,38 @@ router.get('/subscription', async (req, res) => {
 
     // Handle users without subscription setup (default to PayAsYouGo)
     if (!user.subscription || !user.subscription.tier) {
-      return res.json({
-        success: true,
-        subscription: {
-          tier: 'PayAsYouGo',
-          status: 'active',
-          reportsGenerated: 0,
-          reportsRemaining: 'unlimited',
-          billingPeriod: 'monthly',
-          nextBillingDate: null,
-          stripeCustomerId: null,
-          stripeSubscriptionId: null
-        }
-      });
+      // Try to assign PayAsYouGo tier if it exists
+      const payAsYouGoTier = await SubscriptionTier.findOne({ name: 'PayAsYouGo' });
+      
+      if (payAsYouGoTier) {
+        user.subscription = user.subscription || {};
+        user.subscription.tier = payAsYouGoTier._id;
+        user.subscription.status = 'active';
+        await user.save();
+        
+        // Re-populate the tier
+        await user.populate('subscription.tier', 'name displayName monthlyPrice yearlyPrice reportsIncluded pricePerReport overageRate billingType features tokenLimit');
+      } else {
+        // Fallback response if no tiers exist
+        return res.json({
+          success: true,
+          subscription: {
+            tier: {
+              name: 'PayAsYouGo',
+              displayName: 'Pay-As-You-Go',
+              billingType: 'per_report',
+              pricePerReport: 15
+            },
+            status: 'active',
+            reportsGenerated: 0,
+            reportsRemaining: 'unlimited',
+            billingPeriod: 'monthly',
+            nextBillingDate: null,
+            stripeCustomerId: user.subscription?.stripeCustomerId || null,
+            stripeSubscriptionId: null
+          }
+        });
+      }
     }
 
     let stripeSubscription = null;
@@ -274,20 +293,20 @@ router.get('/subscription', async (req, res) => {
       } : null,
       // Report-based usage tracking
       reportUsage: {
-        availableReports: user.getAvailableReports(),
-        reportsUsedThisPeriod: user.getReportsUsedThisPeriod(),
-        overageReports: user.getOverageReports(),
-        currentOverageCost: user.getCurrentOverageCost(),
-        canGenerateReport: user.canGenerateReport(),
+        availableReports: user.getAvailableReports ? user.getAvailableReports() : 0,
+        reportsUsedThisPeriod: user.getReportsUsedThisPeriod ? user.getReportsUsedThisPeriod() : 0,
+        overageReports: user.getOverageReports ? user.getOverageReports() : 0,
+        currentOverageCost: user.getCurrentOverageCost ? user.getCurrentOverageCost() : 0,
+        canGenerateReport: user.canGenerateReport ? user.canGenerateReport() : true,
         billingPeriod: {
-          start: user.reportUsage.currentPeriod.periodStart,
-          end: user.reportUsage.currentPeriod.periodEnd
+          start: user.reportUsage?.currentPeriod?.periodStart || new Date(),
+          end: user.reportUsage?.currentPeriod?.periodEnd || new Date()
         }
       },
       // Legacy token usage for backward compatibility
       tokenUsage: {
-        available: user.getAvailableTokens(),
-        expiringSoon: user.getTokensExpiringSoon(30)
+        available: user.getAvailableTokens ? user.getAvailableTokens() : 0,
+        expiringSoon: user.getTokensExpiringSoon ? user.getTokensExpiringSoon(30) : 0
       }
     };
 
