@@ -168,4 +168,14 @@ subscriptionTierSchema.statics.getDefaultTiers = function() {
   ];
 };
 
+// Static method to get active tiers
+subscriptionTierSchema.statics.getActiveTiers = function() {
+  return this.find({ isActive: true }).sort({ monthlyPrice: 1 });
+};
+
+// Static method to get all tiers (including inactive)
+subscriptionTierSchema.statics.getAllTiers = function() {
+  return this.find({}).sort({ monthlyPrice: 1 });
+};
+
 module.exports = mongoose.model('SubscriptionTier', subscriptionTierSchema); 

@@ -50,6 +50,27 @@ function ReportDashboard({ onUpgrade }) {
     }
   };
 
+  const handleUpdateBilling = async () => {
+    try {
+      // For Pay-As-You-Go users, use setup payment method
+      // For subscription users, use portal session
+      if (subscriptionData?.tier?.name === 'PayAsYouGo' || !subscriptionData?.stripeCustomerId) {
+        const response = await apiHelpers.setupPaymentMethod();
+        if (response.data.url) {
+          window.location.href = response.data.url;
+        }
+      } else {
+        const response = await apiHelpers.createPortalSession();
+        if (response.data.url) {
+          window.location.href = response.data.url;
+        }
+      }
+    } catch (err) {
+      console.error('Error opening billing management:', err);
+      setError('Unable to open billing management. Please try again.');
+    }
+  };
+
   if (!isAuthenticated) {
     return React.createElement('div', { className: 'min-h-screen bg-slate-50/50 flex items-center justify-center' },
       React.createElement('div', { className: 'text-center' },
@@ -87,7 +108,7 @@ function ReportDashboard({ onUpgrade }) {
               className: 'inline-flex items-center px-4 py-2.5 bg-indigo-600 border border-transparent rounded-lg text-sm font-medium text-white hover:bg-indigo-700 transition-all duration-200 shadow-sm'
             }, 'Upgrade Plan'),
             React.createElement('button', { 
-              onClick: onUpgrade,
+              onClick: handleUpdateBilling,
               className: 'inline-flex items-center px-4 py-2.5 bg-slate-600 border border-transparent rounded-lg text-sm font-medium text-white hover:bg-slate-700 transition-all duration-200 shadow-sm'
             }, 'Update Billing Info')
           )

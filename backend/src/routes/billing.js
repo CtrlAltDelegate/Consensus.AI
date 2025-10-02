@@ -50,6 +50,60 @@ router.get('/plans', async (req, res) => {
   }
 });
 
+// @route   POST /api/billing/setup-payment
+// @desc    Setup payment method for Pay-As-You-Go users
+// @access  Private
+router.post('/setup-payment', async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Create or get Stripe customer
+    let customerId = user.subscription.stripeCustomerId;
+    
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: user.email,
+        name: `${user.profile.firstName} ${user.profile.lastName}`.trim() || user.email,
+        metadata: {
+          userId: user._id.toString()
+        }
+      });
+      customerId = customer.id;
+      
+      // Update user with Stripe customer ID
+      user.subscription.stripeCustomerId = customerId;
+      await user.save();
+    }
+
+    // Create setup session for payment method collection
+    const session = await stripe.checkout.sessions.create({
+      customer: customerId,
+      payment_method_types: ['card'],
+      mode: 'setup',
+      success_url: `${process.env.FRONTEND_URL}/billing?setup=success`,
+      cancel_url: `${process.env.FRONTEND_URL}/billing?setup=canceled`,
+      metadata: {
+        userId: user._id.toString(),
+        purpose: 'payment_setup'
+      }
+    });
+
+    res.json({
+      success: true,
+      sessionId: session.id,
+      url: session.url
+    });
+
+  } catch (error) {
+    console.error('Setup payment error:', error);
+    res.status(500).json({ error: 'Failed to setup payment method' });
+  }
+});
+
 // @route   POST /api/billing/create-checkout-session
 // @desc    Create Stripe checkout session for subscription
 // @access  Private

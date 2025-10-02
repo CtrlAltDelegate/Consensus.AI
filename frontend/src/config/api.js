@@ -112,6 +112,7 @@ export const API_ENDPOINTS = {
   billing: {
     plans: '/api/billing/plans',
     subscription: '/api/billing/subscription',
+    setupPayment: '/api/billing/setup-payment',
     createCheckout: '/api/billing/create-checkout-session',
     createPortal: '/api/billing/create-portal-session',
     cancel: '/api/billing/cancel-subscription',
@@ -209,6 +210,7 @@ export const apiHelpers = {
   // Billing helpers
   getAvailablePlans: () => api.get(API_ENDPOINTS.billing.plans),
   getSubscription: () => api.get(API_ENDPOINTS.billing.subscription),
+  setupPaymentMethod: () => api.post(API_ENDPOINTS.billing.setupPayment),
   createCheckoutSession: (data) => api.post(API_ENDPOINTS.billing.createCheckout, data),
   createPortalSession: () => api.post(API_ENDPOINTS.billing.createPortal),
   cancelSubscription: () => api.post(API_ENDPOINTS.billing.cancel),
