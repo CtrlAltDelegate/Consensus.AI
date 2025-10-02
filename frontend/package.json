@@ -1,6 +1,6 @@
 {
   "name": "consensus-ai-frontend",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Frontend React application for Consensus.AI platform",
   "private": true,
   "dependencies": {
