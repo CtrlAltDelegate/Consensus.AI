@@ -1,14 +1,23 @@
 import axios from 'axios';
 
 // API Configuration
+// Debug environment detection
+console.log('🔍 Environment Detection:', {
+  MODE: import.meta.env.MODE,
+  PROD: import.meta.env.PROD,
+  DEV: import.meta.env.DEV
+});
+
 const API_CONFIG = {
   // Direct connection to Railway backend - CORS should be handled by backend
-  baseURL: import.meta.env.PROD ? 'https://consensusai-production.up.railway.app' : 'http://localhost:3001',
+  baseURL: import.meta.env.MODE === 'production' ? 'https://consensusai-production.up.railway.app' : 'http://localhost:3001',
   timeout: 300000, // 5 minutes for 4-LLM consensus generation
   headers: {
     'Content-Type': 'application/json',
   },
 };
+
+console.log('🚀 API Config - Base URL:', API_CONFIG.baseURL);
 
 // Create axios instance
 const api = axios.create(API_CONFIG);
