@@ -8,7 +8,7 @@
     "backend"
   ],
   "scripts": {
-    "start": "node backend/src/app.js",
+    "start": "node backend/src/minimal-app.js",
     "dev": "concurrently \"npm run dev --prefix frontend\" \"npm run dev --prefix backend\"",
     "dev:frontend": "npm run dev --prefix frontend",
     "dev:backend": "npm run dev --prefix backend",
