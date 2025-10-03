@@ -527,6 +527,40 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK' });
 });
 
+// Environment diagnostic endpoint
+app.get('/env-check', (req, res) => {
+  console.log('🔍 Environment check requested');
+  
+  const requiredVars = {
+    JWT_SECRET: !!process.env.JWT_SECRET,
+    MONGODB_URI: !!process.env.MONGODB_URI,
+    STRIPE_SECRET_KEY: !!process.env.STRIPE_SECRET_KEY,
+    FRONTEND_URL: !!process.env.FRONTEND_URL,
+    NODE_ENV: process.env.NODE_ENV || 'not_set',
+    PORT: process.env.PORT || 'not_set'
+  };
+  
+  const llmKeys = {
+    OPENAI_API_KEY: !!process.env.OPENAI_API_KEY,
+    ANTHROPIC_API_KEY: !!process.env.ANTHROPIC_API_KEY,
+    GOOGLE_API_KEY: !!process.env.GOOGLE_API_KEY,
+    COHERE_API_KEY: !!process.env.COHERE_API_KEY
+  };
+  
+  const llmCount = Object.values(llmKeys).filter(Boolean).length;
+  
+  res.json({
+    status: 'Environment Check',
+    required_vars: requiredVars,
+    llm_keys: llmKeys,
+    llm_keys_configured: llmCount,
+    recommendations: {
+      critical_missing: Object.entries(requiredVars).filter(([key, value]) => !value && key !== 'NODE_ENV' && key !== 'PORT').map(([key]) => key),
+      llm_status: llmCount >= 2 ? 'sufficient' : 'need_more_keys'
+    }
+  });
+});
+
 // Database test endpoint
 app.get('/test-db', async (req, res) => {
   console.log('🗄️ Database test requested');
