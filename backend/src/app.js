@@ -575,7 +575,7 @@ app.get('/test-db', async (req, res) => {
 // Root endpoint
 app.get('/', (req, res) => {
   res.json({
-    message: 'Consensus.AI Backend API',
+    message: 'Consensus.AI Backend API - Ready',
     version: require('../package.json').version,
     environment: process.env.NODE_ENV || 'development',
     endpoints: {
