@@ -8,6 +8,16 @@ const { validateUserRegistration, validateUserLogin } = require('../utils/valida
 const auth = require('../middleware/auth');
 const env = require('../config/environment');
 
+console.log('🔐 Auth routes file loaded successfully');
+
+// Test route to verify auth routes are working
+router.get('/test', (req, res) => {
+  res.json({ 
+    message: 'Auth routes are working!', 
+    timestamp: new Date().toISOString() 
+  });
+});
+
 // User Registration
 router.post('/register', async (req, res) => {
   try {
