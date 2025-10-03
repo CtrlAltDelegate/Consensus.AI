@@ -210,6 +210,14 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// Test route after login
+router.get('/test-after-login', (req, res) => {
+  res.json({ 
+    message: 'Routes after login are working!', 
+    timestamp: new Date().toISOString() 
+  });
+});
+
 // Get Current User Profile
 router.get('/profile', auth, async (req, res) => {
   try {
