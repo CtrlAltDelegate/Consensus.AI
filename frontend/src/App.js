@@ -20,7 +20,7 @@ import FeedbackPage from './components/FeedbackPage';
 import KnowledgeBase from './components/KnowledgeBase';
 import WelcomeFlow from './components/WelcomeFlow';
 import UserProfileModal from './components/UserProfileModal';
-import PlanSelectionModal from './components/PlanSelectionModal';
+// import PlanSelectionModal from './components/PlanSelectionModal';
 
 // Services
 import exportService from './utils/exportService';
@@ -347,22 +347,22 @@ function AuthenticatedApp() {
       onClose: () => setShowBillingModal(false)
     }),
 
-    // Plan Selection Modal (highest priority)
-    React.createElement(PlanSelectionModal, {
-      isOpen: showPlanSelectionModal,
-      onPlanSelected: (plan) => {
-        console.log('🎯 Plan selected:', plan);
-        setShowPlanSelectionModal(false);
-        // The checkout process will handle the rest
-      },
-      onClose: () => {
-        console.log('❌ Plan selection cancelled');
-        // For demo users, we might want to logout if they don't select a plan
-        if (user?.isDemo) {
-          logout();
-        }
-      }
-    }),
+    // Plan Selection Modal (highest priority) - TEMPORARILY DISABLED
+    // React.createElement(PlanSelectionModal, {
+    //   isOpen: showPlanSelectionModal,
+    //   onPlanSelected: (plan) => {
+    //     console.log('🎯 Plan selected:', plan);
+    //     setShowPlanSelectionModal(false);
+    //     // The checkout process will handle the rest
+    //   },
+    //   onClose: () => {
+    //     console.log('❌ Plan selection cancelled');
+    //     // For demo users, we might want to logout if they don't select a plan
+    //     if (user?.isDemo) {
+    //       logout();
+    //     }
+    //   }
+    // }),
 
     // Welcome Flow Tutorial
     React.createElement(WelcomeFlow, {

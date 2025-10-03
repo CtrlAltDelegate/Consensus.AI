@@ -21,7 +21,6 @@ const PlanSelectionModal = ({ isOpen, onPlanSelected, onClose }) => {
       const response = await apiHelpers.getAvailablePlans();
       if (response.data.success) {
         setPlans(response.data.plans);
-        // Pre-select the first plan
         if (response.data.plans.length > 0) {
           setSelectedPlan(response.data.plans[0]);
         }
@@ -39,14 +38,12 @@ const PlanSelectionModal = ({ isOpen, onPlanSelected, onClose }) => {
 
     setLoading(true);
     try {
-      // Create checkout session for the selected plan
       const response = await apiHelpers.createCheckoutSession({
         tier: selectedPlan._id,
         billingPeriod: billingPeriod
       });
 
       if (response.data.url) {
-        // Redirect to Stripe checkout
         window.location.href = response.data.url;
       } else {
         throw new Error('No checkout URL received');
@@ -64,19 +61,6 @@ const PlanSelectionModal = ({ isOpen, onPlanSelected, onClose }) => {
     }
     const price = billingPeriod === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice;
     return `$${price}/${billingPeriod === 'monthly' ? 'month' : 'year'}`;
-  };
-
-  const getRecommendedBadge = (plan) => {
-    if (plan.name === 'Professional') {
-      return (
-        <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-          <span className="bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-medium">
-            Recommended
-          </span>
-        </div>
-      );
-    }
-    return null;
   };
 
   if (!isOpen) return null;
@@ -100,7 +84,6 @@ const PlanSelectionModal = ({ isOpen, onPlanSelected, onClose }) => {
         )}
 
         <div className="p-6">
-          {/* Billing Period Toggle */}
           <div className="flex justify-center mb-8">
             <div className="bg-gray-100 p-1 rounded-lg">
               <button
@@ -143,7 +126,13 @@ const PlanSelectionModal = ({ isOpen, onPlanSelected, onClose }) => {
                   }`}
                   onClick={() => setSelectedPlan(plan)}
                 >
-                  {getRecommendedBadge(plan)}
+                  {plan.name === 'Professional' && (
+                    <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                      <span className="bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-medium">
+                        Recommended
+                      </span>
+                    </div>
+                  )}
                   
                   <div className="text-center">
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">
