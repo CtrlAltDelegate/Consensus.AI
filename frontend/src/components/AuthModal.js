@@ -96,11 +96,32 @@ function AuthModal({ isVisible, onClose, onAuthSuccess }) {
       if (result.success) {
         console.log(`✅ ${isLogin ? 'Login' : 'Registration'} successful`);
         
-        // Call success callback
-        onAuthSuccess(result.user, result.token);
-        
-        // Close modal
-        onClose();
+        // Handle billing setup for new registrations
+        if (!isLogin && result.requiresBillingSetup) {
+          console.log('🔄 Redirecting to billing setup...');
+          
+          // Call success callback first to set authentication state
+          onAuthSuccess(result.user, result.token);
+          
+          // Close modal
+          onClose();
+          
+          // Redirect to payment setup
+          try {
+            const response = await apiHelpers.setupPaymentMethod();
+            if (response.data.url) {
+              window.location.href = response.data.url;
+              return; // Don't reset form if redirecting
+            }
+          } catch (error) {
+            console.error('❌ Failed to setup payment:', error);
+            setError('Registration successful, but failed to setup payment. Please try the "Update Billing Info" button.');
+          }
+        } else {
+          // Normal login flow
+          onAuthSuccess(result.user, result.token);
+          onClose();
+        }
         
         // Reset form
         setFormData({

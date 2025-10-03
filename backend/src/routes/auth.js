@@ -119,11 +119,14 @@ router.post('/register', async (req, res) => {
       createdAt: user.createdAt
     };
 
+    // For Pay-As-You-Go users, we need to set up payment method immediately
     res.status(201).json({
       success: true,
       message: 'User registered successfully',
       token,
-      user: userData
+      user: userData,
+      requiresBillingSetup: true,
+      nextStep: 'payment_setup'
     });
 
   } catch (error) {

@@ -176,7 +176,7 @@ export function UserProvider({ children }) {
       const response = await apiHelpers.register(userData);
       
       if (response.data.success) {
-        const { user, token } = response.data;
+        const { user, token, requiresBillingSetup, nextStep } = response.data;
         
         // Store in localStorage
         localStorage.setItem('auth_token', token);
@@ -187,7 +187,13 @@ export function UserProvider({ children }) {
           payload: { user, token }
         });
         
-        return { success: true, user, token };
+        return { 
+          success: true, 
+          user, 
+          token, 
+          requiresBillingSetup,
+          nextStep 
+        };
       }
     } catch (error) {
       const errorMessage = error.response?.data?.error || 'Registration failed';
