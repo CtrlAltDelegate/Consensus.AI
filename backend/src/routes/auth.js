@@ -79,23 +79,8 @@ router.post('/register', async (req, res) => {
       return res.status(409).json({ error: 'Email already registered' });
     }
 
-    // Get default subscription tier (Pay-As-You-Go)
-    console.log('🔍 Looking for PayAsYouGo subscription tier...');
-    const allTiers = await SubscriptionTier.find({});
-    console.log('📊 Available tiers:', allTiers.map(t => ({ name: t.name, id: t._id })));
-    
-    const defaultTier = await SubscriptionTier.findOne({ name: 'PayAsYouGo' });
-    console.log('🎯 PayAsYouGo tier found:', !!defaultTier, defaultTier?._id);
-    
-    if (!defaultTier) {
-      console.error('❌ Default "PayAsYouGo" subscription tier not found. Please seed the database.');
-      console.error('📋 Available tiers:', allTiers.map(t => t.name));
-      return res.status(500).json({ 
-        error: 'Server configuration error: Default subscription tier missing.',
-        availableTiers: allTiers.map(t => t.name),
-        debug: 'PayAsYouGo tier not found in database'
-      });
-    }
+    // No default subscription tier - user will select during onboarding
+    console.log('🎯 User will select subscription tier during onboarding');
 
     // Create new user with report-based billing
     const now = new Date();
@@ -111,11 +96,11 @@ router.post('/register', async (req, res) => {
         organization: profile.organization || ''
       },
       subscription: {
-        tier: defaultTier._id,
-        status: 'active',
-        currentPeriodStart: now,
-        currentPeriodEnd: nextPeriodEnd,
-        nextBillingDate: nextPeriodEnd
+        tier: null, // No tier assigned yet - user will select
+        status: 'pending_selection',
+        currentPeriodStart: null,
+        currentPeriodEnd: null,
+        nextBillingDate: null
       },
       reportUsage: {
         currentPeriod: {
@@ -149,22 +134,22 @@ router.post('/register', async (req, res) => {
       email: user.email,
       profile: user.profile,
       subscription: {
-        tier: defaultTier.name,
-        status: user.subscription.status,
-        tokenLimit: defaultTier.tokenLimit
+        tier: null, // No tier selected yet
+        status: 'pending_selection',
+        tokenLimit: 0
       },
       availableTokens: user.getAvailableTokens(),
       createdAt: user.createdAt
     };
 
-    // For Pay-As-You-Go users, we need to set up payment method immediately
+    // User registered but needs to select a plan first
     res.status(201).json({
       success: true,
       message: 'User registered successfully',
       token,
       user: userData,
-      requiresBillingSetup: true,
-      nextStep: 'payment_setup'
+      needsPlanSelection: true,
+      nextStep: 'plan_selection'
     });
 
   } catch (error) {

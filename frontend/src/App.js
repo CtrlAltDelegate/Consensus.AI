@@ -20,6 +20,7 @@ import FeedbackPage from './components/FeedbackPage';
 import KnowledgeBase from './components/KnowledgeBase';
 import WelcomeFlow from './components/WelcomeFlow';
 import UserProfileModal from './components/UserProfileModal';
+import PlanSelectionModal from './components/PlanSelectionModal';
 
 // Services
 import exportService from './utils/exportService';
@@ -127,21 +128,46 @@ function AuthenticatedApp() {
   const [showReportViewer, setShowReportViewer] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showBillingModal, setShowBillingModal] = useState(false);
+  const [showPlanSelectionModal, setShowPlanSelectionModal] = useState(false);
   const [showWelcomeFlow, setShowWelcomeFlow] = useState(false);
   
   const progressModal = useProgressModal();
 
-  // Check if user is new and should see welcome flow
+  // Check if user needs plan selection (higher priority than welcome flow)
   useEffect(() => {
-    const hasSeenWelcome = localStorage.getItem(`welcome_seen_${user?.id}`);
-    if (user && !hasSeenWelcome) {
-      // Show welcome flow after a short delay
-      const timer = setTimeout(() => {
-        setShowWelcomeFlow(true);
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
+    const checkSubscriptionStatus = async () => {
+      if (user) {
+        try {
+          const { apiHelpers } = await import('./config/api');
+          const response = await apiHelpers.getSubscription();
+          
+          if (response.data.needsPlanSelection || !response.data.subscription) {
+            console.log('🎯 User needs to select a plan');
+            setShowPlanSelectionModal(true);
+            return; // Don't show welcome flow if plan selection is needed
+          }
+        } catch (error) {
+          console.error('Failed to check subscription status:', error);
+        }
+      }
+    };
+
+    checkSubscriptionStatus();
   }, [user]);
+
+  // Check if user is new and should see welcome flow (only if they have a plan)
+  useEffect(() => {
+    if (!showPlanSelectionModal) {
+      const hasSeenWelcome = localStorage.getItem(`welcome_seen_${user?.id}`);
+      if (user && !hasSeenWelcome) {
+        // Show welcome flow after a short delay
+        const timer = setTimeout(() => {
+          setShowWelcomeFlow(true);
+        }, 1000);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [user, showPlanSelectionModal]);
 
   // Handle welcome flow completion
   const handleWelcomeComplete = (action) => {
@@ -311,6 +337,23 @@ function AuthenticatedApp() {
     React.createElement(BillingModal, {
       isVisible: showBillingModal,
       onClose: () => setShowBillingModal(false)
+    }),
+
+    // Plan Selection Modal (highest priority)
+    React.createElement(PlanSelectionModal, {
+      isOpen: showPlanSelectionModal,
+      onPlanSelected: (plan) => {
+        console.log('🎯 Plan selected:', plan);
+        setShowPlanSelectionModal(false);
+        // The checkout process will handle the rest
+      },
+      onClose: () => {
+        console.log('❌ Plan selection cancelled');
+        // For demo users, we might want to logout if they don't select a plan
+        if (user?.isDemo) {
+          logout();
+        }
+      }
     }),
 
     // Welcome Flow Tutorial

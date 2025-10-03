@@ -280,27 +280,14 @@ router.post('/create-portal-session', async (req, res) => {
 // @access  Private
 router.get('/subscription', async (req, res) => {
   try {
-    // Handle demo user
+    // Handle demo user - NO PLAN ASSIGNED YET
     if (req.user.isDemo) {
-      console.log('🧪 Demo user requesting subscription - returning mock data');
+      console.log('🧪 Demo user requesting subscription - NO PLAN SELECTED YET');
       return res.json({
         success: true,
-        subscription: {
-          tier: {
-            name: 'PayAsYouGo',
-            displayName: 'Pay-As-You-Go',
-            billingType: 'per_report',
-            pricePerReport: 15,
-            reportsIncluded: 0
-          },
-          status: 'active',
-          reportsGenerated: 0,
-          reportsRemaining: 'unlimited',
-          billingPeriod: 'monthly',
-          nextBillingDate: null,
-          stripeCustomerId: 'demo-customer-id',
-          stripeSubscriptionId: null
-        }
+        subscription: null, // No plan selected yet
+        needsPlanSelection: true,
+        message: 'Please select a subscription plan to continue'
       });
     }
 
