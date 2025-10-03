@@ -137,8 +137,19 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// User Login
-router.post('/login', async (req, res) => {
+// Simple test login route
+router.post('/login', (req, res) => {
+  console.log('🔐 Login route hit!', req.body);
+  res.json({ 
+    message: 'Login route is working!', 
+    body: req.body,
+    timestamp: new Date().toISOString() 
+  });
+});
+
+// Complex login route (commented out for debugging)
+/*
+router.post('/login-full', async (req, res) => {
   try {
     console.log('🔐 User login attempt:', { email: req.body.email });
     
@@ -209,6 +220,7 @@ router.post('/login', async (req, res) => {
     res.status(500).json({ error: 'Login failed. Please try again.' });
   }
 });
+*/
 
 // Test route after login
 router.get('/test-after-login', (req, res) => {
