@@ -29,6 +29,10 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    
+    // Temporary: Log all API requests for debugging
+    console.log('🌐 API Request:', config.method?.toUpperCase(), config.url);
+    
     return config;
   },
   (error) => {
@@ -42,8 +46,12 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
+    console.error('❌ API Error:', error.message);
+    
     // Handle common errors
-    if (error.response?.status === 401) {
+    if (error.code === 'ERR_NETWORK' || error.message.includes('Network Error')) {
+      console.error('🚫 Backend is unreachable - Railway deployment may be down');
+    } else if (error.response?.status === 401) {
       // Unauthorized - clear token and redirect to login
       localStorage.removeItem('auth_token');
       console.log('🚫 401 Unauthorized - would redirect to login (disabled for testing)');
@@ -52,7 +60,7 @@ api.interceptors.response.use(
       console.warn('Rate limited. Please try again later.');
     } else if (error.response?.status >= 500) {
       // Server error
-      console.error('Server error:', error.response.data);
+      console.error('Server error:', error.response?.data);
     }
     
     return Promise.reject(error);
