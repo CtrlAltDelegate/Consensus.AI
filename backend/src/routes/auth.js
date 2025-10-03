@@ -187,12 +187,12 @@ router.post('/login', async (req, res) => {
       email: user.email,
       profile: user.profile,
       subscription: {
-        tier: user.subscription.tier.name,
-        status: user.subscription.status,
-        tokenLimit: user.subscription.tier.tokenLimit,
-        stripeCustomerId: user.subscription.stripeCustomerId
+        tier: user.subscription?.tier?.name || 'PayAsYouGo',
+        status: user.subscription?.status || 'active',
+        tokenLimit: user.subscription?.tier?.tokenLimit || 0,
+        stripeCustomerId: user.subscription?.stripeCustomerId || null
       },
-      availableTokens: user.getAvailableTokens(),
+      availableTokens: user.getAvailableTokens ? user.getAvailableTokens() : 0,
       preferences: user.preferences,
       createdAt: user.createdAt
     };
