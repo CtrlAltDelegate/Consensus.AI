@@ -136,8 +136,11 @@ function AuthenticatedApp() {
   // Check if user needs plan selection (higher priority than welcome flow)
   useEffect(() => {
     const checkSubscriptionStatus = async () => {
-      if (user) {
+      if (user && localStorage.getItem('auth_token')) {
         try {
+          // Small delay to ensure token is set in axios interceptor
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
           const { apiHelpers } = await import('./config/api');
           const response = await apiHelpers.getSubscription();
           
@@ -148,6 +151,11 @@ function AuthenticatedApp() {
           }
         } catch (error) {
           console.error('Failed to check subscription status:', error);
+          // If API call fails, assume user needs plan selection for demo users
+          if (user?.isDemo) {
+            console.log('🎯 Demo user - showing plan selection due to API error');
+            setShowPlanSelectionModal(true);
+          }
         }
       }
     };
