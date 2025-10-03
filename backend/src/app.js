@@ -600,16 +600,29 @@ app.use('*', (req, res) => {
 });
 
 // Start server with extended timeout for LLM operations
-const server = app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`📊 Health check: http://localhost:${PORT}/health`);
-  console.log(`⏱️  Server timeout: 3 minutes for LLM consensus operations`);
-});
+try {
+  const server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`📊 Health check: http://localhost:${PORT}/health`);
+    console.log(`⏱️  Server timeout: 3 minutes for LLM consensus operations`);
+  });
 
-// Set server timeout to 3 minutes for long-running LLM requests
-server.timeout = 180000; // 3 minutes
-server.keepAliveTimeout = 185000; // Slightly longer than timeout
-server.headersTimeout = 186000; // Slightly longer than keepAliveTimeout
+  // Set server timeout to 3 minutes for long-running LLM requests
+  server.timeout = 180000; // 3 minutes
+  server.keepAliveTimeout = 185000; // Slightly longer than timeout
+  server.headersTimeout = 186000; // Slightly longer than keepAliveTimeout
+
+  // Handle server errors
+  server.on('error', (error) => {
+    console.error('❌ Server error:', error);
+    if (error.code === 'EADDRINUSE') {
+      console.log(`⚠️  Port ${PORT} is already in use`);
+    }
+  });
+
+} catch (error) {
+  console.error('❌ Failed to start server:', error);
+}
 
 module.exports = app; 
