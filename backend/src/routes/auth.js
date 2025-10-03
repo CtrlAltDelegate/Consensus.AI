@@ -29,7 +29,7 @@ router.post('/register', async (req, res) => {
     if (isTestUser) {
       console.log('🧪 Demo user registration - bypassing database');
       
-      // Create mock user data for demo
+      // Create mock user data for demo - ALWAYS NEW USER
       const mockUser = {
         _id: 'demo-user-id',
         email: 'test@onboarding.demo',
@@ -38,23 +38,21 @@ router.post('/register', async (req, res) => {
           lastName: req.body.profile?.lastName || 'User',
           organization: req.body.profile?.organization || 'Test Company'
         },
-        subscription: {
-          tier: { name: 'PayAsYouGo' },
-          status: 'active'
-        },
+        subscription: null, // No subscription yet - needs setup
+        isNewUser: true,
         createdAt: new Date()
       };
       
-      // Generate demo token
+      // Generate demo token - ALWAYS NEW USER
       const token = jwt.sign(
-        { userId: 'demo-user-id', email: 'test@onboarding.demo', isDemo: true },
+        { userId: 'demo-user-id', email: 'test@onboarding.demo', isDemo: true, isNewUser: true },
         process.env.JWT_SECRET,
         { expiresIn: '24h' }
       );
       
       return res.status(201).json({
         success: true,
-        message: 'Demo user registered successfully',
+        message: 'Demo user registered - FRESH onboarding every time',
         token,
         user: mockUser,
         requiresBillingSetup: true,
@@ -191,7 +189,7 @@ router.post('/login', async (req, res) => {
     if (isTestUser) {
       console.log('🧪 Demo user login - bypassing database');
       
-      // Create mock user data for demo
+      // Create mock user data for demo - ALWAYS FRESH ONBOARDING
       const mockUser = {
         _id: 'demo-user-id',
         email: 'test@onboarding.demo',
@@ -200,26 +198,26 @@ router.post('/login', async (req, res) => {
           lastName: 'User',
           organization: 'Test Company'
         },
-        subscription: {
-          tier: { name: 'PayAsYouGo' },
-          status: 'active'
-        },
+        subscription: null, // No subscription yet - needs setup
         preferences: {},
+        isNewUser: true,
         createdAt: new Date()
       };
       
-      // Generate demo token
+      // Generate demo token - ALWAYS NEW USER
       const token = jwt.sign(
-        { userId: 'demo-user-id', email: 'test@onboarding.demo', isDemo: true },
+        { userId: 'demo-user-id', email: 'test@onboarding.demo', isDemo: true, isNewUser: true },
         process.env.JWT_SECRET,
         { expiresIn: '24h' }
       );
       
       return res.json({
         success: true,
-        message: 'Demo login successful',
+        message: 'Demo login - FRESH onboarding experience',
         token,
         user: mockUser,
+        requiresBillingSetup: true,
+        nextStep: 'payment_setup',
         isDemo: true
       });
     }

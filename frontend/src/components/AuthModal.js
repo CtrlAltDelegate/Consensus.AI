@@ -96,8 +96,8 @@ function AuthModal({ isVisible, onClose, onAuthSuccess }) {
       if (result.success) {
         console.log(`✅ ${isLogin ? 'Login' : 'Registration'} successful`);
         
-        // Handle billing setup for new registrations
-        if (!isLogin && result.requiresBillingSetup) {
+        // Handle billing setup for new registrations OR demo logins
+        if (result.requiresBillingSetup) {
           console.log('🔄 Redirecting to billing setup...');
           
           // Call success callback first to set authentication state
