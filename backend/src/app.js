@@ -403,6 +403,15 @@ app.options('/test', (req, res) => {
   res.sendStatus(200);
 });
 
+// Simple test endpoint
+app.get('/test', (req, res) => {
+  res.json({ 
+    message: 'Backend is working!', 
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
+
 // Health check endpoint for Railway
 app.get('/health', (req, res) => {
   console.log('🏥 Health check requested from origin:', req.headers.origin);
