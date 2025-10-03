@@ -21,6 +21,7 @@ router.get('/plans', async (req, res) => {
         success: true,
         plans: [
           {
+            _id: 'demo-payasyougo',
             id: 'demo-payasyougo',
             name: 'PayAsYouGo',
             displayName: 'Pay-As-You-Go',
@@ -33,6 +34,7 @@ router.get('/plans', async (req, res) => {
             features: ['$15 per report', 'No monthly commitment', 'Full report access']
           },
           {
+            _id: 'demo-starter',
             id: 'demo-starter',
             name: 'Starter',
             displayName: 'Starter Plan',
@@ -43,6 +45,32 @@ router.get('/plans', async (req, res) => {
             pricePerReport: 12,
             billingType: 'subscription',
             features: ['3 reports included', '$12 per additional report', 'Priority support']
+          },
+          {
+            _id: 'demo-professional',
+            id: 'demo-professional',
+            name: 'Professional',
+            displayName: 'Professional Plan',
+            description: 'Best for power users',
+            monthlyPrice: 79,
+            yearlyPrice: 790,
+            reportsIncluded: 10,
+            pricePerReport: 8,
+            billingType: 'subscription',
+            features: ['10 reports included', '$8 per additional report', 'Priority support', 'Advanced analytics']
+          },
+          {
+            _id: 'demo-business',
+            id: 'demo-business',
+            name: 'Business',
+            displayName: 'Business Plan',
+            description: 'Perfect for teams',
+            monthlyPrice: 199,
+            yearlyPrice: 1990,
+            reportsIncluded: 30,
+            pricePerReport: 6,
+            billingType: 'subscription',
+            features: ['30 reports included', '$6 per additional report', 'Team management', 'Custom integrations']
           }
         ]
       });
@@ -162,19 +190,20 @@ router.post('/create-checkout-session', async (req, res) => {
     const { tier, billingPeriod = 'monthly' } = req.body;
     let user;
     
-    // Handle demo user - create temporary user object for Stripe
+    // Handle demo user - return mock checkout success
     if (req.user.isDemo) {
-      console.log('🧪 Demo user requesting checkout session - using Stripe test mode');
-      user = {
-        email: 'test@onboarding.demo',
-        profile: { firstName: 'Demo', lastName: 'User' },
-        subscription: {}
-      };
-    } else {
-      user = await User.findById(req.user.userId);
-      if (!user) {
-        return res.status(404).json({ error: 'User not found' });
-      }
+      console.log('🧪 Demo user requesting checkout session - returning mock success');
+      return res.json({
+        success: true,
+        sessionId: 'demo-session-id',
+        url: `${process.env.FRONTEND_URL}/billing?demo=success&plan=${tier}`,
+        message: 'Demo checkout - plan selection completed'
+      });
+    }
+    
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
     }
 
     // Get the subscription tier
