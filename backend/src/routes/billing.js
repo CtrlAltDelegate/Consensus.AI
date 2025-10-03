@@ -89,20 +89,21 @@ router.get('/plans', async (req, res) => {
 // @access  Private
 router.post('/setup-payment', async (req, res) => {
   try {
-    // Handle demo user
+    let user;
+    
+    // Handle demo user - create temporary user object for Stripe
     if (req.user.isDemo) {
-      console.log('🧪 Demo user requesting payment setup - returning mock Stripe URL');
-      return res.json({
-        success: true,
-        url: 'https://checkout.stripe.com/c/pay/demo-test-session#fidkdWxOYHwnPyd1blpxYHZxWjA0VGxKQGBgaUhKT3VQNWJLNkFxNkZfNjVhYjVhNHxKfGBgbGBgYGBg',
-        message: 'Demo payment setup - this would normally redirect to Stripe'
-      });
-    }
-
-    const user = await User.findById(req.user.userId);
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+      console.log('🧪 Demo user requesting payment setup - using Stripe test mode');
+      user = {
+        email: 'test@onboarding.demo',
+        profile: { firstName: 'Demo', lastName: 'User' },
+        subscription: {}
+      };
+    } else {
+      user = await User.findById(req.user.userId);
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
     }
 
     // Create or get Stripe customer
@@ -159,10 +160,21 @@ router.post('/create-checkout-session', async (req, res) => {
     }
 
     const { tier, billingPeriod = 'monthly' } = req.body;
-    const user = await User.findById(req.user.userId);
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+    let user;
+    
+    // Handle demo user - create temporary user object for Stripe
+    if (req.user.isDemo) {
+      console.log('🧪 Demo user requesting checkout session - using Stripe test mode');
+      user = {
+        email: 'test@onboarding.demo',
+        profile: { firstName: 'Demo', lastName: 'User' },
+        subscription: {}
+      };
+    } else {
+      user = await User.findById(req.user.userId);
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
     }
 
     // Get the subscription tier
