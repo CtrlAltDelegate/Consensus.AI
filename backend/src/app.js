@@ -362,13 +362,28 @@ app.post('/errors/clear', (req, res) => {
 
 // Routes
 console.log('🔗 Loading auth routes...');
+let authRoutesError = null;
+let authRoutesLoaded = false;
+
 try {
   const authRoutes = require('./routes/auth');
   app.use('/api/auth', authRoutes);
   console.log('✅ Auth routes loaded successfully');
+  authRoutesLoaded = true;
 } catch (error) {
   console.error('❌ Failed to load auth routes:', error);
+  authRoutesError = error.message;
 }
+
+// Debug endpoint to check auth routes loading status
+app.get('/debug-auth', (req, res) => {
+  res.json({
+    authRoutesLoaded,
+    authRoutesError,
+    timestamp: new Date().toISOString(),
+    availableRoutes: app._router ? app._router.stack.map(r => r.regexp.toString()) : 'No router'
+  });
+});
 
 console.log('🔗 Loading other routes...');
 app.use('/api/admin', require('./routes/admin'));
