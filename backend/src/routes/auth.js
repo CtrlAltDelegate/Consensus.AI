@@ -140,9 +140,20 @@ router.post('/register', async (req, res) => {
 // Simple test login route
 router.post('/login', (req, res) => {
   console.log('🔐 Login route hit!', req.body);
+  
+  // Return the format the frontend expects
   res.json({ 
-    message: 'Login route is working!', 
-    body: req.body,
+    success: true,
+    message: 'Login route is working! (Test mode)',
+    token: 'test-token-123',
+    user: {
+      id: 'test-user-id',
+      email: req.body.email || 'test@example.com',
+      profile: {
+        firstName: 'Test',
+        lastName: 'User'
+      }
+    },
     timestamp: new Date().toISOString() 
   });
 });
