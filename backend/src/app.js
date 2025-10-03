@@ -521,19 +521,10 @@ app.get('/test-login', (req, res) => {
   `);
 });
 
-// Health check endpoint for Railway
+// Simple health check endpoint for Railway
 app.get('/health', (req, res) => {
-  console.log('🏥 Health check requested from origin:', req.headers.origin);
-  
-  // CORS headers are already set by middleware above
-  res.status(200).json({ 
-    status: 'OK',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    environment: process.env.NODE_ENV || 'development',
-    version: require('../package.json').version,
-    database: process.env.MONGODB_URI ? 'configured' : 'not configured'
-  });
+  console.log('🏥 Health check requested');
+  res.status(200).json({ status: 'OK' });
 });
 
 // Database test endpoint
