@@ -117,9 +117,8 @@ router.get('/plans', async (req, res) => {
 // @access  Private
 router.post('/setup-payment', async (req, res) => {
   try {
-    let user;
-    
     // Handle demo user - create temporary user object for Stripe
+    let user;
     if (req.user.isDemo) {
       console.log('🧪 Demo user requesting payment setup - using Stripe test mode');
       user = {
