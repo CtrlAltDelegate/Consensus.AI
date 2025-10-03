@@ -361,7 +361,16 @@ app.post('/errors/clear', (req, res) => {
 });
 
 // Routes
-app.use('/api/auth', require('./routes/auth'));
+console.log('🔗 Loading auth routes...');
+try {
+  const authRoutes = require('./routes/auth');
+  app.use('/api/auth', authRoutes);
+  console.log('✅ Auth routes loaded successfully');
+} catch (error) {
+  console.error('❌ Failed to load auth routes:', error);
+}
+
+console.log('🔗 Loading other routes...');
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/billing', require('./routes/billing'));
 app.use('/api/consensus', require('./routes/consensus'));
