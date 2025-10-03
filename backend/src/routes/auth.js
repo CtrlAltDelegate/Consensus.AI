@@ -55,8 +55,8 @@ router.post('/register', async (req, res) => {
         message: 'Demo user registered - FRESH onboarding every time',
         token,
         user: mockUser,
-        requiresBillingSetup: true,
-        nextStep: 'payment_setup',
+        needsPlanSelection: true,
+        nextStep: 'plan_selection',
         isDemo: true
       });
     }
@@ -201,8 +201,8 @@ router.post('/login', async (req, res) => {
         message: 'Demo login - FRESH onboarding experience',
         token,
         user: mockUser,
-        requiresBillingSetup: true,
-        nextStep: 'payment_setup',
+        needsPlanSelection: true,
+        nextStep: 'plan_selection',
         isDemo: true
       });
     }

@@ -96,8 +96,17 @@ function AuthModal({ isVisible, onClose, onAuthSuccess }) {
       if (result.success) {
         console.log(`✅ ${isLogin ? 'Login' : 'Registration'} successful`);
         
-        // Handle billing setup for new registrations OR demo logins
-        if (result.requiresBillingSetup) {
+        // Handle different onboarding flows
+        if (result.needsPlanSelection) {
+          console.log('🎯 User needs to select a plan - showing plan selection modal');
+          
+          // Call success callback first to set authentication state
+          onAuthSuccess(result.user, result.token);
+          
+          // Close modal - App.js will handle showing plan selection modal
+          onClose();
+          
+        } else if (result.requiresBillingSetup) {
           console.log('🔄 Redirecting to billing setup...');
           
           // Call success callback first to set authentication state

@@ -157,7 +157,7 @@ export function UserProvider({ children }) {
           payload: { user, token }
         });
         
-        return { success: true, user, token, requiresBillingSetup, nextStep };
+        return { success: true, user, token, requiresBillingSetup, nextStep, needsPlanSelection: response.data.needsPlanSelection };
       }
     } catch (error) {
       const errorMessage = error.response?.data?.error || 'Login failed';
@@ -176,7 +176,7 @@ export function UserProvider({ children }) {
       const response = await apiHelpers.register(userData);
       
       if (response.data.success) {
-        const { user, token, requiresBillingSetup, nextStep } = response.data;
+        const { user, token, requiresBillingSetup, nextStep, needsPlanSelection } = response.data;
         
         // Store in localStorage
         localStorage.setItem('auth_token', token);
@@ -192,7 +192,8 @@ export function UserProvider({ children }) {
           user, 
           token, 
           requiresBillingSetup,
-          nextStep 
+          nextStep,
+          needsPlanSelection
         };
       }
     } catch (error) {
