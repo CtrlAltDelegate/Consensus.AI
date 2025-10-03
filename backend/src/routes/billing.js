@@ -14,6 +14,40 @@ router.use(auth);
 // @access  Private
 router.get('/plans', async (req, res) => {
   try {
+    // Handle demo user
+    if (req.user.isDemo) {
+      console.log('🧪 Demo user requesting plans - returning mock data');
+      return res.json({
+        success: true,
+        plans: [
+          {
+            id: 'demo-payasyougo',
+            name: 'PayAsYouGo',
+            displayName: 'Pay-As-You-Go',
+            description: 'Perfect for occasional use',
+            monthlyPrice: 0,
+            yearlyPrice: 0,
+            reportsIncluded: 0,
+            pricePerReport: 15,
+            billingType: 'per_report',
+            features: ['$15 per report', 'No monthly commitment', 'Full report access']
+          },
+          {
+            id: 'demo-starter',
+            name: 'Starter',
+            displayName: 'Starter Plan',
+            description: 'Great for regular users',
+            monthlyPrice: 29,
+            yearlyPrice: 290,
+            reportsIncluded: 3,
+            pricePerReport: 12,
+            billingType: 'subscription',
+            features: ['3 reports included', '$12 per additional report', 'Priority support']
+          }
+        ]
+      });
+    }
+    
     const plans = await SubscriptionTier.getActiveTiers();
     
     const plansWithPricing = plans.map(plan => ({
@@ -55,6 +89,16 @@ router.get('/plans', async (req, res) => {
 // @access  Private
 router.post('/setup-payment', async (req, res) => {
   try {
+    // Handle demo user
+    if (req.user.isDemo) {
+      console.log('🧪 Demo user requesting payment setup - returning mock Stripe URL');
+      return res.json({
+        success: true,
+        url: 'https://checkout.stripe.com/c/pay/demo-test-session#fidkdWxOYHwnPyd1blpxYHZxWjA0VGxKQGBgaUhKT3VQNWJLNkFxNkZfNjVhYjVhNHxKfGBgbGBgYGBg',
+        message: 'Demo payment setup - this would normally redirect to Stripe'
+      });
+    }
+
     const user = await User.findById(req.user.userId);
 
     if (!user) {
@@ -224,6 +268,30 @@ router.post('/create-portal-session', async (req, res) => {
 // @access  Private
 router.get('/subscription', async (req, res) => {
   try {
+    // Handle demo user
+    if (req.user.isDemo) {
+      console.log('🧪 Demo user requesting subscription - returning mock data');
+      return res.json({
+        success: true,
+        subscription: {
+          tier: {
+            name: 'PayAsYouGo',
+            displayName: 'Pay-As-You-Go',
+            billingType: 'per_report',
+            pricePerReport: 15,
+            reportsIncluded: 0
+          },
+          status: 'active',
+          reportsGenerated: 0,
+          reportsRemaining: 'unlimited',
+          billingPeriod: 'monthly',
+          nextBillingDate: null,
+          stripeCustomerId: 'demo-customer-id',
+          stripeSubscriptionId: null
+        }
+      });
+    }
+
     const user = await User.findById(req.user.userId)
       .populate('subscription.tier', 'name displayName monthlyPrice yearlyPrice reportsIncluded pricePerReport overageRate billingType features tokenLimit');
 

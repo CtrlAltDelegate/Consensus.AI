@@ -22,7 +22,24 @@ const auth = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, env.JWT_SECRET);
-    const user = await User.findById(decoded.id).select('-password');
+    
+    // Handle demo user tokens
+    if (decoded.isDemo && decoded.userId === 'demo-user-id') {
+      console.log('🧪 Demo user authenticated');
+      req.user = {
+        _id: 'demo-user-id',
+        userId: 'demo-user-id',
+        email: 'test@onboarding.demo',
+        isDemo: true,
+        subscription: {
+          tier: { name: 'PayAsYouGo' },
+          status: 'active'
+        }
+      };
+      return next();
+    }
+    
+    const user = await User.findById(decoded.userId || decoded.id).select('-password');
     
     if (!user) {
       return res.status(401).json({ error: 'Invalid token. User not found.' });
