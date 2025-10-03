@@ -406,10 +406,51 @@ app.options('/test', (req, res) => {
 // Simple test endpoint
 app.get('/test', (req, res) => {
   res.json({ 
-    message: 'Backend is working!', 
+    message: 'BACKEND IS REACHABLE!', 
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
+    headers: req.headers
   });
+});
+
+// Test login page for debugging
+app.get('/test-login', (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head><title>Test Login</title></head>
+    <body>
+      <h2>Test Login Form</h2>
+      <form id="loginForm">
+        <input type="email" id="email" placeholder="Email" required><br><br>
+        <input type="password" id="password" placeholder="Password" required><br><br>
+        <button type="submit">Test Login</button>
+      </form>
+      <div id="result"></div>
+      <script>
+        document.getElementById('loginForm').onsubmit = async (e) => {
+          e.preventDefault();
+          const email = document.getElementById('email').value;
+          const password = document.getElementById('password').value;
+          
+          try {
+            const response = await fetch('/api/auth/login', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email, password })
+            });
+            const data = await response.json();
+            document.getElementById('result').innerHTML = 
+              '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+          } catch (error) {
+            document.getElementById('result').innerHTML = 
+              '<p style="color: red;">Error: ' + error.message + '</p>';
+          }
+        };
+      </script>
+    </body>
+    </html>
+  `);
 });
 
 // Health check endpoint for Railway
