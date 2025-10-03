@@ -385,6 +385,50 @@ app.get('/debug-auth', (req, res) => {
   });
 });
 
+// Debug endpoint to check database connection and data
+app.get('/debug-db', async (req, res) => {
+  const mongoose = require('mongoose');
+  
+  try {
+    const dbStatus = {
+      mongodbUri: process.env.MONGODB_URI ? 'Set' : 'Not Set',
+      connectionState: mongoose.connection.readyState,
+      connectionStates: {
+        0: 'disconnected',
+        1: 'connected', 
+        2: 'connecting',
+        3: 'disconnecting'
+      },
+      connectedTo: mongoose.connection.host || 'No host',
+      database: mongoose.connection.name || 'No database'
+    };
+
+    // Try to count some collections
+    const User = require('./models/userModel');
+    const SubscriptionTier = require('./models/subscriptionTiers');
+    
+    const userCount = await User.countDocuments();
+    const tierCount = await SubscriptionTier.countDocuments();
+
+    res.json({
+      dbStatus,
+      collections: {
+        users: userCount,
+        subscriptionTiers: tierCount
+      },
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    res.json({
+      error: error.message,
+      mongodbUri: process.env.MONGODB_URI ? 'Set' : 'Not Set',
+      connectionState: mongoose.connection.readyState,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 console.log('🔗 Loading other routes...');
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/billing', require('./routes/billing'));
