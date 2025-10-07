@@ -13,7 +13,7 @@ const OnboardingFlow = ({ user, isOpen, onComplete, onClose }) => {
   const slides = [
     {
       id: 'welcome',
-      title: 'Welcome to Consensus.AI! 🎉',
+      title: 'Welcome to Consensus.AI!',
       type: 'intro',
       content: {
         subtitle: 'Get unbiased analysis from 4 leading AI models',
@@ -27,7 +27,7 @@ const OnboardingFlow = ({ user, isOpen, onComplete, onClose }) => {
     },
     {
       id: 'navigation',
-      title: 'Quick Navigation Tour 🧭',
+      title: 'Quick Navigation Tour',
       type: 'tutorial',
       content: {
         subtitle: 'Master the platform in 30 seconds',
@@ -57,7 +57,7 @@ const OnboardingFlow = ({ user, isOpen, onComplete, onClose }) => {
     },
     {
       id: 'report-tutorial',
-      title: 'Generate Powerful Reports 🚀',
+      title: 'Generate Powerful Reports',
       type: 'tutorial',
       content: {
         subtitle: 'How to get the best consensus analysis',
@@ -85,11 +85,11 @@ const OnboardingFlow = ({ user, isOpen, onComplete, onClose }) => {
     },
     {
       id: 'plan-selection',
-      title: 'Choose Your Plan 💳',
+      title: 'Choose Your Plan',
       type: 'payment',
       content: {
         subtitle: 'Select the plan that fits your needs',
-        note: '⚠️ Payment setup is required to access the platform',
+        note: 'Payment setup is required to access the platform',
         highlight: 'We need your billing information to ensure uninterrupted service'
       }
     }
@@ -184,8 +184,8 @@ const OnboardingFlow = ({ user, isOpen, onComplete, onClose }) => {
     if (plan.name === 'Professional') {
       return (
         <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-          <span className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-3 py-1 rounded-full text-sm font-medium">
-            🏆 Best Value
+          <span className="bg-blue-500 text-white px-3 py-1 rounded-full text-sm">
+            Best Value
           </span>
         </div>
       );
@@ -425,7 +425,7 @@ const OnboardingFlow = ({ user, isOpen, onComplete, onClose }) => {
               disabled={!selectedPlan || loading}
               className="bg-green-600 text-white px-8 py-3 rounded-md font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-lg"
             >
-              {loading ? 'Processing...' : `💳 Setup Billing & Start Using Consensus.AI`}
+              {loading ? 'Processing...' : 'Setup Billing & Start Using Consensus.AI'}
             </button>
           )}
         </div>
