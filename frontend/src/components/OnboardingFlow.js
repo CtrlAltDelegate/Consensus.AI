@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiHelpers } from '../config/api';
 
-const OnboardingFlow = ({ user, onComplete, onClose }) => {
+const OnboardingFlow = ({ user, isOpen, onComplete, onClose }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [plans, setPlans] = useState([]);
   const [selectedPlan, setSelectedPlan] = useState(null);
@@ -343,6 +343,8 @@ const OnboardingFlow = ({ user, onComplete, onClose }) => {
         return null;
     }
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
