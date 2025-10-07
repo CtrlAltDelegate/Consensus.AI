@@ -21,6 +21,7 @@ import KnowledgeBase from './components/KnowledgeBase';
 import WelcomeFlow from './components/WelcomeFlow';
 import UserProfileModal from './components/UserProfileModal';
 // import PlanSelectionModal from './components/PlanSelectionModal';
+import OnboardingFlow from './components/OnboardingFlow';
 
 // Services
 import exportService from './utils/exportService';
@@ -128,7 +129,7 @@ function AuthenticatedApp() {
   const [showReportViewer, setShowReportViewer] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showBillingModal, setShowBillingModal] = useState(false);
-  const [showPlanSelectionModal, setShowPlanSelectionModal] = useState(false);
+  const [showOnboardingFlow, setShowOnboardingFlow] = useState(false);
   const [showWelcomeFlow, setShowWelcomeFlow] = useState(false);
   
   const progressModal = useProgressModal();
@@ -145,16 +146,16 @@ function AuthenticatedApp() {
           const response = await apiHelpers.getSubscription();
           
           if (response.data.needsPlanSelection || !response.data.subscription) {
-            console.log('🎯 User needs to select a plan');
-            setShowPlanSelectionModal(true);
-            return; // Don't show welcome flow if plan selection is needed
+            console.log('🎯 User needs onboarding - showing comprehensive flow');
+            setShowOnboardingFlow(true);
+            return; // Don't show welcome flow if onboarding is needed
           }
         } catch (error) {
           console.error('Failed to check subscription status:', error);
-          // If API call fails, assume user needs plan selection for demo users
+          // If API call fails, assume user needs onboarding for demo users
           if (user?.isDemo) {
-            console.log('🎯 Demo user - showing plan selection due to API error');
-            setShowPlanSelectionModal(true);
+            console.log('🎯 Demo user - showing onboarding due to API error');
+            setShowOnboardingFlow(true);
           }
         }
       }
@@ -163,9 +164,9 @@ function AuthenticatedApp() {
     checkSubscriptionStatus();
   }, [user]);
 
-  // Check if user is new and should see welcome flow (only if they have a plan)
+  // Check if user is new and should see welcome flow (only if they have completed onboarding)
   useEffect(() => {
-    if (!showPlanSelectionModal) {
+    if (!showOnboardingFlow) {
       const hasSeenWelcome = localStorage.getItem(`welcome_seen_${user?.id}`);
       if (user && !hasSeenWelcome) {
         // Show welcome flow after a short delay
@@ -175,9 +176,35 @@ function AuthenticatedApp() {
         return () => clearTimeout(timer);
       }
     }
-  }, [user, showPlanSelectionModal]);
+  }, [user, showOnboardingFlow]);
 
-  // Handle welcome flow completion
+  // Protected Route Component - blocks access until onboarding complete
+  const ProtectedRoute = ({ children }) => {
+    // If user needs onboarding, show a blocking message
+    if (showOnboardingFlow) {
+      return React.createElement('div', {
+        className: 'min-h-screen flex items-center justify-center bg-gray-50'
+      },
+        React.createElement('div', {
+          className: 'text-center p-8 bg-white rounded-lg shadow-lg max-w-md'
+        },
+          React.createElement('div', {
+            className: 'text-6xl mb-4'
+          }, '🚀'),
+          React.createElement('h2', {
+            className: 'text-2xl font-bold text-gray-900 mb-4'
+          }, 'Complete Your Setup'),
+          React.createElement('p', {
+            className: 'text-gray-600 mb-6'
+          }, 'Please complete the onboarding process to access your dashboard.'),
+          React.createElement('div', {
+            className: 'animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto'
+          })
+        )
+      );
+    }
+    return children;
+  };
   const handleWelcomeComplete = (action) => {
     console.log('🎉 Welcome flow completed with action:', action);
     localStorage.setItem(`welcome_seen_${user?.id}`, 'true');
@@ -286,22 +313,28 @@ function AuthenticatedApp() {
         React.createElement(Route, { path: '/', element: React.createElement(Navigate, { to: '/dashboard', replace: true }) }),
               React.createElement(Route, { 
                 path: '/dashboard', 
-                element: React.createElement(ReportDashboard, {
-                  onUpgrade: () => setShowBillingModal(true)
-                })
+                element: React.createElement(ProtectedRoute, null,
+                  React.createElement(ReportDashboard, {
+                    onUpgrade: () => setShowBillingModal(true)
+                  })
+                )
               }),
         React.createElement(Route, { 
           path: '/consensus', 
-          element: React.createElement(EnhancedConsensusForm, {
-            progressModal: progressModal
-          })
+          element: React.createElement(ProtectedRoute, null,
+            React.createElement(EnhancedConsensusForm, {
+              progressModal: progressModal
+            })
+          )
         }),
         React.createElement(Route, { 
           path: '/reports', 
-          element: React.createElement(ReportHistory, {
-            onViewReport: handleViewReport,
-            onExportReport: handleExportReport
-          })
+          element: React.createElement(ProtectedRoute, null,
+            React.createElement(ReportHistory, {
+              onViewReport: handleViewReport,
+              onExportReport: handleExportReport
+            })
+          )
         }),
         React.createElement(Route, { 
           path: '/help', 
@@ -347,22 +380,25 @@ function AuthenticatedApp() {
       onClose: () => setShowBillingModal(false)
     }),
 
-    // Plan Selection Modal (highest priority) - TEMPORARILY DISABLED
-    // React.createElement(PlanSelectionModal, {
-    //   isOpen: showPlanSelectionModal,
-    //   onPlanSelected: (plan) => {
-    //     console.log('🎯 Plan selected:', plan);
-    //     setShowPlanSelectionModal(false);
-    //     // The checkout process will handle the rest
-    //   },
-    //   onClose: () => {
-    //     console.log('❌ Plan selection cancelled');
-    //     // For demo users, we might want to logout if they don't select a plan
-    //     if (user?.isDemo) {
-    //       logout();
-    //     }
-    //   }
-    // }),
+    // Comprehensive Onboarding Flow (highest priority)
+    React.createElement(OnboardingFlow, {
+      user: user,
+      isOpen: showOnboardingFlow,
+      onComplete: () => {
+        console.log('🎉 Onboarding completed - user has billing setup');
+        setShowOnboardingFlow(false);
+        // Show welcome flow after onboarding
+        setTimeout(() => setShowWelcomeFlow(true), 500);
+      },
+      onClose: () => {
+        console.log('❌ Onboarding cancelled');
+        // For real users, don't allow closing without payment
+        // For demo users, allow logout
+        if (user?.isDemo) {
+          logout();
+        }
+      }
+    }),
 
     // Welcome Flow Tutorial
     React.createElement(WelcomeFlow, {
