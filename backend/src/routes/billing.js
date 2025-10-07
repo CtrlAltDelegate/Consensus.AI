@@ -187,7 +187,6 @@ router.post('/create-checkout-session', async (req, res) => {
     }
 
     const { tier, billingPeriod = 'monthly' } = req.body;
-    let user;
     
     // Handle demo user - return mock checkout success
     if (req.user.isDemo) {
