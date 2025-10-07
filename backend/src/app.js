@@ -40,30 +40,10 @@ console.log('🚂 Valid origins for Railway:', validOrigins);
 
 // Use the cors package - Railway might respect this better
 const corsOptions = {
-  origin: function (origin, callback) {
-    console.log('🔍 CORS package - checking origin:', origin);
-    
-    // Allow requests with no origin (mobile apps, etc.)
-    if (!origin) {
-      console.log('✅ No origin - allowing');
-      return callback(null, true);
-    }
-    
-    // Allow Netlify domains
-    if (origin.includes('consensusai.netlify.app') || 
-        origin.includes('localhost') ||
-        origin.includes('127.0.0.1')) {
-      console.log('✅ Allowed origin:', origin);
-      return callback(null, true);
-    }
-    
-    // For debugging - allow all origins temporarily
-    console.log('✅ Debug mode - allowing all origins:', origin);
-    return callback(null, true);
-  },
+  origin: true, // Allow all origins for now
   methods: ['GET', 'PUT', 'POST', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
-  credentials: false, // No credentials to avoid wildcard issues
+  credentials: false,
   optionsSuccessStatus: 200
 };
 
