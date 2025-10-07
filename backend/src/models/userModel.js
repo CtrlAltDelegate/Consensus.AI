@@ -27,12 +27,13 @@ const userSchema = new mongoose.Schema({
     tier: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'SubscriptionTier',
-      required: true
+      required: false, // Allow null for plan selection flow
+      default: null
     },
     status: {
       type: String,
-      enum: ['active', 'inactive', 'past_due', 'canceled', 'trialing'],
-      default: 'active'
+      enum: ['active', 'inactive', 'past_due', 'canceled', 'trialing', 'pending_selection'],
+      default: 'pending_selection'
     },
     stripeCustomerId: String,
     stripeSubscriptionId: String,
