@@ -303,9 +303,9 @@ const OnboardingFlow = ({ user, isOpen, onComplete, onClose }) => {
                   {plans.map((plan) => (
                     <div
                       key={plan.id}
-                      className={`relative p-4 border rounded-lg shadow-sm cursor-pointer transition-all duration-200
-                        ${selectedPlan?.id === plan.id ? 'border-blue-600 ring-2 ring-blue-600 bg-blue-50' : 'border-gray-300 hover:border-gray-400 bg-white'}
-                      `}
+                      className={`relative p-4 border rounded-lg shadow-sm cursor-pointer transition-all duration-200 ${
+                        selectedPlan?.id === plan.id ? 'border-blue-600 ring-2 ring-blue-600 bg-blue-50' : 'border-gray-300 hover:border-gray-400 bg-white'
+                      }`}
                       onClick={() => setSelectedPlan(plan)}
                     >
                       {getRecommendedBadge(plan)}
