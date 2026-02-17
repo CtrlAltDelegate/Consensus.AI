@@ -232,7 +232,6 @@ function ProgressLoadingModal({ isVisible, onClose, stages, currentStage, estima
           React.createElement('div', { className: 'text-right' },
             React.createElement('h4', { className: 'text-sm font-semibold text-slate-700 mb-1' }, 'Quality Indicators'),
             React.createElement('div', { className: 'text-xs text-slate-600' },
-              React.createElement('div', null, 'Est. 6,000-12,000 tokens'),
               React.createElement('div', null, '3 analysis phases'),
               React.createElement('div', null, '95%+ accuracy target')
             )
