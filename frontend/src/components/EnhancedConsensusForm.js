@@ -199,21 +199,30 @@ function EnhancedConsensusForm({ progressModal }) {
 
       // Start polling for job completion
       const result = await pollJobStatus(jobId);
-      console.log('✅ Job completed successfully:', result);
       
       // Hide progress modal after completion
       if (progressModal) {
         progressModal.hideProgress();
       }
+
+      // Defensive: server may have restarted and lost in-memory result
+      if (!result || typeof result.consensus !== 'string') {
+        setResult({
+          consensus: 'Report completed but the result was unavailable (server may have restarted). Please try generating again.',
+          confidence: 0,
+          error: true,
+          errorDetails: 'Missing or invalid result from server'
+        });
+        return;
+      }
       
-      // Set the real result from the 4-LLM system
       setResult({
         consensus: result.consensus,
-        confidence: result.confidence,
+        confidence: typeof result.confidence === 'number' ? result.confidence : 0,
         llmsUsed: result.metadata?.llmsUsed || ['GPT-4o', 'Claude 3.5 Sonnet', 'Gemini 1.5 Pro', 'Command R+'],
-        phases: result.phases,
+        phases: result.phases || null,
         generatedAt: new Date().toISOString(),
-        title: data.topic.substring(0, 100) + (data.topic.length > 100 ? '...' : ''),
+        title: (data.topic || '').substring(0, 100) + ((data.topic || '').length > 100 ? '...' : ''),
         id: `rep_${Date.now()}`
       });
       
@@ -292,8 +301,14 @@ function EnhancedConsensusForm({ progressModal }) {
         if (pollError.response?.status === 401) {
           throw new Error('Authentication required. Please sign in and try again.');
         }
+        if (pollError.response?.status === 404) {
+          throw new Error('Job was lost (server may have restarted). Please try again.');
+        }
         if (pollError.response?.data?.error) {
           throw new Error(pollError.response.data.error);
+        }
+        if (pollError.code === 'ERR_NETWORK' || pollError.message?.includes('Network')) {
+          throw new Error('Connection lost. The server may be restarting. Please try again.');
         }
         throw new Error(pollError.message || 'Job status check failed');
       }
