@@ -21,7 +21,7 @@ import KnowledgeBase from './components/KnowledgeBase';
 import WelcomeFlow from './components/WelcomeFlow';
 import UserProfileModal from './components/UserProfileModal';
 // import PlanSelectionModal from './components/PlanSelectionModal';
-import OnboardingFlow from './components/OnboardingFlow';
+import OnboardingFlow from './components/OnboardingFlow.jsx';
 
 // Services
 import exportService from './utils/exportService';
