@@ -3,6 +3,38 @@ import { useForm } from 'react-hook-form';
 import { apiHelpers } from '../config/api';
 import { HelpIcon, InfoIcon } from './Tooltip';
 
+// Report categories with preset AI models (user can change after selecting)
+const REPORT_CATEGORIES = [
+  { id: 'general', label: 'General', description: 'Balanced analysis for any topic' },
+  { id: 'legal', label: 'Legal', description: 'Contracts, compliance, case law' },
+  { id: 'financial', label: 'Financial', description: 'Modeling, risk, valuations' },
+  { id: 'technical', label: 'Technical', description: 'Code, architecture, systems' },
+  { id: 'creative', label: 'Creative', description: 'Content, marketing, strategy' }
+];
+
+// All models: available = API ready today; others shown for future use
+const AI_MODELS = [
+  { id: 'gpt-4o', name: 'GPT-4o', available: true },
+  { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet', available: true },
+  { id: 'gemini-1-5-pro', name: 'Gemini 1.5 Pro', available: true },
+  { id: 'command-r-plus', name: 'Command R+', available: true },
+  { id: 'gpt-4o-mini', name: 'GPT-4o Mini', available: false },
+  { id: 'claude-3-5-haiku', name: 'Claude 3.5 Haiku', available: false },
+  { id: 'gemini-1-5-flash', name: 'Gemini 1.5 Flash', available: false },
+  { id: 'claude-3-opus', name: 'Claude 3 Opus', available: false },
+  { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', available: false },
+  { id: 'perplexity-pro', name: 'Perplexity Pro', available: false },
+  { id: 'codestral', name: 'Codestral', available: false }
+];
+
+const CATEGORY_MODEL_PRESETS = {
+  general: ['gpt-4o', 'claude-3-5-sonnet', 'gemini-1-5-pro', 'command-r-plus'],
+  legal: ['claude-3-opus', 'gpt-4-turbo', 'perplexity-pro', 'claude-3-5-sonnet', 'gpt-4o'],
+  financial: ['gpt-4o', 'claude-3-5-sonnet', 'gemini-1-5-pro', 'command-r-plus', 'claude-3-opus'],
+  technical: ['claude-3-5-sonnet', 'gpt-4o', 'codestral', 'gpt-4-turbo', 'claude-3-opus'],
+  creative: ['gpt-4o', 'claude-3-5-sonnet', 'gemini-1-5-pro', 'gpt-4-turbo', 'claude-3-opus']
+};
+
 function EnhancedConsensusForm({ progressModal }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState(null);
@@ -11,6 +43,8 @@ function EnhancedConsensusForm({ progressModal }) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [supportedTypes, setSupportedTypes] = useState(null);
+  const [reportCategory, setReportCategory] = useState('general');
+  const [selectedModelIds, setSelectedModelIds] = useState([...CATEGORY_MODEL_PRESETS.general]);
   
   const { register, handleSubmit, watch, formState: { errors } } = useForm({
     defaultValues: {
@@ -19,6 +53,22 @@ function EnhancedConsensusForm({ progressModal }) {
       priority: 'standard'
     }
   });
+
+  // When category changes, preselect models for that category (user can still change)
+  useEffect(() => {
+    const preset = CATEGORY_MODEL_PRESETS[reportCategory] || CATEGORY_MODEL_PRESETS.general;
+    setSelectedModelIds([...preset]);
+  }, [reportCategory]);
+
+  const toggleModel = (modelId) => {
+    setSelectedModelIds(prev => {
+      if (prev.includes(modelId)) {
+        const next = prev.filter(id => id !== modelId);
+        return next.length >= 1 ? next : prev;
+      }
+      return [...prev, modelId];
+    });
+  };
 
   const addSource = () => {
     setSources([...sources, '']);
@@ -108,54 +158,6 @@ function EnhancedConsensusForm({ progressModal }) {
     }
   };
 
-  // Realistic token estimation for 4-LLM consensus process
-  const calculateTokenEstimate = () => {
-    const topic = watch('topic') || '';
-    const priority = watch('priority') || 'standard';
-    const sourcesWithContent = sources.filter(s => s && s.trim() !== '');
-    
-    // Input token calculation (more conservative)
-    const topicTokens = Math.ceil(topic.length / 4); // ~4 chars per token
-    const sourceTokens = sourcesWithContent.reduce((total, source) => {
-      return total + Math.ceil(source.length / 4);
-    }, 0);
-    
-    const inputTokens = topicTokens + sourceTokens;
-    
-    // Realistic 4-LLM Consensus Process Token Calculation
-    let totalTokens = 0;
-    
-    // Phase 1: Independent Drafting (4 models)
-    // Each model: input + modest output (800-1200 tokens per response)
-    const phase1OutputPerModel = priority === 'detailed' ? 1200 : 800;
-    const phase1Tokens = 4 * (inputTokens + phase1OutputPerModel);
-    totalTokens += phase1Tokens;
-    
-    // Phase 2: Peer Review (simplified - 3 reviews)
-    // Each review: reading one draft + generating review (400-600 tokens per review)
-    const phase2OutputPerReview = priority === 'detailed' ? 600 : 400;
-    const phase2Tokens = 3 * (phase1OutputPerModel + phase2OutputPerReview);
-    totalTokens += phase2Tokens;
-    
-    // Phase 3: Final Arbitration (1 model)
-    // Reading all drafts + reviews + generating final consensus (1000-1500 tokens)
-    const phase3Input = (4 * phase1OutputPerModel) + (3 * phase2OutputPerReview);
-    const phase3Output = priority === 'detailed' ? 1500 : 1000;
-    const phase3Tokens = phase3Input + phase3Output;
-    totalTokens += phase3Tokens;
-    
-    // Add small processing overhead (5%)
-    totalTokens = Math.ceil(totalTokens * 1.05);
-    
-    // Realistic minimums based on topic complexity
-    const baseMinimum = priority === 'detailed' ? 8000 : 6000;
-    const topicComplexityMultiplier = Math.min(2.0, Math.max(1.0, topicTokens / 50));
-    const adjustedMinimum = Math.ceil(baseMinimum * topicComplexityMultiplier);
-    
-    return Math.max(totalTokens, adjustedMinimum);
-  };
-
-  const estimatedTokens = calculateTokenEstimate();
 
   const onSubmit = async (data) => {
     setIsGenerating(true);
@@ -208,7 +210,6 @@ function EnhancedConsensusForm({ progressModal }) {
       setResult({
         consensus: result.consensus,
         confidence: result.confidence,
-        totalTokens: result.metadata?.totalTokens || estimatedTokens,
         llmsUsed: result.metadata?.llmsUsed || ['GPT-4o', 'Claude 3.5 Sonnet', 'Gemini 1.5 Pro', 'Command R+'],
         phases: result.phases,
         generatedAt: new Date().toISOString(),
@@ -251,7 +252,6 @@ function EnhancedConsensusForm({ progressModal }) {
       setResult({
         consensus: `Error: ${errorMessage}`,
         confidence: 0,
-        totalTokens: 0,
         error: true,
         errorDetails: error.response?.data || error.message
       });
@@ -466,53 +466,51 @@ function EnhancedConsensusForm({ progressModal }) {
             }, '+ Add Another Source')
           ),
 
-          // Analysis Depth Section (removed token counts)
+          // Report category & AI model selection
           React.createElement('div', { className: 'mb-8' },
-            React.createElement('h3', { className: 'text-lg font-semibold text-slate-900 mb-4' }, 'Analysis Depth'),
-            React.createElement('div', { className: 'space-y-3' },
-              React.createElement('label', { className: 'flex items-start space-x-3 p-4 border border-slate-200 rounded-lg hover:border-indigo-200 hover:bg-indigo-50/30 transition-all duration-200 cursor-pointer' },
-                React.createElement('input', {
-                  ...register('priority'),
-                  type: 'radio',
-                  value: 'standard',
-                  className: 'h-4 w-4 text-indigo-600 focus:ring-indigo-500 mt-1'
-                }),
-                React.createElement('div', null,
-                  React.createElement('div', { className: 'font-medium text-slate-900' }, 'Standard Analysis'),
-                  React.createElement('div', { className: 'text-sm text-slate-600 mt-1' }, 
-                    '60-90 seconds • Comprehensive consensus report with balanced perspectives'
-                  )
-                )
-              ),
-              React.createElement('label', { className: 'flex items-start space-x-3 p-4 border border-slate-200 rounded-lg hover:border-indigo-200 hover:bg-indigo-50/30 transition-all duration-200 cursor-pointer' },
-                React.createElement('input', {
-                  ...register('priority'),
-                  type: 'radio',
-                  value: 'detailed',
-                  className: 'h-4 w-4 text-indigo-600 focus:ring-indigo-500 mt-1'
-                }),
-                React.createElement('div', null,
-                  React.createElement('div', { className: 'font-medium text-slate-900' }, 'Detailed Analysis'),
-                  React.createElement('div', { className: 'text-sm text-slate-600 mt-1' }, 
-                    '2-3 minutes • In-depth analysis with extended reasoning and comprehensive review'
-                  )
-                )
-              )
-            )
-          ),
-
-          // Accurate Token Usage Estimation
-          React.createElement('div', { className: 'mb-8 p-4 bg-slate-50 rounded-lg border border-slate-200' },
-            React.createElement('div', { className: 'flex items-center justify-between' },
+            React.createElement('h3', { className: 'text-lg font-semibold text-slate-900 mb-4' }, 'Report setup'),
+            React.createElement('div', { className: 'space-y-4' },
               React.createElement('div', null,
-                React.createElement('h4', { className: 'text-sm font-semibold text-slate-700 mb-1' }, 'Estimated Token Usage'),
-                React.createElement('p', { className: 'text-sm text-slate-600' }, 
-                  `~${estimatedTokens.toLocaleString()} tokens for complete 4-LLM consensus analysis`
+                React.createElement('label', { className: 'block text-sm font-medium text-slate-700 mb-2' }, 'Category (preselects recommended models)'),
+                React.createElement('select', {
+                  value: reportCategory,
+                  onChange: (e) => setReportCategory(e.target.value),
+                  className: 'w-full max-w-md px-4 py-2 border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent'
+                },
+                  REPORT_CATEGORIES.map(cat =>
+                    React.createElement('option', { key: cat.id, value: cat.id }, `${cat.label} — ${cat.description}`)
+                  )
                 )
               ),
-              React.createElement('div', { className: 'text-right' },
-                React.createElement('div', { className: 'text-sm font-medium text-slate-900' }, '4 AI Models'),
-                React.createElement('div', { className: 'text-xs text-slate-500' }, 'GPT-4o • Claude • Gemini • Command R+')
+              React.createElement('div', null,
+                React.createElement('div', { className: 'flex items-center justify-between mb-2' },
+                  React.createElement('label', { className: 'block text-sm font-medium text-slate-700' }, 'AI models for this report'),
+                  React.createElement('span', { className: 'text-xs text-slate-500' }, `${selectedModelIds.length} selected`)
+                ),
+                React.createElement('p', { className: 'text-sm text-slate-600 mb-3' },
+                  'Choose at least one. Models marked "Available" are used today; others will be enabled as we add APIs.'
+                ),
+                React.createElement('div', { className: 'flex flex-wrap gap-3' },
+                  ...AI_MODELS.map(model =>
+                    React.createElement('label', {
+                      key: model.id,
+                      className: `flex items-center space-x-2 px-3 py-2 rounded-lg border cursor-pointer transition-all ${
+                        selectedModelIds.includes(model.id)
+                          ? 'border-indigo-500 bg-indigo-50 text-indigo-800'
+                          : 'border-slate-200 hover:border-slate-300 bg-white text-slate-700'
+                      }`
+                    },
+                      React.createElement('input', {
+                        type: 'checkbox',
+                        checked: selectedModelIds.includes(model.id),
+                        onChange: () => toggleModel(model.id),
+                        className: 'h-4 w-4 text-indigo-600 focus:ring-indigo-500 rounded'
+                      }),
+                      React.createElement('span', { className: 'text-sm font-medium' }, model.name),
+                      !model.available && React.createElement('span', { className: 'text-xs text-slate-400' }, '(coming soon)')
+                    )
+                  )
+                )
               )
             )
           ),
@@ -528,10 +526,6 @@ function EnhancedConsensusForm({ progressModal }) {
               React.createElement('div', { className: 'flex items-center text-sm text-emerald-700' },
                 React.createElement('span', { className: 'mr-2' }, '✓'),
                 'Professional PDF export'
-              ),
-              React.createElement('div', { className: 'flex items-center text-sm text-emerald-700' },
-                React.createElement('span', { className: 'mr-2' }, '✓'),
-                'Token usage analytics'
               ),
               React.createElement('div', { className: 'flex items-center text-sm text-emerald-700' },
                 React.createElement('span', { className: 'mr-2' }, '✓'),
@@ -577,18 +571,14 @@ function EnhancedConsensusForm({ progressModal }) {
           ),
           
           !result.error && React.createElement('div', { className: 'mt-8 pt-6 border-t border-slate-100' },
-            React.createElement('div', { className: 'grid grid-cols-1 md:grid-cols-3 gap-6' },
+            React.createElement('div', { className: 'grid grid-cols-1 md:grid-cols-2 gap-6' },
               React.createElement('div', { className: 'text-center' },
                 React.createElement('div', { className: 'text-2xl font-bold text-slate-900' }, `${(result.confidence * 100).toFixed(1)}%`),
                 React.createElement('div', { className: 'text-sm text-slate-600' }, 'Confidence Score')
               ),
               React.createElement('div', { className: 'text-center' },
-                React.createElement('div', { className: 'text-2xl font-bold text-slate-900' }, result.totalTokens?.toLocaleString() || 'N/A'),
-                React.createElement('div', { className: 'text-sm text-slate-600' }, 'Tokens Used')
-              ),
-              React.createElement('div', { className: 'text-center' },
                 React.createElement('div', { className: 'text-2xl font-bold text-slate-900' }, result.llmsUsed?.length || 4),
-                React.createElement('div', { className: 'text-sm text-slate-600' }, 'AI Models')
+                React.createElement('div', { className: 'text-sm text-slate-600' }, 'AI Models used')
               )
             ),
             
