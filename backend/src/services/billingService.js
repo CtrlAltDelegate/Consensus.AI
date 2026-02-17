@@ -93,6 +93,45 @@ class BillingService {
     }
   }
 
+  /**
+   * Charge a pay-per-report user for a single report via Stripe Invoice.
+   * Creates an invoice item and invoice; Stripe attempts to charge the customer's default payment method.
+   * @param {string} customerId - Stripe customer ID
+   * @param {number} amountDollars - Amount in dollars (e.g. 15)
+   * @param {string} reportId - Report ID for metadata
+   * @param {string} description - Line item description
+   * @returns {{ invoiceId: string, status: 'paid' | 'open' | 'draft' }}
+   */
+  async createReportCharge(customerId, amountDollars, reportId, description = 'Consensus report') {
+    try {
+      const amountCents = Math.round(amountDollars * 100);
+      if (amountCents <= 0) {
+        return { invoiceId: null, status: 'paid' };
+      }
+
+      await this.stripe.invoiceItems.create({
+        customer: customerId,
+        amount: amountCents,
+        currency: 'usd',
+        description: description.substring(0, 500),
+        metadata: { reportId: String(reportId) }
+      });
+
+      const invoice = await this.stripe.invoices.create({
+        customer: customerId,
+        auto_advance: true,
+        collection_method: 'charge_automatically',
+        metadata: { reportId: String(reportId), type: 'consensus_report' }
+      });
+
+      const retrieved = await this.stripe.invoices.retrieve(invoice.id);
+      const status = retrieved.status === 'paid' ? 'paid' : retrieved.status;
+      return { invoiceId: invoice.id, status };
+    } catch (error) {
+      throw new Error(`Report charge failed: ${error.message}`);
+    }
+  }
+
   async getSubscriptionStatus(subscriptionId) {
     try {
       const subscription = await this.stripe.subscriptions.retrieve(subscriptionId);
@@ -184,16 +223,29 @@ class BillingService {
   }
 
   async handlePaymentSuccess(invoice) {
-    // Reset token usage for the new billing period
-    const customer = await this.stripe.customers.retrieve(invoice.customer);
+    const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id;
     const user = await User.findOne({ 
-      'subscription.stripeCustomerId': customer.id 
+      'subscription.stripeCustomerId': customerId 
     });
     
     if (user) {
-      user.tokenUsage.currentPeriodUsed = 0;
-      user.tokenUsage.lastResetDate = new Date();
-      await user.save();
+      // One-off report charge: mark the report history entry as paid
+      if (invoice.metadata?.type === 'consensus_report' && invoice.id) {
+        const idx = user.reportUsage.reportHistory.findIndex(
+          e => e.stripePaymentIntentId === invoice.id
+        );
+        if (idx !== -1) {
+          user.reportUsage.reportHistory[idx].paymentStatus = 'paid';
+          user.markModified('reportUsage.reportHistory');
+          await user.save();
+        }
+      }
+      // Subscription renewal: reset token usage for the new billing period
+      if (invoice.billing_reason === 'subscription_cycle') {
+        user.tokenUsage.currentPeriodUsed = 0;
+        user.tokenUsage.lastResetDate = new Date();
+        await user.save();
+      }
     }
   }
 

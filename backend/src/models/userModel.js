@@ -358,9 +358,13 @@ userSchema.methods.resetBillingPeriod = function() {
 };
 
 // Record a report generation
-userSchema.methods.recordReportGeneration = function(reportId, cost = 0, billingType = 'included') {
+// options: { stripePaymentIntentId?: string, paymentStatus?: 'pending'|'paid'|'failed'|'waived' }
+userSchema.methods.recordReportGeneration = function(reportId, cost = 0, billingType = 'included', options = {}) {
   // Increment current period counter
   this.reportUsage.currentPeriod.reportsGenerated += 1;
+  
+  const defaultPaymentStatus = billingType === 'pay_per_report' ? 'pending' : 'paid';
+  const paymentStatus = options.paymentStatus ?? defaultPaymentStatus;
   
   // Add to report history
   this.reportUsage.reportHistory.push({
@@ -368,7 +372,8 @@ userSchema.methods.recordReportGeneration = function(reportId, cost = 0, billing
     generatedAt: new Date(),
     cost,
     billingType,
-    paymentStatus: billingType === 'pay_per_report' ? 'pending' : 'paid'
+    paymentStatus,
+    ...(options.stripePaymentIntentId && { stripePaymentIntentId: options.stripePaymentIntentId })
   });
   
   return this.save();

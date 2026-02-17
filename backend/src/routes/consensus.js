@@ -8,6 +8,7 @@ const pdfGenerator = require('../services/pdfGenerator');
 const emailService = require('../services/emailService');
 const fileProcessor = require('../services/fileProcessor');
 const Report = require('../models/reportModel');
+const billingService = require('../services/billingService');
 const auth = require('../middleware/auth');
 const tokenCheck = require('../middleware/tokenCheck');
 const { validateConsensusRequest, validateFileUpload } = require('../utils/validation');
@@ -553,16 +554,33 @@ async function processConsensusJob(jobId, topic, sources, options, estimatedToke
                 }
               }
               
-              // Record the report generation in user's billing history
-              await fullUser.recordReportGeneration(report._id, cost, billingType);
-              console.log(`✅ Billing recorded: ${billingType}, cost: $${cost}`);
-              
-              // For pay-as-you-go, we would create a Stripe payment intent here
-              // For now, we'll just log it
-              if (billingType === 'pay_per_report' && cost > 0) {
-                console.log(`🔔 TODO: Create Stripe payment intent for $${cost}`);
-                // TODO: Implement Stripe payment intent creation
+              // Pay-per-report: charge via Stripe Invoice, then record with payment status
+              let stripeRef = null;
+              let paymentStatus = billingType === 'pay_per_report' ? 'pending' : 'paid';
+              if (billingType === 'pay_per_report' && cost > 0 && fullUser.subscription?.stripeCustomerId) {
+                try {
+                  const description = report.title ? `Consensus report: ${report.title}` : `Consensus report`;
+                  const chargeResult = await billingService.createReportCharge(
+                    fullUser.subscription.stripeCustomerId,
+                    cost,
+                    report._id.toString(),
+                    description
+                  );
+                  stripeRef = chargeResult.invoiceId;
+                  paymentStatus = chargeResult.status === 'paid' ? 'paid' : 'pending';
+                  console.log(`💳 Report charge: invoice ${chargeResult.invoiceId}, status: ${chargeResult.status}`);
+                } catch (chargeError) {
+                  console.error('❌ Stripe report charge failed:', chargeError.message);
+                  paymentStatus = 'pending';
+                }
+              } else if (billingType === 'pay_per_report' && cost > 0 && !fullUser.subscription?.stripeCustomerId) {
+                console.warn('⚠️ Pay-per-report user has no Stripe customer – add payment method in Billing');
               }
+              await fullUser.recordReportGeneration(report._id, cost, billingType, {
+                ...(stripeRef && { stripePaymentIntentId: stripeRef }),
+                paymentStatus
+              });
+              console.log(`✅ Billing recorded: ${billingType}, cost: $${cost}, payment: ${paymentStatus}`);
               
             } else {
               console.warn('⚠️ User has no subscription tier - skipping billing');
