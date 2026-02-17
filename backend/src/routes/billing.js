@@ -378,6 +378,7 @@ router.get('/subscription', async (req, res) => {
       currentPeriodStart: user.subscription.currentPeriodStart,
       currentPeriodEnd: user.subscription.currentPeriodEnd,
       nextBillingDate: user.subscription.nextBillingDate,
+      stripeCustomerId: user.subscription?.stripeCustomerId || null,
       stripeData: stripeSubscription ? {
         id: stripeSubscription.id,
         status: stripeSubscription.status,

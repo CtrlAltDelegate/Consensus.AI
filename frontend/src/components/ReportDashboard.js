@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation, Link } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
 import { apiHelpers } from '../config/api';
 import { HelpIcon, InfoIcon } from './Tooltip';
 
 function ReportDashboard({ onUpgrade }) {
-  const { user, isAuthenticated } = useUser();
+  const { user, isAuthenticated, refreshUserData } = useUser();
+  const location = useLocation();
   const [subscriptionData, setSubscriptionData] = useState(null);
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -15,6 +17,15 @@ function ReportDashboard({ onUpgrade }) {
       loadDashboardData();
     }
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const search = location.search || '';
+    if (search.includes('setup=success') || search.includes('session_id') || search.includes('success=true') || search.includes('demo=success')) {
+      refreshUserData?.();
+      loadDashboardData();
+    }
+  }, [location.search, isAuthenticated]);
 
   const loadDashboardData = async () => {
     try {
@@ -89,6 +100,7 @@ function ReportDashboard({ onUpgrade }) {
   const currentTier = subscriptionData?.tier;
   const reportUsage = subscriptionData?.reportUsage;
   const isPayAsYouGo = currentTier?.billingType === 'per_report';
+  const needsPlanSelection = subscriptionData === null && plans.length > 0;
 
   return React.createElement('div', { className: 'min-h-screen bg-slate-50/50' },
     React.createElement('div', { className: 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8' },
@@ -136,11 +148,13 @@ function ReportDashboard({ onUpgrade }) {
                   size: 'xs'
                 })
               ),
-              React.createElement('p', { className: 'text-2xl font-bold text-slate-900' }, currentTier?.displayName || 'Loading...'),
+              React.createElement('p', { className: 'text-2xl font-bold text-slate-900' }, needsPlanSelection ? 'Select a plan' : (currentTier?.displayName || 'Loading...')),
               React.createElement('p', { className: 'text-sm text-slate-500 mt-1' }, 
-                isPayAsYouGo 
-                  ? `$${currentTier?.pricePerReport || 0}/report`
-                  : `$${currentTier?.monthlyPrice || 0}/month`
+                needsPlanSelection 
+                  ? 'Choose a plan below to get started'
+                  : isPayAsYouGo 
+                    ? `$${currentTier?.pricePerReport || 0}/report`
+                    : `$${currentTier?.monthlyPrice || 0}/month`
               )
             ),
             React.createElement('div', { className: 'p-3 bg-indigo-50 rounded-lg' },
@@ -171,13 +185,14 @@ function ReportDashboard({ onUpgrade }) {
           )
         ),
 
-        // Pay-As-You-Go Status Card
+        // Pay-As-You-Go Status Card (with payment method CTA when missing)
         isPayAsYouGo && React.createElement('div', { className: 'group relative bg-white rounded-xl border border-slate-200/60 p-6 shadow-sm hover:shadow-md hover:border-slate-300/60 transition-all duration-300' },
           React.createElement('div', { className: 'flex items-center justify-between' },
             React.createElement('div', null,
               React.createElement('p', { className: 'text-sm font-medium text-slate-600 mb-1' }, 'Billing Type'),
               React.createElement('p', { className: 'text-2xl font-bold text-slate-900' }, 'Pay-As-You-Go'),
-              React.createElement('p', { className: 'text-sm text-slate-500 mt-1' }, 'No monthly commitment')
+              React.createElement('p', { className: 'text-sm text-slate-500 mt-1' }, 'No monthly commitment'),
+              !subscriptionData?.stripeCustomerId && React.createElement('p', { className: 'text-sm text-amber-600 font-medium mt-2' }, 'Add a payment method to pay for reports')
             ),
             React.createElement('div', { className: 'p-3 bg-blue-50 rounded-lg' },
               React.createElement('svg', { className: 'w-6 h-6 text-blue-600', fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' },
@@ -216,6 +231,28 @@ function ReportDashboard({ onUpgrade }) {
                 React.createElement('path', { strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2, d: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z' })
               )
             )
+          )
+        )
+      ),
+
+      // Quick actions: Report Library + New Report
+      React.createElement('div', { className: 'grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10' },
+        React.createElement(Link, {
+          to: '/reports',
+          className: 'flex items-center justify-between p-4 bg-white rounded-xl border border-slate-200/60 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all duration-200 group'
+        },
+          React.createElement('span', { className: 'text-slate-700 font-medium group-hover:text-indigo-600' }, 'View Report Library'),
+          React.createElement('svg', { className: 'w-5 h-5 text-slate-400 group-hover:text-indigo-500', fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' },
+            React.createElement('path', { strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2, d: 'M9 5l7 7-7 7' })
+          )
+        ),
+        React.createElement(Link, {
+          to: '/consensus',
+          className: 'flex items-center justify-between p-4 bg-indigo-50 rounded-xl border border-indigo-100 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all duration-200 group'
+        },
+          React.createElement('span', { className: 'text-indigo-700 font-medium group-hover:text-indigo-800' }, 'Create New Report'),
+          React.createElement('svg', { className: 'w-5 h-5 text-indigo-500', fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' },
+            React.createElement('path', { strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2, d: 'M12 4v16m8-8H4' })
           )
         )
       ),

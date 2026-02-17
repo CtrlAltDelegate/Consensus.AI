@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { apiHelpers } from '../config/api';
 
 function ReportHistory({ onViewReport, onExportReport }) {
@@ -25,29 +26,15 @@ function ReportHistory({ onViewReport, onExportReport }) {
   const loadReports = async () => {
     setIsLoading(true);
     try {
-      console.log('📊 Loading reports from API...');
-      console.log('📊 API URL:', import.meta.env.VITE_API_URL);
-      console.log('📊 Calling endpoint: /api/consensus/history');
-      
       const response = await apiHelpers.getConsensusHistory();
-      console.log('📊 API Response status:', response.status);
-      console.log('📊 API Response data:', response.data);
-      
-      if (response.data.success && response.data.analyses) {
-        console.log(`✅ Found ${response.data.analyses.length} reports in database`);
+      if (response.data?.success && Array.isArray(response.data.analyses)) {
         setReports(response.data.analyses);
         setFilteredReports(response.data.analyses);
       } else {
-        console.log('📊 API returned success=false or no analyses array');
-        console.log('📊 Response structure:', Object.keys(response.data));
-        console.log('📊 No real reports found - showing empty state');
         setReports([]);
         setFilteredReports([]);
       }
     } catch (error) {
-      console.error('❌ Error loading reports:', error);
-      console.error('❌ Error details:', error.response?.data || error.message);
-      console.log('📊 API error - showing empty state');
       setReports([]);
       setFilteredReports([]);
     } finally {
@@ -59,13 +46,15 @@ function ReportHistory({ onViewReport, onExportReport }) {
 
   // Removed duplicate useEffect - using the loadReports function from above instead
 
-  // Filter and search
+  // Filter and search (summary = consensus snippet or topic from API)
   useEffect(() => {
-    let filtered = reports.filter(report =>
-      report.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (report.tags || []).some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (report.summary || '').toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    let filtered = reports.filter(report => {
+      const summary = (report.consensus && report.consensus.substring(0, 200)) || report.topic || '';
+      return report.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (report.tags || []).some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (report.topic || '').toLowerCase().includes(searchQuery.toLowerCase());
+    });
 
     // Sort
     filtered.sort((a, b) => {
@@ -80,8 +69,8 @@ function ReportHistory({ onViewReport, onExportReport }) {
           bVal = b.confidence;
           break;
         case 'tokens':
-          aVal = a.tokenUsage;
-          bVal = b.tokenUsage;
+          aVal = a.metadata?.totalTokens ?? a.tokenUsage ?? 0;
+          bVal = b.metadata?.totalTokens ?? b.tokenUsage ?? 0;
           break;
         case 'title':
           aVal = a.title;
@@ -180,20 +169,8 @@ function ReportHistory({ onViewReport, onExportReport }) {
     }
   };
 
-  // Enhanced view report handler with debugging
   const handleViewReportClick = (report) => {
-    console.log('🔍 Report clicked in ReportHistory:', {
-      id: report.id,
-      title: report.title,
-      hasConsensus: !!report.consensus,
-      dataStructure: Object.keys(report)
-    });
-    
-    if (onViewReport) {
-      onViewReport(report);
-    } else {
-      console.warn('⚠️ No onViewReport handler provided to ReportHistory');
-    }
+    if (onViewReport) onViewReport(report);
   };
 
   if (isLoading) {
@@ -223,8 +200,9 @@ function ReportHistory({ onViewReport, onExportReport }) {
               disabled: selectedReports.size === 0,
               className: 'inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200'
             }, `Export Selected (${selectedReports.size})`),
-            React.createElement('button', { 
-              className: 'inline-flex items-center px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors duration-200'
+            React.createElement(Link, {
+              to: '/consensus',
+              className: 'inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors duration-200'
             }, 'Create New Report')
           )
         )
@@ -324,7 +302,8 @@ function ReportHistory({ onViewReport, onExportReport }) {
           React.createElement('p', { className: 'text-slate-600 mb-6' }, 
             searchQuery ? 'Try adjusting your search terms' : 'Generate your first consensus report to get started'
           ),
-          React.createElement('button', { 
+          React.createElement(Link, {
+            to: '/consensus',
             className: 'inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors duration-200'
           }, 'Create First Report')
         )
@@ -397,7 +376,7 @@ function ReportCard({ report, isSelected, onSelect, onView, onExport, formatDate
         onClick: onView
       }, report.title),
       
-      React.createElement('p', { className: 'text-sm text-slate-600 mb-4 line-clamp-3' }, report.summary || 'No summary available'),
+      React.createElement('p', { className: 'text-sm text-slate-600 mb-4 line-clamp-3' }, report.consensus ? `${report.consensus.substring(0, 150)}${report.consensus.length > 150 ? '…' : ''}` : report.topic || 'No summary available'),
       
       React.createElement('div', { className: 'flex flex-wrap gap-2 mb-4' },
         ...(report.tags || []).slice(0, 3).map(tag =>
@@ -411,24 +390,24 @@ function ReportCard({ report, isSelected, onSelect, onView, onExport, formatDate
         }, `+${(report.tags || []).length - 3}`)
       ),
       
-      // Enhanced Token Usage Metadata
+      // Enhanced Token Usage Metadata (API: metadata.totalTokens)
       React.createElement('div', { className: 'space-y-2 mb-4' },
         React.createElement('div', { className: 'flex items-center justify-between' },
           React.createElement('div', { className: 'flex items-center text-sm text-emerald-700' },
             React.createElement('span', { className: 'mr-2' }, '🟢'),
             React.createElement('span', { className: 'font-medium' }, 'Tokens used:'),
-            React.createElement('span', { className: 'ml-1 font-semibold' }, report.tokenUsage?.toLocaleString() || '0')
+            React.createElement('span', { className: 'ml-1 font-semibold' }, (report.metadata?.totalTokens ?? report.tokenUsage)?.toLocaleString() || '0')
           ),
           React.createElement('div', { className: 'flex items-center text-sm text-indigo-700' },
             React.createElement('span', { className: 'mr-2' }, '🧠'),
             React.createElement('span', { className: 'font-medium' }, 'LLMs used:'),
-            React.createElement('span', { className: 'ml-1 font-semibold' }, report.models?.length || 4)
+            React.createElement('span', { className: 'ml-1 font-semibold' }, report.metadata?.llmsUsed?.length || 4)
           )
         ),
         React.createElement('div', { className: 'flex items-center text-sm text-amber-700' },
           React.createElement('span', { className: 'mr-2' }, '🕒'),
-          React.createElement('span', { className: 'font-medium' }, 'Time generated:'),
-          React.createElement('span', { className: 'ml-1 font-semibold' }, estimateReadingTime(report.tokenUsage || 8000))
+          React.createElement('span', { className: 'font-medium' }, 'Est. read:'),
+          React.createElement('span', { className: 'ml-1 font-semibold' }, estimateReadingTime(report.metadata?.totalTokens || report.tokenUsage || 8000))
         )
       )
     ),
@@ -482,7 +461,7 @@ function ReportListItem({ report, isSelected, onSelect, onView, onExport, format
                 className: 'text-lg font-semibold text-slate-900 mb-2 cursor-pointer hover:text-indigo-600 transition-colors duration-200',
                 onClick: onView
               }, report.title),
-              React.createElement('p', { className: 'text-sm text-slate-600 mb-3' }, report.summary || 'No summary available'),
+              React.createElement('p', { className: 'text-sm text-slate-600 mb-3' }, report.consensus ? `${report.consensus.substring(0, 120)}${report.consensus.length > 120 ? '…' : ''}` : report.topic || 'No summary available'),
               
               // Enhanced metadata with icons
               React.createElement('div', { className: 'flex items-center space-x-6 text-sm mb-2' },
@@ -494,15 +473,15 @@ function ReportListItem({ report, isSelected, onSelect, onView, onExport, format
               React.createElement('div', { className: 'flex items-center space-x-6 text-sm' },
                 React.createElement('div', { className: 'flex items-center text-emerald-700' },
                   React.createElement('span', { className: 'mr-1' }, '🟢'),
-                  React.createElement('span', { className: 'font-medium' }, `${report.tokenUsage?.toLocaleString() || '0'} tokens`)
+                  React.createElement('span', { className: 'font-medium' }, `${(report.metadata?.totalTokens ?? report.tokenUsage)?.toLocaleString() || '0'} tokens`)
                 ),
                 React.createElement('div', { className: 'flex items-center text-indigo-700' },
                   React.createElement('span', { className: 'mr-1' }, '🧠'),
-                  React.createElement('span', { className: 'font-medium' }, `${report.models?.length || 4} LLMs`)
+                  React.createElement('span', { className: 'font-medium' }, `${report.metadata?.llmsUsed?.length || 4} LLMs`)
                 ),
                 React.createElement('div', { className: 'flex items-center text-amber-700' },
                   React.createElement('span', { className: 'mr-1' }, '🕒'),
-                  React.createElement('span', { className: 'font-medium' }, estimateReadingTime(report.tokenUsage || 8000))
+                  React.createElement('span', { className: 'font-medium' }, estimateReadingTime(report.metadata?.totalTokens || report.tokenUsage || 8000))
                 )
               )
             ),
