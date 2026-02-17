@@ -7,7 +7,7 @@ class ConsensusEngine {
     this.draftingLLMs = [
       { provider: 'openai', model: 'gpt-4o', name: 'GPT-4o' },
       { provider: 'anthropic', model: 'claude-sonnet-4-5', name: 'Claude Sonnet 4.5' },
-      { provider: 'google', model: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash' }
+      { provider: 'google', model: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash' }
     ];
     
     this.arbiterLLM = {

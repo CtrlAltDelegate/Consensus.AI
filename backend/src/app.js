@@ -49,22 +49,16 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-// Additional manual CORS headers as backup
+// Additional manual CORS headers as backup (no per-request logging)
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  console.log('🔧 Backup CORS middleware - Origin:', origin);
-  
-  // Set headers manually as backup
   if (origin) {
     res.setHeader('Access-Control-Allow-Origin', origin);
   } else {
     res.setHeader('Access-Control-Allow-Origin', 'https://consensusai.netlify.app');
   }
-  
   res.setHeader('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-  
-  console.log('🔧 Backup CORS headers set');
   next();
 });
 
@@ -75,15 +69,12 @@ app.use((req, res, next) => {
   const origin = req.headers.origin;
   
   res.send = function(data) {
-    console.log('🚀 NUCLEAR: Forcing CORS headers at response time');
     this.setHeader('Access-Control-Allow-Origin', origin || 'https://consensusai.netlify.app');
     this.setHeader('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
     this.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
     return originalSend.call(this, data);
   };
-  
   res.json = function(data) {
-    console.log('🚀 NUCLEAR: Forcing CORS headers at JSON response time');
     this.setHeader('Access-Control-Allow-Origin', origin || 'https://consensusai.netlify.app');
     this.setHeader('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
     this.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');

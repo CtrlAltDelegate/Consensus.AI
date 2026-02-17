@@ -62,7 +62,7 @@ class PDFGenerator {
         });
         
         yPosition -= 20;
-        yPosition = this.addWrappedText(page, consensusData.topic, config.margin, yPosition, width - 2 * config.margin, config, timesRomanFont);
+        yPosition = this.addWrappedText(page, this.sanitizeForPdf(consensusData.topic), config.margin, yPosition, width - 2 * config.margin, config, timesRomanFont);
         yPosition -= 20;
       }
 
@@ -75,7 +75,7 @@ class PDFGenerator {
       });
       
       yPosition -= 20;
-      yPosition = this.addWrappedText(page, consensusData.consensus, config.margin, yPosition, width - 2 * config.margin, config, timesRomanFont);
+      yPosition = this.addWrappedText(page, this.sanitizeForPdf(consensusData.consensus), config.margin, yPosition, width - 2 * config.margin, config, timesRomanFont);
 
       // Sources section
       if (consensusData.sources && consensusData.sources.length > 0) {
@@ -101,7 +101,7 @@ class PDFGenerator {
             yPosition = height - config.margin;
           }
           
-          const sourceText = `${index + 1}. ${source.provider} (${source.model}) - ${source.tokenUsage} tokens`;
+          const sourceText = this.sanitizeForPdf(`${index + 1}. ${source.provider || ''} (${source.model || ''}) - ${source.tokenUsage ?? 0} tokens`);
           page.drawText(sourceText, {
             x: config.margin,
             y: yPosition,
@@ -133,8 +133,18 @@ class PDFGenerator {
     }
   }
 
+  /** Normalize text for PDF: newlines and non-WinAnsi chars can cause "WinAnsi cannot encode" errors. */
+  sanitizeForPdf(text) {
+    if (typeof text !== 'string') return '';
+    return text
+      .replace(/\r\n|\r|\n/g, ' ')
+      .replace(/[\u201C\u201D\u2018\u2019\u2013\u2014]/g, (m) => ({ '\u201C': '"', '\u201D': '"', '\u2018': "'", '\u2019': "'", '\u2013': '-', '\u2014': '-' }[m] || ' '))
+      .replace(/[^\x00-\xFF]/g, ' ');
+  }
+
   addWrappedText(page, text, x, y, maxWidth, config, font) {
-    const words = text.split(' ');
+    const safe = this.sanitizeForPdf(text);
+    const words = safe.split(/\s+/).filter(Boolean);
     const lines = [];
     let currentLine = '';
 

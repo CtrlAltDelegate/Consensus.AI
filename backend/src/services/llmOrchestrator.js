@@ -38,7 +38,7 @@ class LLMOrchestrator {
     if (process.env.GOOGLE_API_KEY) {
       this.providers.set('google', {
         name: 'Google',
-        models: ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash'],
+        models: ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'],
         endpoint: 'https://generativelanguage.googleapis.com/v1beta/models',
         headers: {
           'Content-Type': 'application/json'
@@ -66,42 +66,17 @@ class LLMOrchestrator {
       throw new Error(`Provider ${provider} not configured`);
     }
 
-    // ENHANCED DEBUG: Log Cohere config specifically
-    if (provider === 'cohere') {
-      console.log('🔍 COHERE DEBUG:', {
-        provider,
-        model,
-        hasConfig: !!providerConfig,
-        configEndpoint: providerConfig.endpoint,
-        envKeyExists: !!process.env.COHERE_API_KEY,
-        envKeyLength: process.env.COHERE_API_KEY ? process.env.COHERE_API_KEY.length : 0
-      });
+    const requestBody = this.buildRequestBody(provider, model, prompt, options);
+    const endpoint = provider === 'google'
+      ? `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GOOGLE_API_KEY}`
+      : providerConfig.endpoint;
+
+    if (!endpoint) {
+      throw new Error(`Endpoint is undefined for provider ${provider}`);
     }
 
-    const requestBody = this.buildRequestBody(provider, model, prompt, options);
-    
-   // Special handling for Google Gemini (v1beta supports gemini-1.5-flash / generateContent)
-const endpoint = provider === 'google'
-  ? `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GOOGLE_API_KEY}`
-  : providerConfig.endpoint;
-
-try {
-
-      // ENHANCED DEBUG: Log endpoint assignment process
-      console.log('🔍 ENDPOINT DEBUG:', {
-        provider,
-        isGoogle: provider === 'google',
-        configEndpoint: providerConfig.endpoint,
-        finalEndpoint: endpoint,
-        configKeys: Object.keys(providerConfig)
-      });
-
-      // ENHANCED DEBUG: Verify endpoint is defined
-      if (!endpoint) {
-        throw new Error(`Endpoint is undefined for provider ${provider}. Config endpoint: ${providerConfig.endpoint}. Provider config: ${JSON.stringify(providerConfig, null, 2)}`);
-      }
-
-      console.log(`🌐 Calling ${provider} with model ${model} at endpoint: ${endpoint.replace(process.env.GOOGLE_API_KEY || '', '[API_KEY]')}`);
+    try {
+      console.log(`🌐 ${provider} (${model})`);
 
       const response = await axios.post(endpoint, requestBody, {
         headers: providerConfig.headers,

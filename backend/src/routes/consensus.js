@@ -59,7 +59,7 @@ router.get('/test-llms', async (req, res) => {
     const providers = [
       { provider: 'openai', model: 'gpt-4o' },
       { provider: 'anthropic', model: 'claude-sonnet-4-5' },
-      { provider: 'google', model: 'gemini-1.5-flash' },
+      { provider: 'google', model: 'gemini-2.0-flash' },
       { provider: 'cohere', model: 'command-r-plus-08-2024' }
     ];
     
