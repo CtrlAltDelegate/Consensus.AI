@@ -6,13 +6,13 @@ class ConsensusEngine {
     // Define the LLM architecture for 3-phase workflow
     this.draftingLLMs = [
       { provider: 'openai', model: 'gpt-4o', name: 'GPT-4o' },
-      { provider: 'anthropic', model: 'claude-3-5-sonnet-20240620', name: 'Claude 3.5 Sonnet' },
+      { provider: 'anthropic', model: 'claude-sonnet-4-5', name: 'Claude Sonnet 4.5' },
       { provider: 'google', model: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash' }
     ];
     
     this.arbiterLLM = {
       provider: 'cohere',
-      model: 'command-r-plus',
+      model: 'command-r-plus-08-2024',
       name: 'Command R+'
     };
 

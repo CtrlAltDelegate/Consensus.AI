@@ -20,11 +20,11 @@ class LLMOrchestrator {
       });
     }
 
-    // Anthropic Configuration (use current model versions - providers deprecate old IDs)
+    // Anthropic Configuration (current models: claude-sonnet-4-5; older 3.x IDs retired)
     if (process.env.ANTHROPIC_API_KEY) {
       this.providers.set('anthropic', {
         name: 'Anthropic',
-        models: ['claude-3-5-sonnet-20240620', 'claude-3-5-sonnet-20241022', 'claude-3-sonnet-20240229', 'claude-3-haiku-20240307'],
+        models: ['claude-sonnet-4-5', 'claude-3-5-sonnet-20240620', 'claude-3-sonnet-20240229', 'claude-3-haiku-20240307'],
         endpoint: 'https://api.anthropic.com/v1/messages',
         headers: {
           'x-api-key': process.env.ANTHROPIC_API_KEY,
@@ -34,23 +34,23 @@ class LLMOrchestrator {
       });
     }
 
-    // Google Gemini Configuration (v1 for stability; v1beta model names can change)
+    // Google Gemini Configuration (v1beta has generateContent for gemini-1.5-*; v1 lacks some models)
     if (process.env.GOOGLE_API_KEY) {
       this.providers.set('google', {
         name: 'Google',
         models: ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash'],
-        endpoint: 'https://generativelanguage.googleapis.com/v1/models', // v1 stable
+        endpoint: 'https://generativelanguage.googleapis.com/v1beta/models',
         headers: {
           'Content-Type': 'application/json'
         }
       });
     }
 
-    // Cohere Configuration (command-r was removed Sept 2025; use command-r-plus)
+    // Cohere Configuration (command-r and command-r-plus removed Sept 2025; use 08-2024)
     if (process.env.COHERE_API_KEY) {
       this.providers.set('cohere', {
         name: 'Cohere',
-        models: ['command-r-plus', 'command-r-plus-08-2024', 'command'],
+        models: ['command-r-plus-08-2024', 'command-r-08-2024', 'command-a-03-2025', 'command'],
         endpoint: 'https://api.cohere.ai/v1/chat',
         headers: {
           'Authorization': `Bearer ${process.env.COHERE_API_KEY}`,
@@ -80,9 +80,9 @@ class LLMOrchestrator {
 
     const requestBody = this.buildRequestBody(provider, model, prompt, options);
     
-   // Special handling for Google Gemini (v1 stable endpoint)
+   // Special handling for Google Gemini (v1beta supports gemini-1.5-flash / generateContent)
 const endpoint = provider === 'google'
-  ? `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${process.env.GOOGLE_API_KEY}`
+  ? `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GOOGLE_API_KEY}`
   : providerConfig.endpoint;
 
 try {
