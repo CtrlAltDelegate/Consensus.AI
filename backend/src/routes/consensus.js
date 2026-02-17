@@ -235,7 +235,8 @@ router.post('/upload', auth, upload.array('files', 5), async (req, res) => {
 });
 
 // Generate consensus analysis (ASYNC VERSION to avoid Railway timeouts)
-router.post('/generate', async (req, res) => {
+// Requires authentication - user from auth middleware (real or demo token)
+router.post('/generate', auth, async (req, res) => {
   try {
     const { topic, sources = [], options = {} } = req.body;
     
@@ -252,13 +253,6 @@ router.post('/generate', async (req, res) => {
       });
     }
     console.log('✅ Validation passed!');
-    
-    // TESTING: Mock user for demo purposes
-    req.user = { 
-      id: 'demo-user-123',
-      email: 'demo@consensusai.com',
-      profile: { firstName: 'Demo' }
-    };
 
     // Estimate token usage
     const sourcesText = Array.isArray(sources) ? sources.join(' ') : '';
@@ -280,7 +274,7 @@ router.post('/generate', async (req, res) => {
       sources,
       options,
       estimatedTokens,
-      userId: req.user.id,
+      userId: req.user.id || req.user._id?.toString?.() || req.user.userId,
       startedAt: new Date().toISOString(),
       phases: {
         phase1: { status: 'pending', startedAt: null, completedAt: null },
@@ -321,13 +315,18 @@ router.post('/generate', async (req, res) => {
   }
 });
 
-// Check job status endpoint
-router.get('/status/:jobId', (req, res) => {
+// Check job status endpoint (auth required - users only see their own jobs)
+router.get('/status/:jobId', auth, (req, res) => {
   const { jobId } = req.params;
   const job = jobs.get(jobId);
   
   if (!job) {
     return res.status(404).json({ error: 'Job not found' });
+  }
+
+  const userId = req.user.id || req.user._id?.toString?.() || req.user.userId;
+  if (job.userId && job.userId !== userId) {
+    return res.status(403).json({ error: 'Access denied. This job belongs to another user.' });
   }
 
   // If job is completed, return the result
@@ -517,7 +516,7 @@ async function processConsensusJob(jobId, topic, sources, options, estimatedToke
         console.log(`✅ Report auto-saved with ID: ${report._id}`);
         
         // Handle billing for authenticated users (skip for demo users)
-        if (user.id !== 'demo-user-123') {
+        if (!user.isDemo && user.id !== 'demo-user-id') {
           try {
             console.log('💰 Processing billing for report generation...');
             
@@ -608,12 +607,11 @@ async function processConsensusJob(jobId, topic, sources, options, estimatedToke
   }
 }
 
-// Get consensus analysis history
-router.get('/history', async (req, res) => {
+// Get consensus analysis history (requires auth - returns only current user's reports)
+router.get('/history', auth, async (req, res) => {
   try {
     const { page = 1, limit = 10 } = req.query;
-    // TESTING: Use demo user ID for now
-    const userId = 'demo-user-123';
+    const userId = req.user.id || req.user._id?.toString?.() || req.user.userId;
     
     console.log(`📚 Fetching reports for user: ${userId}`);
     
@@ -655,10 +653,16 @@ router.get('/history', async (req, res) => {
   }
 });
 
-// Download consensus report as PDF
-router.get('/report/:jobId/pdf', async (req, res) => {
+// Download consensus report as PDF (auth required - users only download their own)
+router.get('/report/:jobId/pdf', auth, async (req, res) => {
   try {
     const { jobId } = req.params;
+    const job = jobs.get(jobId);
+    const userId = req.user.id || req.user._id?.toString?.() || req.user.userId;
+
+    if (job && job.userId && job.userId !== userId) {
+      return res.status(403).json({ error: 'Access denied. This report belongs to another user.' });
+    }
     
     // Check if PDF exists for this job
     const pdfData = jobPdfs.get(jobId);
@@ -681,16 +685,10 @@ router.get('/report/:jobId/pdf', async (req, res) => {
   }
 });
 
-// Token estimation endpoint
-router.post('/estimate', async (req, res) => {
+// Token estimation endpoint (requires auth)
+router.post('/estimate', auth, async (req, res) => {
   try {
     const { topic, sources = [], options = {} } = req.body;
-    
-    // TESTING: Mock user for demo purposes
-    req.user = { 
-      id: 'demo-user-123',
-      email: 'demo@consensusai.com'
-    };
 
     const sourcesText = Array.isArray(sources) ? sources.join(' ') : '';
     const estimatedTokens = await tokenManager.estimateTokensForOperation(
@@ -698,7 +696,7 @@ router.post('/estimate', async (req, res) => {
       topic.length + sourcesText.length
     );
 
-    // TESTING: Skip actual token checking for demo
+    // For demo users skip token check; for real users tokenCheck middleware could be used on generate
     const mockTokenCheck = {
       available: 25000,
       sufficient: true,

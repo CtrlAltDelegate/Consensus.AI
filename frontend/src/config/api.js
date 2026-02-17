@@ -52,9 +52,12 @@ api.interceptors.response.use(
     if (error.code === 'ERR_NETWORK' || error.message.includes('Network Error')) {
       console.error('🚫 Backend is unreachable - Railway deployment may be down');
     } else if (error.response?.status === 401) {
-      // Unauthorized - clear token and redirect to login
+      // Unauthorized - clear token and redirect to home so user can sign in
       localStorage.removeItem('auth_token');
-      console.log('🚫 401 Unauthorized - would redirect to login (disabled for testing)');
+      localStorage.removeItem('user_data');
+      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/')) {
+        window.location.replace('/');
+      }
     } else if (error.response?.status === 429) {
       // Rate limited
       console.warn('Rate limited. Please try again later.');

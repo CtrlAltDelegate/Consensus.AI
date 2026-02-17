@@ -8,9 +8,10 @@ const auth = async (req, res, next) => {
     if (!env.hasDatabase()) {
       console.warn('⚠️  No database configured - using demo authentication');
       req.user = { 
-        id: 'demo-user', 
-        userId: 'demo-user', 
-        email: 'demo@example.com' 
+        id: 'demo-user-id', 
+        userId: 'demo-user-id', 
+        email: 'demo@example.com',
+        isDemo: true
       };
       return next();
     }
@@ -28,6 +29,7 @@ const auth = async (req, res, next) => {
       console.log('🧪 Demo user authenticated');
       req.user = {
         _id: 'demo-user-id',
+        id: 'demo-user-id',
         userId: 'demo-user-id',
         email: 'test@onboarding.demo',
         isDemo: true,
@@ -49,9 +51,10 @@ const auth = async (req, res, next) => {
       return res.status(401).json({ error: 'Account is deactivated.' });
     }
 
-    // Set both user object and userId for compatibility
+    // Set user and ensure id/userId for route compatibility (consensus, reports, etc.)
     req.user = user;
     req.user.userId = user._id;
+    req.user.id = user._id.toString ? user._id.toString() : user._id;
     next();
   } catch (error) {
     if (error.name === 'JsonWebTokenError') {
