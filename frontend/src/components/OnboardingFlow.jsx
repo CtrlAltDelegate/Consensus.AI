@@ -146,9 +146,9 @@ const OnboardingFlow = ({ user, isOpen, onComplete, onClose }) => {
     setError('');
 
     try {
-      // Create checkout session - this will redirect to Stripe
+      // Create checkout session - this will redirect to Stripe (API returns plan.id; demo plans use id/_id)
       const response = await apiHelpers.createCheckoutSession({
-        tier: selectedPlan._id,
+        tier: selectedPlan.id || selectedPlan._id,
         billingPeriod: billingPeriod
       });
 

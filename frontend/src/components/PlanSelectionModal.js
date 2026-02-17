@@ -39,7 +39,7 @@ const PlanSelectionModal = ({ isOpen, onPlanSelected, onClose }) => {
     setLoading(true);
     try {
       const response = await apiHelpers.createCheckoutSession({
-        tier: selectedPlan._id,
+        tier: selectedPlan.id || selectedPlan._id,
         billingPeriod: billingPeriod
       });
 

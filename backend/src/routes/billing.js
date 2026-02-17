@@ -181,23 +181,26 @@ router.post('/setup-payment', async (req, res) => {
 // @access  Private
 router.post('/create-checkout-session', async (req, res) => {
   try {
+    // Handle demo user first (before validation - demo sends non-ObjectId tier ids)
+    if (req.user.isDemo) {
+      const tier = req.body.tier || req.body.tierId;
+      const billingPeriod = req.body.billingPeriod || 'monthly';
+      console.log('🧪 Demo user requesting checkout session - returning mock success');
+      return res.json({
+        success: true,
+        sessionId: 'demo-session-id',
+        url: `${process.env.FRONTEND_URL || ''}/billing?demo=success&plan=${tier || 'demo'}`,
+        message: 'Demo checkout - plan selection completed'
+      });
+    }
+
     const { error } = validateSubscriptionUpdate(req.body);
     if (error) {
       return res.status(400).json({ error: error.details[0].message });
     }
 
-    const { tier, billingPeriod = 'monthly' } = req.body;
-    
-    // Handle demo user - return mock checkout success
-    if (req.user.isDemo) {
-      console.log('🧪 Demo user requesting checkout session - returning mock success');
-      return res.json({
-        success: true,
-        sessionId: 'demo-session-id',
-        url: `${process.env.FRONTEND_URL}/billing?demo=success&plan=${tier}`,
-        message: 'Demo checkout - plan selection completed'
-      });
-    }
+    const tier = req.body.tier || req.body.tierId;
+    const billingPeriod = req.body.billingPeriod || 'monthly';
     
     const user = await User.findById(req.user.userId);
     if (!user) {

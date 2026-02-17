@@ -48,7 +48,7 @@ function ReportDashboard({ onUpgrade }) {
   const handleUpgrade = async (planId) => {
     try {
       const response = await apiHelpers.createCheckoutSession({
-        tierId: planId,
+        tier: planId,
         billingPeriod: 'monthly'
       });
       

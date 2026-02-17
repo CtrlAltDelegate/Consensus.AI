@@ -48,12 +48,14 @@ const validateConsensusRequest = (data) => {
   return schema.validate(data);
 };
 
-// Subscription update validation
+// Subscription update validation (accept tier or tierId for checkout)
 const validateSubscriptionUpdate = (data) => {
+  const objectIdPattern = Joi.string().pattern(/^[0-9a-fA-F]{24}$/);
   const schema = Joi.object({
-    tier: Joi.string().pattern(/^[0-9a-fA-F]{24}$/).required(), // MongoDB ObjectId
+    tier: objectIdPattern,
+    tierId: objectIdPattern,
     billingPeriod: Joi.string().valid('monthly', 'yearly').default('monthly')
-  });
+  }).or('tier', 'tierId');
 
   return schema.validate(data);
 };

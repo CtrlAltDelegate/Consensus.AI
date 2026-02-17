@@ -52,7 +52,7 @@ function BillingModal({ isVisible, onClose }) {
     try {
       // For users without payment setup, create a Stripe checkout session
       const response = await apiHelpers.createCheckoutSession({
-        tierId: planId,
+        tier: planId,
         billingPeriod: 'monthly'
       });
       
