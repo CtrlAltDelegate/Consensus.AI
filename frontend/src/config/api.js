@@ -92,6 +92,7 @@ export const API_ENDPOINTS = {
   // Consensus endpoints
   consensus: {
     generate: '/api/consensus/generate',
+    status: (jobId) => `/api/consensus/status/${jobId}`,
     history: '/api/consensus/history',
     estimate: '/api/consensus/estimate',
     downloadPdf: (analysisId) => `/api/consensus/report/${analysisId}/pdf`,
@@ -188,6 +189,7 @@ export const apiHelpers = {
   
   // Consensus helpers
   generateConsensus: (data) => api.post(API_ENDPOINTS.consensus.generate, data),
+  getJobStatus: (jobId) => api.get(API_ENDPOINTS.consensus.status(jobId)),
   getConsensusHistory: (params = {}) => api.get(API_ENDPOINTS.consensus.history, { params }),
   estimateTokens: (data) => api.post(API_ENDPOINTS.consensus.estimate, data),
   downloadConsensusReport: (analysisId) => api.get(API_ENDPOINTS.consensus.downloadPdf(analysisId), { responseType: 'blob' }),

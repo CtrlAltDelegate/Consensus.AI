@@ -260,47 +260,45 @@ function EnhancedConsensusForm({ progressModal }) {
     }
   };
 
-  // Polling function for job status
+  // Polling function for job status (uses api so auth token is sent)
   const pollJobStatus = async (jobId) => {
     const maxAttempts = 180; // 3 minutes max (polling every 1 second)
     let attempts = 0;
-    
+
     while (attempts < maxAttempts) {
       try {
-        console.log(`📊 Polling attempt ${attempts + 1}/${maxAttempts} for job ${jobId}`);
-        
-        const statusResponse = await fetch(`${import.meta.env.VITE_API_URL}/api/consensus/status/${jobId}`);
-        const statusData = await statusResponse.json();
-        
-        console.log(`📈 Job status:`, statusData);
-        
+        const response = await apiHelpers.getJobStatus(jobId);
+        const statusData = response.data;
+
         // Update progress modal with real data
         if (progressModal && statusData.progress !== undefined) {
-          const phase = statusData.phase === 'phase1' ? 'phase1' : 
-                       statusData.phase === 'phase2' ? 'phase2' : 
+          const phase = statusData.phase === 'phase1' ? 'phase1' :
+                       statusData.phase === 'phase2' ? 'phase2' :
                        statusData.phase === 'phase3' ? 'phase3' : 'phase3';
           progressModal.updateStage(phase);
         }
-        
+
         if (statusData.status === 'completed') {
-          console.log('🎉 Job completed!');
           return statusData.result;
         }
-        
+
         if (statusData.status === 'failed') {
           throw new Error(statusData.error || 'Job failed');
         }
-        
-        // Wait 1 second before next poll
+
         await new Promise(resolve => setTimeout(resolve, 1000));
         attempts++;
-        
       } catch (pollError) {
-        console.error(`❌ Polling error:`, pollError);
-        throw new Error(`Job status polling failed: ${pollError.message}`);
+        if (pollError.response?.status === 401) {
+          throw new Error('Authentication required. Please sign in and try again.');
+        }
+        if (pollError.response?.data?.error) {
+          throw new Error(pollError.response.data.error);
+        }
+        throw new Error(pollError.message || 'Job status check failed');
       }
     }
-    
+
     throw new Error('Job polling timeout - process may still be running');
   };
 
