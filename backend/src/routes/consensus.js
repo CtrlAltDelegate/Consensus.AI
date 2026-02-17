@@ -58,9 +58,9 @@ router.get('/test-llms', async (req, res) => {
     // Test each provider individually
     const providers = [
       { provider: 'openai', model: 'gpt-4o' },
-      { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022' },
-      { provider: 'google', model: 'gemini-1.5-pro' },
-      { provider: 'cohere', model: 'command-r' }
+      { provider: 'anthropic', model: 'claude-3-5-sonnet-20240620' },
+      { provider: 'google', model: 'gemini-1.5-flash' },
+      { provider: 'cohere', model: 'command-r-plus' }
     ];
     
     for (const { provider, model } of providers) {
