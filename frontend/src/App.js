@@ -367,6 +367,7 @@ function AuthenticatedApp() {
       isVisible: progressModal.isVisible,
       currentStage: progressModal.currentStage,
       estimatedTime: progressModal.estimatedTime,
+      completedResult: progressModal.completedResult,
       onClose: () => progressModal.hideProgress()
     }),
 

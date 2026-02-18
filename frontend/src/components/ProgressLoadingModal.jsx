@@ -6,11 +6,50 @@ const DEFAULT_STAGES = [
   { id: 'phase3', title: 'Final Arbitration', description: 'Synthesizing consensus...', icon: '⚖️' }
 ];
 
-function ProgressLoadingModal({ isVisible, onClose, stages, currentStage }) {
+function ProgressLoadingModal({ isVisible, onClose, stages, currentStage, completedResult }) {
   const list = stages || DEFAULT_STAGES;
   const currentIndex = Math.max(0, list.findIndex((s) => s.id === currentStage));
+  const showReport = completedResult && typeof completedResult.consensus === 'string';
 
   if (!isVisible) return null;
+
+  if (showReport) {
+    return (
+      <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+          <div className="bg-gradient-to-r from-emerald-50 to-indigo-50 px-6 py-4 flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600">✓</div>
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">Report ready</h2>
+                <p className="text-slate-600 text-sm">Your consensus report is below</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-800 font-medium transition-colors"
+            >
+              Close
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto px-6 py-4 min-h-0">
+            <div className="prose prose-slate max-w-none text-slate-700 whitespace-pre-wrap text-sm leading-relaxed">
+              {completedResult.consensus}
+            </div>
+            {!completedResult.error && (
+              <div className="mt-6 pt-4 border-t border-slate-200 flex flex-wrap gap-4 text-sm">
+                <span className="text-slate-600">Confidence: <strong className="text-slate-900">{((completedResult.confidence || 0) * 100).toFixed(1)}%</strong></span>
+                {completedResult.llmsUsed?.length > 0 && (
+                  <span className="text-slate-600">Models: <strong className="text-slate-900">{completedResult.llmsUsed.join(', ')}</strong></span>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
@@ -62,17 +101,29 @@ export function useProgressModal() {
   const [isVisible, setIsVisible] = useState(false);
   const [currentStage, setCurrentStage] = useState('phase1');
   const [estimatedTime, setEstimatedTime] = useState(90);
+  const [completedResult, setCompletedResult] = useState(null);
 
   const showProgress = (stage = 'phase1', time = 90) => {
+    setCompletedResult(null);
     setCurrentStage(stage);
     setEstimatedTime(time);
     setIsVisible(true);
   };
 
   const updateStage = (stage) => setCurrentStage(stage);
-  const hideProgress = () => setIsVisible(false);
 
-  return { isVisible, currentStage, estimatedTime, showProgress, updateStage, hideProgress };
+  const showReport = (result) => {
+    setCompletedResult(result || null);
+    setCurrentStage('phase3');
+    setIsVisible(true);
+  };
+
+  const hideProgress = () => {
+    setIsVisible(false);
+    setCompletedResult(null);
+  };
+
+  return { isVisible, currentStage, estimatedTime, completedResult, showProgress, updateStage, showReport, hideProgress };
 }
 
 export default ProgressLoadingModal;
