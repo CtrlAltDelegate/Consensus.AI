@@ -1,5 +1,19 @@
 const axios = require('axios');
 
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/** Parse "Please retry in X.XXs" from Google error message for backoff. */
+function parseRetryAfterSeconds(error) {
+  const msg = (error.response?.data?.error?.message || error.message || '');
+  const match = msg.match(/retry in (\d+(?:\.\d+)?)\s*s/i);
+  if (match) return Math.min(60, Math.max(5, parseFloat(match[1])));
+  const header = error.response?.headers?.['retry-after'];
+  if (header) return Math.min(60, Math.max(5, parseInt(header, 10) || 30));
+  return 30;
+}
+
 class LLMOrchestrator {
   constructor() {
     this.providers = new Map();
@@ -75,31 +89,49 @@ class LLMOrchestrator {
       throw new Error(`Endpoint is undefined for provider ${provider}`);
     }
 
-    try {
-      console.log(`🌐 ${provider} (${model})`);
+    const maxRetries = (options.retryOnQuota !== false) ? 2 : 0;
+    let lastError;
 
-      const response = await axios.post(endpoint, requestBody, {
-        headers: providerConfig.headers,
-        timeout: options.timeout || 60000
-      });
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        if (attempt > 0) console.log(`🌐 ${provider} (${model}) retry ${attempt}/${maxRetries}`);
+        else console.log(`🌐 ${provider} (${model})`);
 
-      console.log(`✅ ${provider} response received successfully`);
-      return this.parseResponse(provider, response.data);
-    } catch (error) {
-      console.error(`❌ ${provider} API call failed:`, {
-        provider,
-        model,
-        error: error.message,
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-        endpoint: endpoint || 'UNDEFINED',
-        requestBodyPreview: JSON.stringify(requestBody).substring(0, 200) + '...',
-        headers: providerConfig.headers,
-        fullErrorData: error.response?.data ? JSON.stringify(error.response.data, null, 2) : 'No response data'
-      });
-      throw new Error(`${provider} (${model}) API failed: ${error.message}`);
+        const response = await axios.post(endpoint, requestBody, {
+          headers: providerConfig.headers,
+          timeout: options.timeout || 60000
+        });
+
+        console.log(`✅ ${provider} response received successfully`);
+        return this.parseResponse(provider, response.data);
+      } catch (error) {
+        lastError = error;
+        const status = error.response?.status;
+
+        if ((status === 429 || status === 503) && attempt < maxRetries) {
+          const waitSec = parseRetryAfterSeconds(error);
+          console.warn(`⏳ ${provider} quota/rate limit (${status}), retrying in ${waitSec}s...`);
+          await sleep(waitSec * 1000);
+          continue;
+        }
+
+        console.error(`❌ ${provider} API call failed:`, {
+          provider,
+          model,
+          error: error.message,
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          data: error.response?.data,
+          endpoint: endpoint || 'UNDEFINED',
+          requestBodyPreview: JSON.stringify(requestBody).substring(0, 200) + '...',
+          headers: providerConfig.headers,
+          fullErrorData: error.response?.data ? JSON.stringify(error.response.data, null, 2) : 'No response data'
+        });
+        throw new Error(`${provider} (${model}) API failed: ${error.message}`);
+      }
     }
+
+    throw new Error(`${provider} (${model}) API failed: ${lastError?.message || 'Unknown'}`);
   }
 
   buildRequestBody(provider, model, prompt, options) {

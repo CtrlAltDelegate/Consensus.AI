@@ -24,9 +24,8 @@ const auth = async (req, res, next) => {
 
     const decoded = jwt.verify(token, env.JWT_SECRET);
     
-    // Handle demo user tokens
+    // Handle demo user tokens (no per-request log to avoid log spam)
     if (decoded.isDemo && decoded.userId === 'demo-user-id') {
-      console.log('🧪 Demo user authenticated');
       req.user = {
         _id: 'demo-user-id',
         id: 'demo-user-id',

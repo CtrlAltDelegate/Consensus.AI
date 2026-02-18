@@ -117,20 +117,31 @@ class ConsensusEngine {
     }
   }
 
-  // PHASE 1: Independent Drafting
+  // PHASE 1: Independent Drafting (Gemini staggered to reduce RPM/TPM burst)
   async phase1_IndependentDrafting(topic, sources) {
     const prompt = this.buildDraftingPrompt(topic, sources);
-    
-    const queries = this.draftingLLMs.map(llm => ({
-      provider: llm.provider,
-      model: llm.model,
-      prompt,
-      options: { maxTokens: 2000, temperature: 0.7 }
-    }));
+    const GEMINI_STAGGER_MS = 15000; // 15s delay so Gemini isn't in same minute as other two
+
+    const runOne = (llm, delayMs = 0) => {
+      const query = { provider: llm.provider, model: llm.model, prompt, options: { maxTokens: 2000, temperature: 0.7 } };
+      const run = () => llmOrchestrator.executeQuery(query.provider, query.model, query.prompt, query.options)
+        .catch(err => ({ error: err.message, ...query }));
+      if (delayMs > 0) {
+        return new Promise((resolve) => {
+          setTimeout(() => run().then(resolve), delayMs);
+        });
+      }
+      return run();
+    };
 
     try {
-      const responses = await llmOrchestrator.runParallelQueries(queries);
-      
+      const [openaiRes, anthropicRes, googleRes] = await Promise.all([
+        runOne(this.draftingLLMs[0]),
+        runOne(this.draftingLLMs[1]),
+        runOne(this.draftingLLMs[2], this.draftingLLMs[2].provider === 'google' ? GEMINI_STAGGER_MS : 0)
+      ]);
+      const responses = [openaiRes, anthropicRes, googleRes];
+
       return responses.map((response, index) => {
         const llm = this.draftingLLMs[index];
         
