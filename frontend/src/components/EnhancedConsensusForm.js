@@ -199,14 +199,10 @@ function EnhancedConsensusForm({ progressModal }) {
 
       // Start polling for job completion
       const result = await pollJobStatus(jobId);
-      
-      // Hide progress modal after completion
-      if (progressModal) {
-        progressModal.hideProgress();
-      }
 
       // Defensive: server may have restarted and lost in-memory result
       if (!result || typeof result.consensus !== 'string') {
+        if (progressModal) progressModal.hideProgress();
         setResult({
           consensus: 'Report completed but the result was unavailable (server may have restarted). Please try generating again.',
           confidence: 0,
@@ -215,8 +211,8 @@ function EnhancedConsensusForm({ progressModal }) {
         });
         return;
       }
-      
-      setResult({
+
+      const resultData = {
         consensus: result.consensus,
         confidence: typeof result.confidence === 'number' ? result.confidence : 0,
         llmsUsed: result.metadata?.llmsUsed || ['GPT-4o', 'Claude 3.5 Sonnet', 'Gemini 1.5 Pro', 'Command R+'],
@@ -224,8 +220,18 @@ function EnhancedConsensusForm({ progressModal }) {
         generatedAt: new Date().toISOString(),
         title: (data.topic || '').substring(0, 100) + ((data.topic || '').length > 100 ? '...' : ''),
         id: `rep_${Date.now()}`
-      });
-      
+      };
+      setResult(resultData);
+
+      // Show report in the pop-up so user sees it without going to Report Library
+      if (progressModal) {
+        progressModal.showReport({
+          consensus: resultData.consensus,
+          confidence: resultData.confidence,
+          llmsUsed: resultData.llmsUsed,
+          error: resultData.error
+        });
+      }
     } catch (error) {
       console.error('❌ Error generating consensus:', error);
       console.error('❌ Error details:', {
