@@ -3,20 +3,17 @@ const { calculateTokenUsage } = require('../utils/tokenCalculator');
 
 class ConsensusEngine {
   constructor() {
-    // Define the LLM architecture for 3-phase workflow
     this.draftingLLMs = [
       { provider: 'openai', model: 'gpt-4o', name: 'GPT-4o' },
       { provider: 'anthropic', model: 'claude-sonnet-4-5', name: 'Claude Sonnet 4.5' },
       { provider: 'google', model: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash' }
     ];
-    
+
     this.arbiterLLM = {
       provider: 'cohere',
       model: 'command-r-plus-08-2024',
       name: 'Command R+'
     };
-
-    // Always use real API calls - no demo mode
   }
 
   async generateConsensus(topic, sources, options = {}) {
@@ -117,10 +114,10 @@ class ConsensusEngine {
     }
   }
 
-  // PHASE 1: Independent Drafting (Gemini staggered to reduce RPM/TPM burst)
+  // PHASE 1: Independent Drafting (Gemini staggered to reduce RPM/TPM burst when enabled)
   async phase1_IndependentDrafting(topic, sources) {
     const prompt = this.buildDraftingPrompt(topic, sources);
-    const GEMINI_STAGGER_MS = 15000; // 15s delay so Gemini isn't in same minute as other two
+    const GEMINI_STAGGER_MS = 15000;
 
     const runOne = (llm, delayMs = 0) => {
       const query = { provider: llm.provider, model: llm.model, prompt, options: { maxTokens: 2000, temperature: 0.7 } };
@@ -134,13 +131,12 @@ class ConsensusEngine {
       return run();
     };
 
+    const promises = this.draftingLLMs.map((llm) =>
+      runOne(llm, llm.provider === 'google' ? GEMINI_STAGGER_MS : 0)
+    );
+
     try {
-      const [openaiRes, anthropicRes, googleRes] = await Promise.all([
-        runOne(this.draftingLLMs[0]),
-        runOne(this.draftingLLMs[1]),
-        runOne(this.draftingLLMs[2], this.draftingLLMs[2].provider === 'google' ? GEMINI_STAGGER_MS : 0)
-      ]);
-      const responses = [openaiRes, anthropicRes, googleRes];
+      const responses = await Promise.all(promises);
 
       return responses.map((response, index) => {
         const llm = this.draftingLLMs[index];
