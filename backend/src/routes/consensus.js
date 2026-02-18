@@ -456,7 +456,7 @@ async function processConsensusJob(jobId, topic, sources, options, estimatedToke
       })
     };
 
-    // Store result and mark job complete
+    // Store result and mark job complete (only reached after Phase 3 / Cohere arbitration finishes or fallback)
     jobResults.set(jobId, result);
     const endTime = new Date();
 

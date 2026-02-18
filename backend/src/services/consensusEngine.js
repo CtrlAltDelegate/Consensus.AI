@@ -222,7 +222,7 @@ class ConsensusEngine {
   this.arbiterLLM.provider,
   this.arbiterLLM.model,
   prompt,
-  { maxTokens: 3000, temperature: 0.5, timeout: 360000 } // 6 min for Cohere arbitration (request reaches them; they may need more time)
+  { maxTokens: 3000, temperature: 0.5, timeout: 240000 } // 4 min for arbitration (core product value)
 );
       
       return {
@@ -278,10 +278,10 @@ Your peer review:`;
 **Question:** ${topic}
 
 **Available Analyses:**
-${initialDrafts.map((draft, i) => `\n**${draft.name} Analysis:**\n${draft.content}`).join('\n')}
+${initialDrafts.map((draft) => `\n**${draft.name} Analysis:**\n${draft.content}`).join('\n')}
 
 **Peer Reviews:**
-${peerReviews.map((review, i) => `\n**${review.reviewer} reviewing ${review.reviewedModel}:**\n${review.content}`).join('\n')}
+${peerReviews.map((review) => `\n**${review.reviewer} reviewing ${review.reviewedModel}:**\n${review.content}`).join('\n')}
 
 **Your task:**
 - Synthesize all perspectives into a balanced, comprehensive consensus

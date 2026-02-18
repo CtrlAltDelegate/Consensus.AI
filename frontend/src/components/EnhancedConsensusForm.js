@@ -271,7 +271,7 @@ function EnhancedConsensusForm({ progressModal }) {
 
   // Polling function for job status (uses api so auth token is sent)
   const pollJobStatus = async (jobId) => {
-    const maxAttempts = 180; // 3 minutes max (polling every 1 second)
+    const maxAttempts = 600; // 10 min max so we wait for Phase 3 (Cohere arbitration) to finish
     let attempts = 0;
 
     while (attempts < maxAttempts) {
