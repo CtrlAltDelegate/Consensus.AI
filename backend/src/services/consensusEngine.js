@@ -217,7 +217,7 @@ class ConsensusEngine {
   this.arbiterLLM.provider,
   this.arbiterLLM.model,
   prompt,
-  { maxTokens: 3000, temperature: 0.5, timeout: 120000 } // Add 2-minute timeout
+  { maxTokens: 3000, temperature: 0.5, timeout: 240000 } // 4 min for large arbitration prompt
 );
       
       return {

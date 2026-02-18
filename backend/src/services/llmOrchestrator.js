@@ -126,11 +126,17 @@ class LLMOrchestrator {
       } catch (error) {
         lastError = error;
         const status = error.response?.status;
+        const isTimeout = error.code === 'ECONNABORTED' || /timeout/i.test(error.message || '');
 
         if ((status === 429 || status === 503) && attempt < maxRetries) {
           const waitSec = parseRetryAfterSeconds(error);
           console.warn(`⏳ ${provider} quota/rate limit (${status}), retrying in ${waitSec}s...`);
           await sleep(waitSec * 1000);
+          continue;
+        }
+        if (isTimeout && attempt < 1) {
+          console.warn(`⏳ ${provider} request timed out, retrying once in 5s...`);
+          await sleep(5000);
           continue;
         }
 
