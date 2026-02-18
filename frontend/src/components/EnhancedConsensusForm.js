@@ -229,7 +229,9 @@ function EnhancedConsensusForm({ progressModal }) {
           consensus: resultData.consensus,
           confidence: resultData.confidence,
           llmsUsed: resultData.llmsUsed,
-          error: resultData.error
+          error: resultData.error,
+          jobId,
+          pdfAvailable: !!result.pdfAvailable
         });
       }
     } catch (error) {

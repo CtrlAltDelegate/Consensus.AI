@@ -25,6 +25,7 @@ import OnboardingFlow from './components/OnboardingFlow.jsx';
 
 // Services
 import exportService from './utils/exportService';
+import { apiHelpers } from './config/api';
 
 // Custom NavLink component with proper styling
 const CustomNavLink = ({ to, children }) => {
@@ -256,6 +257,24 @@ function AuthenticatedApp() {
     handleCloseReportViewer();
   };
 
+  // Download PDF for a completed job (e.g. from progress modal)
+  const handleDownloadReportPdf = async (jobId) => {
+    try {
+      const res = await apiHelpers.downloadReportPdf(jobId);
+      const blob = res.data;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `consensus-report-${jobId || Date.now()}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('PDF download failed:', err);
+    }
+  };
+
   // Handle logout
   const handleLogout = async () => {
     try {
@@ -368,7 +387,8 @@ function AuthenticatedApp() {
       currentStage: progressModal.currentStage,
       estimatedTime: progressModal.estimatedTime,
       completedResult: progressModal.completedResult,
-      onClose: () => progressModal.hideProgress()
+      onClose: () => progressModal.hideProgress(),
+      onDownloadPdf: handleDownloadReportPdf
     }),
 
     React.createElement(UserProfileModal, {
