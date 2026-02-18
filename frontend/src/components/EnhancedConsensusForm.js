@@ -279,11 +279,12 @@ function EnhancedConsensusForm({ progressModal }) {
         const response = await apiHelpers.getJobStatus(jobId);
         const statusData = response.data;
 
-        // Update progress modal with real data
-        if (progressModal && statusData.progress !== undefined) {
+        // Update progress modal with current phase from backend
+        if (progressModal && statusData.phase) {
           const phase = statusData.phase === 'phase1' ? 'phase1' :
                        statusData.phase === 'phase2' ? 'phase2' :
-                       statusData.phase === 'phase3' ? 'phase3' : 'phase3';
+                       statusData.phase === 'phase3' ? 'phase3' :
+                       statusData.phase === 'completed' ? 'phase3' : 'phase1';
           progressModal.updateStage(phase);
         }
 

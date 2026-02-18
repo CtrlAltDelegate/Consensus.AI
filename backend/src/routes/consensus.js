@@ -368,9 +368,14 @@ async function processConsensusJob(jobId, topic, sources, options, estimatedToke
 
     // Start processing
     updateJob({ status: 'processing', progress: 10, phase: 'phase1' });
-    
+
+    const onPhaseChange = (phase) => updateJob({ phase, progress: phase === 'phase1' ? 15 : phase === 'phase2' ? 50 : 80 });
+
     // Generate consensus (this is the actual work)
-    const consensus = await consensusEngine.generateConsensus(topic, sources, options);
+    const consensus = await consensusEngine.generateConsensus(topic, sources, {
+      ...options,
+      onPhaseChange
+    });
     
     const startTime = new Date(jobs.get(jobId).startedAt);
     const duration = Math.round((new Date() - startTime) / 1000);

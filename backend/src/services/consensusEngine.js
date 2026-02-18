@@ -18,6 +18,9 @@ class ConsensusEngine {
 
   async generateConsensus(topic, sources, options = {}) {
     try {
+      const onPhaseChange = options.onPhaseChange;
+      if (onPhaseChange) onPhaseChange('phase1');
+
       console.log('🚀 Starting 3-phase consensus generation with real LLM APIs...');
       console.log('💡 Topic:', topic);
       console.log('📚 Sources:', sources?.length || 0, 'provided');
@@ -36,6 +39,7 @@ class ConsensusEngine {
       // Phase 2: Peer Review (only if we have multiple successful drafts)
       let peerReviews = [];
       if (successfulDrafts.length > 1) {
+        if (onPhaseChange) onPhaseChange('phase2');
         console.log('🔍 Phase 2: Peer Review...');
         peerReviews = await this.phase2_PeerReview(topic, initialDrafts);
         const successfulReviews = peerReviews.filter(r => !r.error);
@@ -45,6 +49,7 @@ class ConsensusEngine {
       }
       
       // Phase 3: Final Arbitration with fallback
+      if (onPhaseChange) onPhaseChange('phase3');
       console.log('⚖️ Phase 3: Final Arbitration...');
       let finalConsensus;
       try {

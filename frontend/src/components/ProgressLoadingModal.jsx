@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
 const DEFAULT_STAGES = [
   { id: 'phase1', title: 'Independent Drafting', description: 'Generating initial responses from AI models...', icon: '🤖' },
@@ -7,16 +7,8 @@ const DEFAULT_STAGES = [
 ];
 
 function ProgressLoadingModal({ isVisible, onClose, stages, currentStage }) {
-  const [elapsed, setElapsed] = useState(0);
   const list = stages || DEFAULT_STAGES;
   const currentIndex = Math.max(0, list.findIndex((s) => s.id === currentStage));
-
-  useEffect(() => {
-    if (!isVisible) return;
-    const start = Date.now();
-    const t = setInterval(() => setElapsed(Math.floor((Date.now() - start) / 1000)), 1000);
-    return () => clearInterval(t);
-  }, [isVisible]);
 
   if (!isVisible) return null;
 
@@ -29,9 +21,6 @@ function ProgressLoadingModal({ isVisible, onClose, stages, currentStage }) {
           </div>
           <h2 className="text-lg font-bold text-slate-900">Generating Consensus Report</h2>
           <p className="text-slate-600 text-sm mt-1">Analyzing your question across multiple AI models</p>
-          {elapsed > 0 && (
-            <p className="text-slate-500 text-xs mt-2">Elapsed: {Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, '0')}</p>
-          )}
         </div>
 
         <div className="px-6 py-4 space-y-3">
