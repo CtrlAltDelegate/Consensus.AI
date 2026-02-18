@@ -4,13 +4,6 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-/** Safe fingerprint for logging (last 4 chars only) so you can verify which key is used. */
-function keyFingerprint(key) {
-  if (!key || typeof key !== 'string') return '(not set)';
-  if (key.length < 4) return '(too short)';
-  return '....' + key.substring(key.length - 4);
-}
-
 /** Redact API key from URL before logging. */
 function redactKeyFromUrl(url) {
   if (!url || typeof url !== 'string') return url;
@@ -100,12 +93,6 @@ class LLMOrchestrator {
 
     if (!endpoint) {
       throw new Error(`Endpoint is undefined for provider ${provider}`);
-    }
-
-    // Log which Google key is in use once per process (so you can verify Railway env)
-    if (provider === 'google' && !this._googleKeyFingerprintLogged) {
-      this._googleKeyFingerprintLogged = true;
-      console.log('🔑 Google API key in use (verify in Railway):', keyFingerprint(process.env.GOOGLE_API_KEY));
     }
 
     const maxRetries = (options.retryOnQuota !== false) ? 2 : 0;
