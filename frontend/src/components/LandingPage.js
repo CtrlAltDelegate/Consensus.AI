@@ -2,27 +2,30 @@ import React from 'react';
 
 function LandingPage({ onGetStarted, onLearnMore }) {
   return React.createElement('main', { className: 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20' },
-    // Hero Section
+    // Hero Section — one core message
     React.createElement('div', { className: 'text-center mb-20' },
-      React.createElement('h1', { className: 'text-5xl font-bold text-slate-900 mb-6' },
-        'AI Consensus Analysis',
-        React.createElement('br'),
-        React.createElement('span', { className: 'bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent' },
-          'Powered by 4 Leading LLMs'
-        )
+      React.createElement('h1', { className: 'text-4xl sm:text-5xl font-bold text-slate-900 mb-6 leading-tight' },
+        'Stop relying on a single AI\'s opinion.'
       ),
-      React.createElement('p', { className: 'text-xl text-slate-600 mb-8 max-w-3xl mx-auto' },
-        'Get unbiased, comprehensive analysis by combining insights from GPT-4, Claude, Gemini, and Cohere. Perfect for research, business decisions, and complex problem-solving.'
+      React.createElement('p', { className: 'text-xl text-slate-600 mb-4 max-w-3xl mx-auto' },
+        'Consensus.AI combines GPT-4o, Claude, Gemini, and Cohere into one balanced report—so you get nuance, not one model\'s bias.'
       ),
-      React.createElement('div', { className: 'flex items-center justify-center space-x-4 mb-12' },
+      React.createElement('p', { className: 'text-lg text-slate-500 mb-8 max-w-2xl mx-auto' },
+        'Built for researchers, consultants, and strategy professionals who need defensible, multi-perspective analysis.'
+      ),
+      React.createElement('div', { className: 'flex flex-wrap items-center justify-center gap-3 mb-12' },
         React.createElement('button', {
           onClick: onGetStarted,
           className: 'bg-indigo-600 text-white px-8 py-3 rounded-lg hover:bg-indigo-700 transition-colors duration-200 font-medium text-lg'
         }, 'Start Free Analysis'),
         React.createElement('button', {
-          onClick: () => document.getElementById('how-it-works').scrollIntoView({ behavior: 'smooth' }),
+          onClick: () => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' }),
           className: 'text-indigo-600 px-8 py-3 rounded-lg border border-indigo-200 hover:bg-indigo-50 transition-colors duration-200 font-medium text-lg'
-        }, 'See How It Works')
+        }, 'View Pricing'),
+        React.createElement('button', {
+          onClick: () => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' }),
+          className: 'text-slate-600 px-8 py-3 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors duration-200 font-medium text-lg'
+        }, 'How It Works')
       ),
       
       // Trust indicators
@@ -169,64 +172,140 @@ function LandingPage({ onGetStarted, onLearnMore }) {
       )
     ),
 
-    // Use Cases Section
-    React.createElement('section', { className: 'mb-20' },
-      React.createElement('div', { className: 'text-center mb-16' },
-        React.createElement('h2', { className: 'text-4xl font-bold text-slate-900 mb-4' }, 'Perfect For'),
+    // Pricing Section — prominent with Basic vs Pro comparison
+    React.createElement('section', { id: 'pricing', className: 'mb-20 scroll-mt-8' },
+      React.createElement('div', { className: 'text-center mb-12' },
+        React.createElement('h2', { className: 'text-4xl font-bold text-slate-900 mb-4' }, 'Simple, transparent pricing'),
         React.createElement('p', { className: 'text-xl text-slate-600 max-w-2xl mx-auto' },
-          'Professionals who need unbiased, comprehensive analysis for critical decisions'
+          'Choose the plan that fits your workflow. Both include full 4-LLM consensus and PDF reports.'
         )
       ),
-      
-      React.createElement('div', { className: 'grid md:grid-cols-3 gap-8' },
-        React.createElement('div', { className: 'bg-white p-6 rounded-xl shadow-sm border border-slate-200' },
-          React.createElement('div', { className: 'w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4' },
-            React.createElement('svg', { className: 'w-6 h-6 text-blue-600', fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' },
-              React.createElement('path', { strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2, d: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' })
+      React.createElement('div', { className: 'overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm' },
+        React.createElement('table', { className: 'w-full min-w-[600px] text-left' },
+          React.createElement('thead', { className: 'bg-slate-50 border-b border-slate-200' },
+            React.createElement('tr', null,
+              React.createElement('th', { className: 'px-6 py-4 text-sm font-semibold text-slate-900' }, 'Feature'),
+              React.createElement('th', { className: 'px-6 py-4 text-sm font-semibold text-slate-900 text-center' }, 'Starter'),
+              React.createElement('th', { className: 'px-6 py-4 text-sm font-semibold text-indigo-700 text-center bg-indigo-50/50' }, 'Professional')
             )
           ),
-          React.createElement('h3', { className: 'text-xl font-semibold text-slate-900 mb-3' }, 'Researchers & Analysts'),
-          React.createElement('p', { className: 'text-slate-600 mb-4' },
-            'Get balanced perspectives on complex topics, validate hypotheses, and identify research gaps.'
+          React.createElement('tbody', { className: 'divide-y divide-slate-100' },
+            React.createElement('tr', { className: 'bg-white' },
+              React.createElement('td', { className: 'px-6 py-3 text-slate-700' }, 'Price'),
+              React.createElement('td', { className: 'px-6 py-3 text-center font-medium text-slate-900' }, '$29/month'),
+              React.createElement('td', { className: 'px-6 py-3 text-center font-medium text-indigo-700 bg-indigo-50/30' }, '$79/month')
+            ),
+            React.createElement('tr', { className: 'bg-slate-50/30' },
+              React.createElement('td', { className: 'px-6 py-3 text-slate-700' }, 'Reports included'),
+              React.createElement('td', { className: 'px-6 py-3 text-center text-slate-900' }, '3 per month'),
+              React.createElement('td', { className: 'px-6 py-3 text-center text-slate-900 bg-indigo-50/20' }, '10 per month')
+            ),
+            React.createElement('tr', { className: 'bg-white' },
+              React.createElement('td', { className: 'px-6 py-3 text-slate-700' }, 'Overage'),
+              React.createElement('td', { className: 'px-6 py-3 text-center text-slate-600' }, '$12/report'),
+              React.createElement('td', { className: 'px-6 py-3 text-center text-slate-600 bg-indigo-50/30' }, '$10/report')
+            ),
+            React.createElement('tr', { className: 'bg-slate-50/30' },
+              React.createElement('td', { className: 'px-6 py-3 text-slate-700' }, '4-LLM consensus analysis'),
+              React.createElement('td', { className: 'px-6 py-3 text-center' }, '\u2713'),
+              React.createElement('td', { className: 'px-6 py-3 text-center bg-indigo-50/20' }, '\u2713')
+            ),
+            React.createElement('tr', { className: 'bg-white' },
+              React.createElement('td', { className: 'px-6 py-3 text-slate-700' }, 'Professional PDF reports'),
+              React.createElement('td', { className: 'px-6 py-3 text-center' }, '\u2713'),
+              React.createElement('td', { className: 'px-6 py-3 text-center bg-indigo-50/30' }, '\u2713')
+            ),
+            React.createElement('tr', { className: 'bg-slate-50/30' },
+              React.createElement('td', { className: 'px-6 py-3 text-slate-700' }, 'Report history & storage'),
+              React.createElement('td', { className: 'px-6 py-3 text-center text-slate-600' }, 'Included'),
+              React.createElement('td', { className: 'px-6 py-3 text-center text-slate-600 bg-indigo-50/20' }, 'Unlimited')
+            ),
+            React.createElement('tr', { className: 'bg-white' },
+              React.createElement('td', { className: 'px-6 py-3 text-slate-700' }, 'Support'),
+              React.createElement('td', { className: 'px-6 py-3 text-center text-slate-600' }, 'Priority email'),
+              React.createElement('td', { className: 'px-6 py-3 text-center text-slate-600 bg-indigo-50/30' }, 'Priority + phone')
+            ),
+            React.createElement('tr', { className: 'bg-slate-50/30' },
+              React.createElement('td', { className: 'px-6 py-3 text-slate-700' }, 'Custom report branding'),
+              React.createElement('td', { className: 'px-6 py-3 text-center text-slate-400' }, '—'),
+              React.createElement('td', { className: 'px-6 py-3 text-center bg-indigo-50/20' }, '\u2713')
+            )
+          )
+        )
+      ),
+      React.createElement('div', { className: 'mt-6 flex flex-wrap justify-center gap-4' },
+        React.createElement('button', { onClick: onGetStarted, className: 'bg-indigo-600 text-white px-6 py-2.5 rounded-lg hover:bg-indigo-700 font-medium' }, 'Get started'),
+        React.createElement('button', { onClick: () => { window.location.hash = '#/pricing'; }, className: 'text-indigo-600 border border-indigo-200 px-6 py-2.5 rounded-lg hover:bg-indigo-50 font-medium' }, 'See all plans')
+      )
+    ),
+
+    // Use Cases — concrete examples with sample output previews
+    React.createElement('section', { className: 'mb-20' },
+      React.createElement('div', { className: 'text-center mb-12' },
+        React.createElement('h2', { className: 'text-4xl font-bold text-slate-900 mb-4' }, 'Concrete use cases'),
+        React.createElement('p', { className: 'text-xl text-slate-600 max-w-2xl mx-auto' },
+          'See what multi-model consensus delivers for competitive analysis, legal research, and strategy.'
+        )
+      ),
+      React.createElement('div', { className: 'space-y-10' },
+        React.createElement('div', { className: 'bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden' },
+          React.createElement('div', { className: 'px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center gap-3' },
+            React.createElement('div', { className: 'w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center' },
+              React.createElement('svg', { className: 'w-5 h-5 text-amber-600', fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' }, React.createElement('path', { strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2, d: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' }))
+            ),
+            React.createElement('div', null,
+              React.createElement('h3', { className: 'font-semibold text-slate-900' }, 'Competitive analysis'),
+              React.createElement('p', { className: 'text-sm text-slate-600' }, 'Compare positioning, pricing, and go-to-market of key competitors with one report.')
+            )
           ),
-          React.createElement('ul', { className: 'text-sm text-slate-500 space-y-1' },
-            React.createElement('li', null, '• Literature reviews'),
-            React.createElement('li', null, '• Market analysis'),
-            React.createElement('li', null, '• Policy research')
+          React.createElement('div', { className: 'px-6 py-4' },
+            React.createElement('p', { className: 'text-sm font-medium text-slate-500 mb-2' }, 'Example prompt'),
+            React.createElement('p', { className: 'text-slate-700 mb-4 italic' }, 'Compare the go-to-market strategies and positioning of Notion, Coda, and Airtable for team productivity. Include strengths, gaps, and where each is likely to invest next.')
+            ),
+            React.createElement('p', { className: 'text-sm font-medium text-slate-500 mb-2' }, 'Sample output preview'),
+            React.createElement('div', { className: 'bg-slate-50 rounded-lg p-4 text-sm text-slate-700 border border-slate-200 font-serif' },
+              'All three models agree that Notion leads on flexibility and community; Coda on spreadsheets and automation; Airtable on non-technical users. Consensus: the main gap for all is deep enterprise governance. Likely next moves include more templates (Notion), API monetization (Coda), and vertical solutions (Airtable).'
+            )
           )
         ),
-        
-        React.createElement('div', { className: 'bg-white p-6 rounded-xl shadow-sm border border-slate-200' },
-          React.createElement('div', { className: 'w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4' },
-            React.createElement('svg', { className: 'w-6 h-6 text-green-600', fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' },
-              React.createElement('path', { strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2, d: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' })
+        React.createElement('div', { className: 'bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden' },
+          React.createElement('div', { className: 'px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center gap-3' },
+            React.createElement('div', { className: 'w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center' },
+              React.createElement('svg', { className: 'w-5 h-5 text-blue-600', fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' }, React.createElement('path', { strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2, d: 'M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3' }))
+            ),
+            React.createElement('div', null,
+              React.createElement('h3', { className: 'font-semibold text-slate-900' }, 'Legal research'),
+              React.createElement('p', { className: 'text-sm text-slate-600' }, 'Synthesize liability, jurisdiction, and precedent across sources for memos and case prep.')
             )
           ),
-          React.createElement('h3', { className: 'text-xl font-semibold text-slate-900 mb-3' }, 'Business Leaders'),
-          React.createElement('p', { className: 'text-slate-600 mb-4' },
-            'Make informed strategic decisions with comprehensive analysis of market trends and opportunities.'
-          ),
-          React.createElement('ul', { className: 'text-sm text-slate-500 space-y-1' },
-            React.createElement('li', null, '• Strategic planning'),
-            React.createElement('li', null, '• Investment decisions'),
-            React.createElement('li', null, '• Risk assessment')
+          React.createElement('div', { className: 'px-6 py-4' },
+            React.createElement('p', { className: 'text-sm font-medium text-slate-500 mb-2' }, 'Example prompt'),
+            React.createElement('p', { className: 'text-slate-700 mb-4 italic' }, 'Summarize liability exposure for a SaaS vendor under GDPR and CCPA if user data is processed in the EU and California. Include consensus on high-risk areas and mitigation steps.')
+            ),
+            React.createElement('p', { className: 'text-sm font-medium text-slate-500 mb-2' }, 'Sample output preview'),
+            React.createElement('div', { className: 'bg-slate-50 rounded-lg p-4 text-sm text-slate-700 border border-slate-200 font-serif' },
+              'Consensus: both regimes create material exposure for dual-jurisdiction processing. Highest agreement on consent and data minimization; more divergence on legitimate interest and cross-border transfers. Recommended mitigations: documented LIA, DPA templates, and clear retention schedules.'
+            )
           )
         ),
-        
-        React.createElement('div', { className: 'bg-white p-6 rounded-xl shadow-sm border border-slate-200' },
-          React.createElement('div', { className: 'w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-4' },
-            React.createElement('svg', { className: 'w-6 h-6 text-purple-600', fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' },
-              React.createElement('path', { strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2, d: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253' })
+        React.createElement('div', { className: 'bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden' },
+          React.createElement('div', { className: 'px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center gap-3' },
+            React.createElement('div', { className: 'w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center' },
+              React.createElement('svg', { className: 'w-5 h-5 text-emerald-600', fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' }, React.createElement('path', { strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2, d: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' }))
+            ),
+            React.createElement('div', null,
+              React.createElement('h3', { className: 'font-semibold text-slate-900' }, 'Strategic planning'),
+              React.createElement('p', { className: 'text-sm text-slate-600' }, 'Weigh options, risks, and timing for entry into new markets or major initiatives.')
             )
           ),
-          React.createElement('h3', { className: 'text-xl font-semibold text-slate-900 mb-3' }, 'Consultants & Advisors'),
-          React.createElement('p', { className: 'text-slate-600 mb-4' },
-            'Deliver comprehensive, unbiased analysis to clients with professional reports and clear methodology.'
-          ),
-          React.createElement('ul', { className: 'text-sm text-slate-500 space-y-1' },
-            React.createElement('li', null, '• Client presentations'),
-            React.createElement('li', null, '• Due diligence'),
-            React.createElement('li', null, '• Expert opinions')
+          React.createElement('div', { className: 'px-6 py-4' },
+            React.createElement('p', { className: 'text-sm font-medium text-slate-500 mb-2' }, 'Example prompt'),
+            React.createElement('p', { className: 'text-slate-700 mb-4 italic' }, 'What are the pros, cons, and key risks of entering the European market in the next 18 months for a US-based B2B software company? Include consensus on sequencing (e.g. UK first vs. DACH) and resource requirements.')
+            ),
+            React.createElement('p', { className: 'text-sm font-medium text-slate-500 mb-2' }, 'Sample output preview'),
+            React.createElement('div', { className: 'bg-slate-50 rounded-lg p-4 text-sm text-slate-700 border border-slate-200 font-serif' },
+              'Strong agreement on upside: talent, TAM, and regulatory clarity in key markets. Risks: compliance cost and local competition. Consensus favors a beachhead in one region (UK or DACH) before scaling; divergence on whether to partner or build in-country sales first.'
+            )
           )
         )
       )
