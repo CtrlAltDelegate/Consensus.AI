@@ -35,7 +35,15 @@ const CATEGORY_MODEL_PRESETS = {
   creative: ['gpt-4o', 'claude-3-5-sonnet', 'gemini-1-5-pro', 'gpt-4-turbo', 'claude-3-opus']
 };
 
-function EnhancedConsensusForm({ progressModal }) {
+// Sample prompts for first-time and guided experience
+const SAMPLE_PROMPTS = [
+  { label: 'Remote work', text: 'Analyze the pros and cons of a remote-first work policy for a mid-size tech company.' },
+  { label: 'AI in hiring', text: 'What are the benefits and risks of using AI tools in recruitment and hiring decisions?' },
+  { label: 'Sustainability', text: 'Compare the feasibility and impact of carbon offset programs vs. direct emission reduction for enterprises.' },
+  { label: 'Pricing strategy', text: 'What factors should a B2B SaaS company consider when moving from usage-based to seat-based pricing?' }
+];
+
+function EnhancedConsensusForm({ progressModal, isFirstTimeUser: isFirstTimeUserProp }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState(null);
   const [sources, setSources] = useState(['']);
@@ -45,8 +53,11 @@ function EnhancedConsensusForm({ progressModal }) {
   const [supportedTypes, setSupportedTypes] = useState(null);
   const [reportCategory, setReportCategory] = useState('general');
   const [selectedModelIds, setSelectedModelIds] = useState([...CATEGORY_MODEL_PRESETS.general]);
-  
-  const { register, handleSubmit, watch, formState: { errors } } = useForm({
+  // Show guided experience (sample prompts) until user has completed at least one report
+  const hasCompletedFirstReport = typeof window !== 'undefined' && !!localStorage.getItem('consensus_first_report_done');
+  const isFirstTimeUser = isFirstTimeUserProp === true || !hasCompletedFirstReport;
+
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm({
     defaultValues: {
       topic: '',
       sources: [''],
@@ -223,7 +234,8 @@ function EnhancedConsensusForm({ progressModal }) {
       };
       setResult(resultData);
 
-      // Show report in the pop-up so user sees it without going to Report Library
+      const showValueCallout = !hasCompletedFirstReport;
+      if (typeof window !== 'undefined') localStorage.setItem('consensus_first_report_done', 'true');
       if (progressModal) {
         progressModal.showReport({
           consensus: resultData.consensus,
@@ -231,7 +243,8 @@ function EnhancedConsensusForm({ progressModal }) {
           llmsUsed: resultData.llmsUsed,
           error: resultData.error,
           jobId,
-          pdfAvailable: !!result.pdfAvailable
+          pdfAvailable: !!result.pdfAvailable,
+          showValueCallout
         });
       }
     } catch (error) {
@@ -356,6 +369,32 @@ function EnhancedConsensusForm({ progressModal }) {
                 })
               ),
               React.createElement('span', { className: 'text-sm text-slate-500' }, 'Required')
+            ),
+            (isFirstTimeUser === true) && React.createElement('div', { className: 'mb-4 p-4 bg-indigo-50 border border-indigo-100 rounded-lg' },
+              React.createElement('p', { className: 'text-sm font-medium text-indigo-900 mb-2' }, 'Get started with a sample question:'),
+              React.createElement('div', { className: 'flex flex-wrap gap-2' },
+                ...SAMPLE_PROMPTS.map(({ label, text }) =>
+                  React.createElement('button', {
+                    key: label,
+                    type: 'button',
+                    onClick: () => setValue('topic', text, { shouldValidate: true }),
+                    className: 'px-3 py-1.5 text-sm rounded-full bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 transition-colors'
+                  }, label)
+                )
+              )
+            ),
+            (!isFirstTimeUser && (!watch('topic') || watch('topic').trim().length < 10)) && React.createElement('div', { className: 'mb-3' },
+              React.createElement('p', { className: 'text-xs text-slate-500 mb-2' }, 'Try a sample:'),
+              React.createElement('div', { className: 'flex flex-wrap gap-2' },
+                ...SAMPLE_PROMPTS.map(({ label, text }) =>
+                  React.createElement('button', {
+                    key: label,
+                    type: 'button',
+                    onClick: () => setValue('topic', text, { shouldValidate: true }),
+                    className: 'px-2 py-1 text-xs rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors'
+                  }, label)
+                )
+              )
             ),
             React.createElement('div', { className: 'relative' },
               React.createElement('textarea', {

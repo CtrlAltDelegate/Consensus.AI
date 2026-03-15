@@ -12,9 +12,9 @@ function formatReportText(md) {
 }
 
 const DEFAULT_STAGES = [
-  { id: 'phase1', title: 'Independent Drafting', description: 'Generating initial responses from AI models...', icon: '🤖' },
-  { id: 'phase2', title: 'Peer Review', description: 'Cross-reviewing and analyzing drafts...', icon: '🔍' },
-  { id: 'phase3', title: 'Final Arbitration', description: 'Synthesizing consensus...', icon: '⚖️' }
+  { id: 'phase1', title: 'Independent Drafting', description: 'GPT-4o, Claude, and Gemini each write their own analysis—no peeking at each other\'s work.', icon: '🤖' },
+  { id: 'phase2', title: 'Peer Review', description: 'Each model reviews the others\' drafts and gives structured feedback, catching gaps and biases.', icon: '🔍' },
+  { id: 'phase3', title: 'Final Arbitration', description: 'Command R+ synthesizes all drafts and reviews into one balanced consensus report.', icon: '⚖️' }
 ];
 
 function ProgressLoadingModal({ isVisible, onClose, stages, currentStage, completedResult, onDownloadPdf }) {
@@ -22,6 +22,7 @@ function ProgressLoadingModal({ isVisible, onClose, stages, currentStage, comple
   const currentIndex = Math.max(0, list.findIndex((s) => s.id === currentStage));
   const showReport = completedResult && typeof completedResult.consensus === 'string';
   const canDownloadPdf = completedResult?.pdfAvailable && completedResult?.jobId && typeof onDownloadPdf === 'function';
+  const showValueCallout = completedResult?.showValueCallout === true;
 
   if (!isVisible) return null;
 
@@ -59,6 +60,14 @@ function ProgressLoadingModal({ isVisible, onClose, stages, currentStage, comple
             </div>
           </div>
           <div className="flex-1 overflow-y-auto px-8 py-6 min-h-0 bg-slate-50/50">
+            {showValueCallout && (
+              <div className="mb-4 p-4 bg-indigo-50 border border-indigo-100 rounded-lg">
+                <h3 className="text-sm font-semibold text-indigo-900 mb-1">Why multi-model consensus?</h3>
+                <p className="text-sm text-indigo-800">
+                  This report combined four different AI perspectives instead of a single answer—reducing bias and surfacing nuance. You get one balanced view, not one model&apos;s take.
+                </p>
+              </div>
+            )}
             <div className="bg-white rounded-lg border border-slate-200/80 shadow-sm p-6 text-slate-700 whitespace-pre-wrap text-[15px] leading-relaxed">
               {displayText}
             </div>
