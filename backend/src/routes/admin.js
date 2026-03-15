@@ -229,6 +229,60 @@ router.get('/stats', auth, adminAuth, async (req, res) => {
   }
 });
 
+// Estimated $ per 1M tokens (blended LLM cost - adjust to your actual provider mix)
+const ESTIMATED_COST_PER_1M_TOKENS = Number(process.env.ADMIN_LLM_COST_PER_1M) || 6.5;
+
+// Cost & usage dashboard (admin only)
+router.get('/usage', auth, adminAuth, async (req, res) => {
+  try {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    const tokenSum = { $sum: { $ifNull: ['$metadata.totalTokens', 0] } };
+    const [thisMonth, last7Days, allTime] = await Promise.all([
+      Report.aggregate([
+        { $match: { createdAt: { $gte: startOfMonth } } },
+        { $group: { _id: null, totalTokens: tokenSum, reportCount: { $sum: 1 } } }
+      ]).then((r) => r[0] || { totalTokens: 0, reportCount: 0 }),
+      Report.aggregate([
+        { $match: { createdAt: { $gte: sevenDaysAgo } } },
+        { $group: { _id: null, totalTokens: tokenSum, reportCount: { $sum: 1 } } }
+      ]).then((r) => r[0] || { totalTokens: 0, reportCount: 0 }),
+      Report.aggregate([
+        { $group: { _id: null, totalTokens: tokenSum, reportCount: { $sum: 1 } } }
+      ]).then((r) => r[0] || { totalTokens: 0, reportCount: 0 })
+    ]);
+
+    const toEstimatedCost = (tokens) =>
+      Math.round((tokens / 1e6) * ESTIMATED_COST_PER_1M_TOKENS * 100) / 100;
+
+    const usage = {
+      thisMonth: {
+        totalTokens: thisMonth.totalTokens,
+        reportCount: thisMonth.reportCount,
+        estimatedCostUsd: toEstimatedCost(thisMonth.totalTokens)
+      },
+      last7Days: {
+        totalTokens: last7Days.totalTokens,
+        reportCount: last7Days.reportCount,
+        estimatedCostUsd: toEstimatedCost(last7Days.totalTokens)
+      },
+      allTime: {
+        totalTokens: allTime.totalTokens,
+        reportCount: allTime.reportCount,
+        estimatedCostUsd: toEstimatedCost(allTime.totalTokens)
+      },
+      costPer1MTokens: ESTIMATED_COST_PER_1M_TOKENS
+    };
+
+    res.json({ success: true, usage });
+  } catch (error) {
+    console.error('Error fetching admin usage:', error);
+    res.status(500).json({ error: 'Failed to fetch cost and usage' });
+  }
+});
+
 // Debug endpoint to check what's in the database
 router.get('/debug-tiers', async (req, res) => {
   try {

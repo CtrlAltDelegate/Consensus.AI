@@ -9,6 +9,7 @@ function AdminPanel() {
   const [users, setUsers] = useState([]);
   const [reports, setReports] = useState([]);
   const [systemStats, setSystemStats] = useState({});
+  const [usage, setUsage] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -47,6 +48,14 @@ function AdminPanel() {
       if (statsResponse.ok) {
         const statsData = await statsResponse.json();
         setSystemStats(statsData.stats || {});
+      }
+
+      const usageResponse = await fetch('/api/admin/usage', {
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
+      });
+      if (usageResponse.ok) {
+        const usageData = await usageResponse.json();
+        setUsage(usageData.usage || null);
       }
     } catch (error) {
       console.error('Failed to load admin data:', error);
@@ -111,16 +120,16 @@ function AdminPanel() {
     React.createElement('div', { className: 'bg-white border-b border-gray-200' },
       React.createElement('div', { className: 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8' },
         React.createElement('nav', { className: 'flex space-x-8' },
-          ['users', 'reports', 'stats', 'settings'].map(tab =>
+          ['users', 'reports', 'costUsage', 'stats', 'settings'].map(tab =>
             React.createElement('button', {
               key: tab,
               onClick: () => setActiveTab(tab),
-              className: `py-4 px-1 border-b-2 font-medium text-sm capitalize ${
+              className: `py-4 px-1 border-b-2 font-medium text-sm ${
                 activeTab === tab
                   ? 'border-indigo-500 text-indigo-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`
-            }, tab)
+            }, tab === 'costUsage' ? 'Cost & Usage' : tab.charAt(0).toUpperCase() + tab.slice(1))
           )
         )
       )
@@ -251,6 +260,83 @@ function AdminPanel() {
               )
             )
           )
+        )
+      ),
+
+      // Cost & Usage Tab
+      activeTab === 'costUsage' && React.createElement('div', null,
+        React.createElement('div', {
+          className: 'bg-white shadow overflow-hidden sm:rounded-md'
+        },
+          React.createElement('div', {
+            className: 'px-4 py-5 sm:px-6 border-b border-gray-200'
+          },
+            React.createElement('h3', {
+              className: 'text-lg leading-6 font-medium text-gray-900'
+            }, 'Cost & Usage'),
+            React.createElement('p', {
+              className: 'mt-1 max-w-2xl text-sm text-gray-500'
+            }, 'LLM token usage and estimated cost (blended rate). Set ADMIN_LLM_COST_PER_1M in backend to adjust cost estimate.')
+          ),
+          usage
+            ? React.createElement('div', { className: 'px-4 py-5' },
+                React.createElement('div', {
+                  className: 'grid grid-cols-1 gap-5 sm:grid-cols-3'
+                },
+                  [
+                    {
+                      label: 'This month',
+                      tokens: usage.thisMonth?.totalTokens ?? 0,
+                      reports: usage.thisMonth?.reportCount ?? 0,
+                      cost: usage.thisMonth?.estimatedCostUsd ?? 0
+                    },
+                    {
+                      label: 'Last 7 days',
+                      tokens: usage.last7Days?.totalTokens ?? 0,
+                      reports: usage.last7Days?.reportCount ?? 0,
+                      cost: usage.last7Days?.estimatedCostUsd ?? 0
+                    },
+                    {
+                      label: 'All time',
+                      tokens: usage.allTime?.totalTokens ?? 0,
+                      reports: usage.allTime?.reportCount ?? 0,
+                      cost: usage.allTime?.estimatedCostUsd ?? 0
+                    }
+                  ].map((period, i) =>
+                    React.createElement('div', {
+                      key: i,
+                      className: 'bg-gray-50 rounded-lg p-4 border border-gray-200'
+                    },
+                      React.createElement('h4', {
+                        className: 'text-sm font-medium text-gray-700 mb-3'
+                      }, period.label),
+                      React.createElement('dl', { className: 'space-y-2' },
+                        React.createElement('div', null,
+                          React.createElement('dt', { className: 'text-xs text-gray-500' }, 'Tokens'),
+                          React.createElement('dd', { className: 'text-lg font-semibold text-gray-900' },
+                            (period.tokens || 0).toLocaleString())
+                        ),
+                        React.createElement('div', null,
+                          React.createElement('dt', { className: 'text-xs text-gray-500' }, 'Reports'),
+                          React.createElement('dd', { className: 'text-lg font-semibold text-gray-900' },
+                            (period.reports || 0).toLocaleString())
+                        ),
+                        React.createElement('div', null,
+                          React.createElement('dt', { className: 'text-xs text-gray-500' }, 'Est. cost (USD)'),
+                          React.createElement('dd', { className: 'text-lg font-semibold text-indigo-600' },
+                            `$${(period.cost || 0).toFixed(2)}`)
+                        )
+                      )
+                    )
+                  )
+                ),
+                React.createElement('p', {
+                  className: 'mt-4 text-xs text-gray-500'
+                }, `Blended rate: $${(usage.costPer1MTokens ?? 0).toFixed(2)} per 1M tokens`)
+              )
+            : React.createElement('div', { className: 'px-4 py-8 text-center text-gray-500' },
+                'Usage data not available. Ensure reports have metadata.totalTokens.'
+              )
         )
       ),
 
