@@ -10,6 +10,7 @@ function AdminPanel() {
   const [reports, setReports] = useState([]);
   const [systemStats, setSystemStats] = useState({});
   const [usage, setUsage] = useState(null);
+  const [tokenValidation, setTokenValidation] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -56,6 +57,14 @@ function AdminPanel() {
       if (usageResponse.ok) {
         const usageData = await usageResponse.json();
         setUsage(usageData.usage || null);
+      }
+
+      const tokenValidationResponse = await fetch('/api/admin/token-validation', {
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
+      });
+      if (tokenValidationResponse.ok) {
+        const tokenValidationData = await tokenValidationResponse.json();
+        setTokenValidation(tokenValidationData.tokenValidation || null);
       }
     } catch (error) {
       console.error('Failed to load admin data:', error);
@@ -332,7 +341,18 @@ function AdminPanel() {
                 ),
                 React.createElement('p', {
                   className: 'mt-4 text-xs text-gray-500'
-                }, `Blended rate: $${(usage.costPer1MTokens ?? 0).toFixed(2)} per 1M tokens`),
+                }, `Blended rate: $${(usage.costPer1MTokens ?? 0).toFixed(2)} per 1M tokens'),
+                tokenValidation && React.createElement('div', { className: 'mt-8 p-4 bg-gray-50 border border-gray-200 rounded-lg' },
+                  React.createElement('h4', { className: 'text-sm font-medium text-gray-900 mb-2' }, 'Token cap validation (profitability)'),
+                  React.createElement('p', { className: 'text-xs text-gray-500 mb-3' }, 'Basic tier at 10k tokens/month must not cost you $8+ in API fees. Validate with real test runs before scaling.'),
+                  tokenValidation.tokensPerReport?.sampleSize > 0
+                    ? React.createElement('div', { className: 'space-y-2 text-sm' },
+                        React.createElement('div', null, 'Per-report tokens (from existing reports): ', React.createElement('strong', null, `min ${(tokenValidation.tokensPerReport?.min ?? 0).toLocaleString()}, mean ${(tokenValidation.tokensPerReport?.mean ?? 0).toLocaleString()}, p95 ${(tokenValidation.tokensPerReport?.p95 ?? 0).toLocaleString()}`)),
+                        React.createElement('div', null, 'At 10k cap: ~', React.createElement('strong', null, (tokenValidation.reportsAt10kCap ?? 0)), ' reports/month · API cost: ', React.createElement('strong', { className: tokenValidation.withinTarget ? 'text-green-600' : 'text-red-600' }, `$${(tokenValidation.costPerBasicUserAtCap ?? 0).toFixed(2)}`), tokenValidation.withinTarget ? ' (within $8 target)' : ' (over $8 — adjust cap)'),
+                        React.createElement('p', { className: 'text-xs text-gray-600 mt-2' }, tokenValidation.recommendation)
+                      )
+                    : React.createElement('p', { className: 'text-sm text-gray-600' }, tokenValidation.recommendation || 'Run script: node scripts/validateTokenCaps.js --live --runs 30')
+                ),
                 usage.perUser && usage.perUser.length > 0 && React.createElement('div', { className: 'mt-8' },
                   React.createElement('h4', {
                     className: 'text-sm font-medium text-gray-900 mb-3'

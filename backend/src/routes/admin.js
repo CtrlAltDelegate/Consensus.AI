@@ -233,6 +233,71 @@ router.get('/stats', auth, adminAuth, async (req, res) => {
 // Estimated $ per 1M tokens (blended LLM cost - adjust to your actual provider mix)
 const ESTIMATED_COST_PER_1M_TOKENS = Number(process.env.ADMIN_LLM_COST_PER_1M) || 6.5;
 
+// Token cap validation constants (Basic tier profitability guardrail)
+const BASIC_CAP_TOKENS = 10000;
+const MAX_COST_PER_BASIC_USER = 8;
+
+function percentile(sortedArr, p) {
+  if (!sortedArr.length) return 0;
+  const i = (p / 100) * (sortedArr.length - 1);
+  const lo = Math.floor(i);
+  const hi = Math.ceil(i);
+  if (lo === hi) return sortedArr[lo];
+  return Math.round(sortedArr[lo] + (i - lo) * (sortedArr[hi] - sortedArr[lo]));
+}
+
+// Token cap validation (admin only) — actual consumption vs pricing assumptions
+router.get('/token-validation', auth, adminAuth, async (req, res) => {
+  try {
+    const docs = await Report.find({ 'metadata.totalTokens': { $exists: true, $gte: 0 } })
+      .select('metadata.totalTokens')
+      .lean();
+    const tokens = docs.map(d => d.metadata?.totalTokens).filter(t => typeof t === 'number' && t > 0);
+
+    const costPer1M = ESTIMATED_COST_PER_1M_TOKENS;
+    const sorted = [...tokens].sort((a, b) => a - b);
+    const sum = tokens.reduce((a, b) => a + b, 0);
+    const mean = tokens.length ? Math.round(sum / tokens.length) : 0;
+    const tokensPerReport = {
+      sampleSize: tokens.length,
+      min: tokens.length ? Math.min(...tokens) : 0,
+      max: tokens.length ? Math.max(...tokens) : 0,
+      mean,
+      p50: percentile(sorted, 50),
+      p95: percentile(sorted, 95)
+    };
+
+    const reportsAt10kCap = mean > 0 ? Math.floor(BASIC_CAP_TOKENS / mean) : 0;
+    const costPerBasicUserAtCap = (BASIC_CAP_TOKENS / 1e6) * costPer1M;
+    const withinTarget = costPerBasicUserAtCap <= MAX_COST_PER_BASIC_USER;
+    const suggestedCapIfOver = withinTarget
+      ? null
+      : Math.floor((MAX_COST_PER_BASIC_USER / costPer1M) * 1e6);
+
+    res.json({
+      success: true,
+      tokenValidation: {
+        tokensPerReport,
+        basicCapTokens: BASIC_CAP_TOKENS,
+        costPer1MTokens: costPer1M,
+        costPerBasicUserAtCap: Math.round(costPerBasicUserAtCap * 100) / 100,
+        maxCostPerBasicUser: MAX_COST_PER_BASIC_USER,
+        reportsAt10kCap,
+        withinTarget,
+        suggestedCapIfOver,
+        recommendation: tokens.length
+          ? (withinTarget
+            ? `At ${BASIC_CAP_TOKENS.toLocaleString()} tokens/month cap, API cost ($${costPerBasicUserAtCap.toFixed(2)}) is within $${MAX_COST_PER_BASIC_USER} target. Validate with script: node scripts/validateTokenCaps.js --live --runs 30 for real test runs.`
+            : `Cost ($${costPerBasicUserAtCap.toFixed(2)}) exceeds $${MAX_COST_PER_BASIC_USER}. Consider lowering Basic cap to ~${(suggestedCapIfOver || 0).toLocaleString()} tokens/month.`)
+          : 'No report token data yet. Run: node scripts/validateTokenCaps.js --live --runs 30 to validate with real generations.'
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching token validation:', error);
+    res.status(500).json({ error: 'Failed to fetch token validation' });
+  }
+});
+
 // Cost & usage dashboard (admin only)
 router.get('/usage', auth, adminAuth, async (req, res) => {
   try {
