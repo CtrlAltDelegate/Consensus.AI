@@ -419,16 +419,18 @@ async function processConsensusJob(jobId, topic, sources, options, estimatedToke
     // TEMPORARILY DISABLE email sending to focus on core consensus functionality
     console.log('📧 Email sending temporarily disabled for debugging');
 
-    // Prepare result
+    // Prepare result (partial = graceful degradation: single-model or pipeline error recovery)
+    const isPartial = consensus.metadata?.partial === true;
     const result = {
       success: true,
       consensus: consensus.consensus,
       confidence: consensus.confidence,
       metadata: {
         totalTokens: consensus.totalTokens || estimatedTokens,
-        llmsUsed: consensus.llmsUsed || ['GPT-4o', 'Claude 3.5 Sonnet', 'Gemini 1.5 Pro', 'Command R+'],
+        llmsUsed: consensus.metadata?.llmsUsed || consensus.llmsUsed || ['GPT-4o', 'Claude 3.5 Sonnet', 'Gemini 1.5 Pro', 'Command R+'],
         processingTime: consensus.processingTime || '90 seconds',
-        priority: options.priority || 'standard'
+        priority: options.priority || 'standard',
+        ...(isPartial && { partial: true, partialReason: consensus.metadata?.partialReason || 'degraded' })
       },
       phases: consensus.phases || {
         phase1_drafts: [
@@ -488,9 +490,10 @@ async function processConsensusJob(jobId, topic, sources, options, estimatedToke
           confidence: consensus.confidence,
           metadata: {
             totalTokens: consensus.totalTokens || estimatedTokens,
-            llmsUsed: consensus.llmsUsed || ['GPT-4o', 'Claude 3.5 Sonnet', 'Gemini 1.5 Pro', 'Command R+'],
+            llmsUsed: consensus.metadata?.llmsUsed || consensus.llmsUsed || ['GPT-4o', 'Claude 3.5 Sonnet', 'Gemini 1.5 Pro', 'Command R+'],
             processingTime: `${duration} seconds`,
-            priority: options.priority || 'standard'
+            priority: options.priority || 'standard',
+            ...(consensus.metadata?.partial && { partial: true, partialReason: consensus.metadata.partialReason })
           },
           phases: consensus.phases || {
             phase1_drafts: [

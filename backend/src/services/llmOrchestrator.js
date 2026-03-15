@@ -121,6 +121,12 @@ class LLMOrchestrator {
           await sleep(waitSec * 1000);
           continue;
         }
+        if (status >= 500 && status < 600 && attempt < maxRetries) {
+          const waitSec = attempt === 0 ? 5 : 15;
+          console.warn(`⏳ ${provider} server error (${status}), retrying in ${waitSec}s...`);
+          await sleep(waitSec * 1000);
+          continue;
+        }
         if (isTimeout && attempt < 1) {
           console.warn(`⏳ ${provider} request timed out, retrying once in 5s...`);
           await sleep(5000);
@@ -247,12 +253,33 @@ class LLMOrchestrator {
   }
 
   async runParallelQueries(queries) {
-    const promises = queries.map(query => 
+    const promises = queries.map(query =>
       this.executeQuery(query.provider, query.model, query.prompt, query.options)
         .catch(error => ({ error: error.message, ...query }))
     );
-    
     return Promise.all(promises);
+  }
+
+  /**
+   * Execute a query with fallback models. Tries primary (provider, model) first;
+   * on failure tries each entry in fallbacks in order. Returns first success.
+   * fallbacks: [{ provider, model }, ...]
+   */
+  async executeQueryWithFallback(provider, model, prompt, options = {}, fallbacks = []) {
+    const chain = [{ provider, model }, ...fallbacks];
+    let lastError;
+    for (let i = 0; i < chain.length; i++) {
+      const { provider: p, model: m } = chain[i];
+      try {
+        const result = await this.executeQuery(p, m, prompt, options);
+        if (i > 0) result._fallbackUsed = `${p}/${m}`;
+        return result;
+      } catch (err) {
+        lastError = err;
+        console.warn(`⚠️ ${p}/${m} failed, trying next fallback:`, err.message);
+      }
+    }
+    throw lastError || new Error('No fallback succeeded');
   }
 }
 
