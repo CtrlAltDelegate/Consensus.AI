@@ -332,8 +332,56 @@ function AdminPanel() {
                 ),
                 React.createElement('p', {
                   className: 'mt-4 text-xs text-gray-500'
-                }, `Blended rate: $${(usage.costPer1MTokens ?? 0).toFixed(2)} per 1M tokens`)
+                }, `Blended rate: $${(usage.costPer1MTokens ?? 0).toFixed(2)} per 1M tokens`),
+                usage.perUser && usage.perUser.length > 0 && React.createElement('div', { className: 'mt-8' },
+                  React.createElement('h4', {
+                    className: 'text-sm font-medium text-gray-900 mb-3'
+                  }, 'Per-user (this month) — margin protection'),
+                  React.createElement('div', { className: 'overflow-x-auto border border-gray-200 rounded-lg' },
+                    React.createElement('table', { className: 'min-w-full divide-y divide-gray-200' },
+                      React.createElement('thead', { className: 'bg-gray-50' },
+                        React.createElement('tr', null,
+                          ['Email', 'Tier', 'Reports', 'Tokens', 'Est. cost', 'Expected revenue', 'Status'].map((h) =>
+                            React.createElement('th', {
+                              key: h,
+                              className: 'px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'
+                            }, h)
+                          )
+                        )
+                      ),
+                      React.createElement('tbody', { className: 'bg-white divide-y divide-gray-200' },
+                        usage.perUser.map((u, i) =>
+                          React.createElement('tr', {
+                            key: u.userId || i,
+                            className: u.status === 'unprofitable'
+                              ? 'bg-red-50'
+                              : u.status === 'approaching'
+                                ? 'bg-amber-50'
+                                : null
+                          },
+                            React.createElement('td', { className: 'px-4 py-2 text-sm text-gray-900' }, u.email),
+                            React.createElement('td', { className: 'px-4 py-2 text-sm text-gray-600' }, u.tierName),
+                            React.createElement('td', { className: 'px-4 py-2 text-sm text-gray-900' }, (u.reportCount || 0).toLocaleString()),
+                            React.createElement('td', { className: 'px-4 py-2 text-sm text-gray-900' }, (u.totalTokens || 0).toLocaleString()),
+                            React.createElement('td', { className: 'px-4 py-2 text-sm font-medium text-gray-900' }, `$${(u.estimatedCostUsd || 0).toFixed(2)}`),
+                            React.createElement('td', { className: 'px-4 py-2 text-sm text-gray-600' }, `$${(u.expectedRevenue ?? 0).toFixed(2)}`),
+                            React.createElement('td', { className: 'px-4 py-2' },
+                              React.createElement('span', {
+                                className: u.status === 'unprofitable'
+                                  ? 'px-2 py-0.5 text-xs font-medium rounded bg-red-100 text-red-800'
+                                  : u.status === 'approaching'
+                                    ? 'px-2 py-0.5 text-xs font-medium rounded bg-amber-100 text-amber-800'
+                                    : 'px-2 py-0.5 text-xs font-medium rounded bg-green-100 text-green-800'
+                              }, u.status === 'unprofitable' ? 'Unprofitable' : u.status === 'approaching' ? 'Approaching' : 'OK')
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
               )
+            )
             : React.createElement('div', { className: 'px-4 py-8 text-center text-gray-500' },
                 'Usage data not available. Ensure reports have metadata.totalTokens.'
               )

@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const router = express.Router();
 const User = require('../models/userModel');
 const SubscriptionTier = require('../models/subscriptionTiers');
@@ -240,7 +241,7 @@ router.get('/usage', auth, adminAuth, async (req, res) => {
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
     const tokenSum = { $sum: { $ifNull: ['$metadata.totalTokens', 0] } };
-    const [thisMonth, last7Days, allTime] = await Promise.all([
+    const [thisMonth, last7Days, allTime, perUserAgg] = await Promise.all([
       Report.aggregate([
         { $match: { createdAt: { $gte: startOfMonth } } },
         { $group: { _id: null, totalTokens: tokenSum, reportCount: { $sum: 1 } } }
@@ -251,11 +252,80 @@ router.get('/usage', auth, adminAuth, async (req, res) => {
       ]).then((r) => r[0] || { totalTokens: 0, reportCount: 0 }),
       Report.aggregate([
         { $group: { _id: null, totalTokens: tokenSum, reportCount: { $sum: 1 } } }
-      ]).then((r) => r[0] || { totalTokens: 0, reportCount: 0 })
+      ]).then((r) => r[0] || { totalTokens: 0, reportCount: 0 }),
+      Report.aggregate([
+        { $match: { createdAt: { $gte: startOfMonth } } },
+        { $group: { _id: '$userId', totalTokens: tokenSum, reportCount: { $sum: 1 } } }
+      ])
     ]);
 
     const toEstimatedCost = (tokens) =>
       Math.round((tokens / 1e6) * ESTIMATED_COST_PER_1M_TOKENS * 100) / 100;
+
+    // Per-user: resolve emails/tiers and compute revenue vs cost flags
+    const userIds = [...new Set(perUserAgg.map((r) => r._id).filter(Boolean))];
+    const userDocs = userIds.length
+      ? await User.find({
+          _id: {
+            $in: userIds.map((id) =>
+              mongoose.Types.ObjectId.isValid(id) && String(id).length === 24
+                ? new mongoose.Types.ObjectId(id)
+                : id
+            )
+          }
+        })
+          .populate('subscription.tier')
+          .select('email subscription.tier')
+          .lean()
+      : [];
+    const userByKey = Object.fromEntries(
+      userDocs.map((u) => [String(u._id), u])
+    );
+
+    const APPROACH_THRESHOLD = 0.8; // flag when cost >= 80% of revenue
+    const perUser = perUserAgg.map((row) => {
+      const userId = row._id;
+      const key = userId != null ? String(userId) : '';
+      const user = userByKey[key];
+      const reportCount = row.reportCount || 0;
+      const totalTokens = row.totalTokens || 0;
+      const estimatedCostUsd = toEstimatedCost(totalTokens);
+      const tier = user?.subscription?.tier;
+      let expectedRevenue = 0;
+      if (tier) {
+        if (tier.billingType === 'per_report') {
+          expectedRevenue = reportCount * (tier.pricePerReport || 0);
+        } else {
+          const included = tier.reportsIncluded ?? 0;
+          const overage = Math.max(0, reportCount - included);
+          expectedRevenue = (tier.monthlyPrice || 0) + (tier.overageRate || 0) * overage;
+        }
+      }
+      let status = 'ok';
+      if (expectedRevenue > 0) {
+        if (estimatedCostUsd > expectedRevenue) status = 'unprofitable';
+        else if (estimatedCostUsd >= APPROACH_THRESHOLD * expectedRevenue) status = 'approaching';
+      }
+
+      return {
+        userId: key,
+        email: user?.email ?? '(unknown)',
+        tierName: tier?.displayName ?? tier?.name ?? '—',
+        reportCount,
+        totalTokens,
+        estimatedCostUsd,
+        expectedRevenue: Math.round(expectedRevenue * 100) / 100,
+        status
+      };
+    });
+
+    // Sort: unprofitable first, then approaching, then by cost desc
+    const statusOrder = { unprofitable: 0, approaching: 1, ok: 2 };
+    perUser.sort(
+      (a, b) =>
+        statusOrder[a.status] - statusOrder[b.status] ||
+        (b.estimatedCostUsd - a.estimatedCostUsd)
+    );
 
     const usage = {
       thisMonth: {
@@ -273,7 +343,8 @@ router.get('/usage', auth, adminAuth, async (req, res) => {
         reportCount: allTime.reportCount,
         estimatedCostUsd: toEstimatedCost(allTime.totalTokens)
       },
-      costPer1MTokens: ESTIMATED_COST_PER_1M_TOKENS
+      costPer1MTokens: ESTIMATED_COST_PER_1M_TOKENS,
+      perUser
     };
 
     res.json({ success: true, usage });
