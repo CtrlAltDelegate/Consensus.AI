@@ -19,7 +19,8 @@
                 <ul class="list-disc pl-6 mb-4">
                     <li><strong>Account Information:</strong> Email address, name, organization (optional)</li>
                     <li><strong>Billing Information:</strong> Payment details processed securely through Stripe</li>
-                    <li><strong>Content Data:</strong> Topics, sources, and documents you submit for consensus analysis</li>
+                    <li><strong>Content Data:</strong> Topics, sources, and text you submit for consensus analysis</li>
+                    <li><strong>Uploaded Files:</strong> Documents you upload (e.g. PDF, TXT, CSV, JSON) for analysis—see Section 2.3 for how we store and delete these</li>
                     <li><strong>Communication:</strong> Messages you send to our support team</li>
                 </ul>
 
@@ -48,6 +49,16 @@
                     <li>Develop new features and enhance existing functionality</li>
                     <li>Ensure security and prevent fraud or abuse</li>
                 </ul>
+
+                <h3 class="text-xl font-medium text-gray-800 mt-6 mb-3">2.3 Uploaded Files and Document Handling</h3>
+                <p class="mb-4">Because users may upload files containing sensitive or confidential data, we handle them as follows:</p>
+                <ul class="list-disc pl-6 mb-4">
+                    <li><strong>Storage:</strong> Uploaded files are received on our servers and stored temporarily in a secure, access-controlled uploads directory only for the duration of processing.</li>
+                    <li><strong>Processing:</strong> We extract text from your files (PDF, TXT, CSV, JSON) solely to include that text as context for the consensus analysis. No copy of your original file is kept for longer than needed to complete this extraction.</li>
+                    <li><strong>Deletion:</strong> The original file you uploaded is <strong>deleted immediately after text extraction</strong> (success or failure). We do not retain copies of your uploaded documents on our systems.</li>
+                    <li><strong>What we retain:</strong> Only the extracted text that was used as input to the analysis may be associated with your report and account (e.g. in report metadata or history). We do not retain separate “document” copies of your files.</li>
+                </ul>
+                <p class="mb-4">You are responsible for ensuring you have the right to upload any file and that it does not contain others’ personal or confidential information without proper consent. Do not upload files that are prohibited by law or that you are not authorized to share.</p>
 
                 <h2 class="text-2xl font-semibold text-gray-900 mt-8 mb-4">3. Information Sharing and Third Parties</h2>
                 
@@ -92,7 +103,8 @@
                 <h2 class="text-2xl font-semibold text-gray-900 mt-8 mb-4">5. Data Retention</h2>
                 <ul class="list-disc pl-6 mb-4">
                     <li><strong>Account Data:</strong> Retained while your account is active</li>
-                    <li><strong>Reports:</strong> Stored permanently unless you delete them or close your account</li>
+                    <li><strong>Reports:</strong> Stored until you delete them or close your account</li>
+                    <li><strong>Uploaded Files:</strong> Original files are not retained; they are deleted immediately after text extraction (see Section 2.3). Only extracted text used in a report may be stored as part of that report.</li>
                     <li><strong>Usage Logs:</strong> Retained for 12 months for performance and security analysis</li>
                     <li><strong>Payment Data:</strong> Handled by Stripe according to their retention policies</li>
                     <li><strong>Support Communications:</strong> Retained for 3 years for quality assurance</li>
@@ -147,7 +159,10 @@
                 <h2 class="text-2xl font-semibold text-gray-900 mt-8 mb-4">9. Children's Privacy</h2>
                 <p class="mb-4">Our service is not intended for children under 13 years of age. We do not knowingly collect personal information from children under 13. If you believe we have collected information from a child under 13, please contact us immediately.</p>
 
-                <h2 class="text-2xl font-semibold text-gray-900 mt-8 mb-4">10. Changes to This Policy</h2>
+                <h2 class="text-2xl font-semibold text-gray-900 mt-8 mb-4">10. App Store and Mobile Clients</h2>
+                <p class="mb-4">If we make our service available via mobile applications or app stores (e.g. Apple App Store, Google Play), the same data handling practices in this Privacy Policy apply. We may update this policy or our terms to meet specific platform requirements for distribution; any such changes will be posted here and, where required, we will obtain your consent.</p>
+
+                <h2 class="text-2xl font-semibold text-gray-900 mt-8 mb-4">11. Changes to This Policy</h2>
                 <p class="mb-4">We may update this Privacy Policy periodically. We will notify you of significant changes by:</p>
                 <ul class="list-disc pl-6 mb-4">
                     <li>Email notification to your registered email address</li>
@@ -155,17 +170,17 @@
                     <li>Updating the "Last updated" date at the top of this policy</li>
                 </ul>
 
-                <h2 class="text-2xl font-semibold text-gray-900 mt-8 mb-4">11. Contact Us</h2>
+                <h2 class="text-2xl font-semibold text-gray-900 mt-8 mb-4">12. Contact Us</h2>
                 <p class="mb-4">For questions about this Privacy Policy or to exercise your rights, contact us:</p>
                 <div class="bg-gray-100 p-4 rounded-lg">
                     <p><strong>Email:</strong> privacy@consensusai.com</p>
-                    <p><strong>Address:</strong> [Your Business Address]</p>
+                    <p><strong>Address:</strong> [Insert your business address]</p>
                     <p><strong>Data Protection Officer:</strong> dpo@consensusai.com</p>
                 </div>
 
                 <div class="mt-8 p-4 bg-blue-50 border-l-4 border-blue-400">
                     <p class="text-sm text-blue-800">
-                        <strong>Note:</strong> This Privacy Policy is designed to comply with GDPR, CCPA, and other major privacy regulations. However, you should have it reviewed by a qualified attorney to ensure it meets your specific legal requirements and jurisdiction.
+                        <strong>Note:</strong> This Privacy Policy has been customized for Consensus.AI's data handling practices (including upload storage, retention, and deletion). It is designed to support GDPR, CCPA, and app-store requirements. Before going live, replace all placeholders and consider review by a reputable template service (e.g. Termly, Iubenda) or a qualified attorney for your jurisdiction.
                     </p>
                 </div>
             </div>
