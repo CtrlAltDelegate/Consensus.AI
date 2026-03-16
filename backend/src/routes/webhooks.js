@@ -2,11 +2,11 @@ const express = require('express');
 const router = express.Router();
 const billingService = require('../services/billingService');
 const emailService = require('../services/emailService');
+const stripeConfig = require('../config/stripe');
 
 // Stripe webhook endpoint
 router.post('/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
   const sig = req.headers['stripe-signature'];
-  const stripeConfig = require('../config/stripe');
   
   let event;
 

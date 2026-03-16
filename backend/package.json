@@ -9,6 +9,8 @@
     "test": "jest",
     "setup-stripe": "node src/scripts/setupStripe.js",
     "seed-tiers": "node scripts/seedSubscriptionTiers.js",
+    "load-test": "node scripts/load-test-consensus.js",
+    "smoke-test": "node scripts/smoke-test-e2e.js",
     "seed-dev": "NODE_ENV=development node scripts/seedSubscriptionTiers.js",
     "seed-prod": "NODE_ENV=production node scripts/seedSubscriptionTiers.js"
   },

@@ -492,12 +492,6 @@ app.get('/test-login', (req, res) => {
   `);
 });
 
-// Simple health check endpoint for Railway
-app.get('/health', (req, res) => {
-  console.log('🏥 Health check requested');
-  res.status(200).json({ status: 'OK' });
-});
-
 // Environment diagnostic endpoint
 app.get('/env-check', (req, res) => {
   console.log('🔍 Environment check requested');
@@ -566,6 +560,25 @@ app.get('/test-db', async (req, res) => {
       hasUri: !!process.env.MONGODB_URI
     });
   }
+});
+
+// Sentry test endpoint — trigger a test error to verify alerting (production hardening)
+app.get('/api/test/sentry', (req, res) => {
+  const secret = req.query.secret || req.headers['x-sentry-test-secret'];
+  const expected = process.env.SENTRY_TEST_SECRET;
+  if (!process.env.SENTRY_DSN) {
+    return res.status(400).json({ error: 'Sentry not configured' });
+  }
+  if (!expected || secret !== expected) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  const err = new Error('Production hardening: Sentry test error (intentional)');
+  err.code = 'SENTRY_TEST';
+  try {
+    const Sentry = require('@sentry/node');
+    Sentry.captureException(err);
+  } catch (_) { /* Sentry not loaded */ }
+  res.status(200).json({ ok: true, message: 'Test error sent to Sentry; check your dashboard.' });
 });
 
 // Root endpoint
