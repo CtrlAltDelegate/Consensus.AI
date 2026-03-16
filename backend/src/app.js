@@ -6,6 +6,10 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Railway (and most cloud platforms) sit behind a reverse proxy — trust the first hop
+// so express-rate-limit can read the real client IP from X-Forwarded-For
+app.set('trust proxy', 1);
+
 // Database connection
 const connectDB = require('./config/database');
 connectDB();
