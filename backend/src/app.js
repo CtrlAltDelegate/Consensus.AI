@@ -30,18 +30,7 @@ app.use(helmet({
   },
 }));
 
-// Railway-optimized CORS configuration
-console.log('🚂 STARTING WITH RAILWAY-OPTIMIZED CORS LOGIC');
-const validOrigins = [
-  'https://consensusai.netlify.app',
-  'https://consensus-ai.netlify.app',
-  'https://consensusai-production.up.railway.app',
-  'http://localhost:5173',
-  'http://localhost:3000'
-];
-console.log('🚂 Valid origins for Railway:', validOrigins);
-
-// Use the cors package - Railway might respect this better
+// CORS configuration
 const corsOptions = {
   origin: true, // Allow all origins for now
   methods: ['GET', 'PUT', 'POST', 'DELETE', 'OPTIONS', 'PATCH'],
@@ -52,40 +41,6 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-// Additional manual CORS headers as backup (no per-request logging)
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (origin) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  } else {
-    res.setHeader('Access-Control-Allow-Origin', 'https://consensusai.netlify.app');
-  }
-  res.setHeader('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-  next();
-});
-
-// NUCLEAR OPTION: Intercept ALL responses and force CORS headers at the last moment
-app.use((req, res, next) => {
-  const originalSend = res.send;
-  const originalJson = res.json;
-  const origin = req.headers.origin;
-  
-  res.send = function(data) {
-    this.setHeader('Access-Control-Allow-Origin', origin || 'https://consensusai.netlify.app');
-    this.setHeader('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
-    this.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-    return originalSend.call(this, data);
-  };
-  res.json = function(data) {
-    this.setHeader('Access-Control-Allow-Origin', origin || 'https://consensusai.netlify.app');
-    this.setHeader('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
-    this.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-    return originalJson.call(this, data);
-  };
-  
-  next();
-});
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
@@ -339,76 +294,10 @@ app.post('/errors/clear', (req, res) => {
 });
 
 // Routes
-console.log('🔗 Loading auth routes...');
-let authRoutesError = null;
-let authRoutesLoaded = false;
+// authLimiter: 5 login attempts per 15 min per IP (brute-force protection)
+app.use('/api/auth', authLimiter, require('./routes/auth'));
 
-try {
-  const authRoutes = require('./routes/auth');
-  // authLimiter: 5 login attempts per 15 min per IP (brute-force protection)
-  app.use('/api/auth', authLimiter, authRoutes);
-  console.log('✅ Auth routes loaded successfully');
-  authRoutesLoaded = true;
-} catch (error) {
-  console.error('❌ Failed to load auth routes:', error);
-  authRoutesError = error.message;
-}
 
-// Debug endpoint to check auth routes loading status
-app.get('/debug-auth', (req, res) => {
-  res.json({
-    authRoutesLoaded,
-    authRoutesError,
-    timestamp: new Date().toISOString(),
-    availableRoutes: app._router ? app._router.stack.map(r => r.regexp.toString()) : 'No router'
-  });
-});
-
-// Debug endpoint to check database connection and data
-app.get('/debug-db', async (req, res) => {
-  const mongoose = require('mongoose');
-  
-  try {
-    const dbStatus = {
-      mongodbUri: process.env.MONGODB_URI ? 'Set' : 'Not Set',
-      connectionState: mongoose.connection.readyState,
-      connectionStates: {
-        0: 'disconnected',
-        1: 'connected', 
-        2: 'connecting',
-        3: 'disconnecting'
-      },
-      connectedTo: mongoose.connection.host || 'No host',
-      database: mongoose.connection.name || 'No database'
-    };
-
-    // Try to count some collections
-    const User = require('./models/userModel');
-    const SubscriptionTier = require('./models/subscriptionTiers');
-    
-    const userCount = await User.countDocuments();
-    const tierCount = await SubscriptionTier.countDocuments();
-
-    res.json({
-      dbStatus,
-      collections: {
-        users: userCount,
-        subscriptionTiers: tierCount
-      },
-      timestamp: new Date().toISOString()
-    });
-
-  } catch (error) {
-    res.json({
-      error: error.message,
-      mongodbUri: process.env.MONGODB_URI ? 'Set' : 'Not Set',
-      connectionState: mongoose.connection.readyState,
-      timestamp: new Date().toISOString()
-    });
-  }
-});
-
-console.log('🔗 Loading other routes...');
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/billing', require('./routes/billing'));
 app.use('/api/consensus', require('./routes/consensus'));
@@ -417,158 +306,6 @@ app.use('/api/reports', require('./routes/reports'));
 app.use('/api/support', require('./routes/support'));
 app.use('/api/webhooks', webhookLimiter, require('./routes/webhooks'));
 
-// TEST ENDPOINT - debug connectivity - BYPASS ALL MIDDLEWARE
-app.get('/test', (req, res) => {
-  console.log('🔥 TEST ENDPOINT HIT from:', req.headers.origin);
-  
-  // MANUALLY SET CORS HEADERS - BYPASS ALL MIDDLEWARE
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.header('Access-Control-Allow-Credentials', 'false');
-  
-  console.log('🔥 Manual CORS headers set for test endpoint');
-  
-  res.json({ 
-    message: 'BACKEND IS REACHABLE!', 
-    origin: req.headers.origin,
-    timestamp: new Date().toISOString(),
-    headers: req.headers
-  });
-});
-
-// CORS TEST ENDPOINT - Handle OPTIONS manually
-app.options('/test', (req, res) => {
-  console.log('🔥 TEST OPTIONS HIT from:', req.headers.origin);
-  
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.header('Access-Control-Allow-Credentials', 'false');
-  
-  console.log('🔥 Manual OPTIONS response sent');
-  res.sendStatus(200);
-});
-
-// Simple test endpoint
-app.get('/test', (req, res) => {
-  res.json({ 
-    message: 'BACKEND IS REACHABLE!', 
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development',
-    headers: req.headers
-  });
-});
-
-// Test login page for debugging
-app.get('/test-login', (req, res) => {
-  res.send(`
-    <!DOCTYPE html>
-    <html>
-    <head><title>Test Login</title></head>
-    <body>
-      <h2>Test Login Form</h2>
-      <form id="loginForm">
-        <input type="email" id="email" placeholder="Email" required><br><br>
-        <input type="password" id="password" placeholder="Password" required><br><br>
-        <button type="submit">Test Login</button>
-      </form>
-      <div id="result"></div>
-      <script>
-        document.getElementById('loginForm').onsubmit = async (e) => {
-          e.preventDefault();
-          const email = document.getElementById('email').value;
-          const password = document.getElementById('password').value;
-          
-          try {
-            const response = await fetch('/api/auth/login', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ email, password })
-            });
-            const data = await response.json();
-            document.getElementById('result').innerHTML = 
-              '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
-          } catch (error) {
-            document.getElementById('result').innerHTML = 
-              '<p style="color: red;">Error: ' + error.message + '</p>';
-          }
-        };
-      </script>
-    </body>
-    </html>
-  `);
-});
-
-// Environment diagnostic endpoint
-app.get('/env-check', (req, res) => {
-  console.log('🔍 Environment check requested');
-  
-  const requiredVars = {
-    JWT_SECRET: !!process.env.JWT_SECRET,
-    MONGODB_URI: !!process.env.MONGODB_URI,
-    STRIPE_SECRET_KEY: !!process.env.STRIPE_SECRET_KEY,
-    FRONTEND_URL: !!process.env.FRONTEND_URL,
-    NODE_ENV: process.env.NODE_ENV || 'not_set',
-    PORT: process.env.PORT || 'not_set'
-  };
-  
-  const llmKeys = {
-    OPENAI_API_KEY: !!process.env.OPENAI_API_KEY,
-    ANTHROPIC_API_KEY: !!process.env.ANTHROPIC_API_KEY,
-    GOOGLE_API_KEY: !!process.env.GOOGLE_API_KEY,
-    COHERE_API_KEY: !!process.env.COHERE_API_KEY
-  };
-  
-  const llmCount = Object.values(llmKeys).filter(Boolean).length;
-  
-  res.json({
-    status: 'Environment Check',
-    required_vars: requiredVars,
-    llm_keys: llmKeys,
-    llm_keys_configured: llmCount,
-    recommendations: {
-      critical_missing: Object.entries(requiredVars).filter(([key, value]) => !value && key !== 'NODE_ENV' && key !== 'PORT').map(([key]) => key),
-      llm_status: llmCount >= 2 ? 'sufficient' : 'need_more_keys'
-    }
-  });
-});
-
-// Database test endpoint
-app.get('/test-db', async (req, res) => {
-  console.log('🗄️ Database test requested');
-  
-  try {
-    const mongoose = require('mongoose');
-    
-    if (!mongoose.connection.readyState) {
-      return res.status(500).json({
-        error: 'Database not connected',
-        readyState: mongoose.connection.readyState,
-        hasUri: !!process.env.MONGODB_URI
-      });
-    }
-    
-    // Test database connection
-    const dbStats = await mongoose.connection.db.admin().ping();
-    
-    res.json({
-      status: 'Database connected successfully',
-      connectionState: mongoose.connection.readyState,
-      host: mongoose.connection.host,
-      name: mongoose.connection.name,
-      ping: dbStats
-    });
-    
-  } catch (error) {
-    console.error('Database test failed:', error);
-    res.status(500).json({
-      error: 'Database test failed',
-      message: error.message,
-      hasUri: !!process.env.MONGODB_URI
-    });
-  }
-});
 
 // Sentry test endpoint — trigger a test error to verify alerting (production hardening)
 app.get('/api/test/sentry', (req, res) => {
