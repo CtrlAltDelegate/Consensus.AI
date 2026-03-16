@@ -97,8 +97,12 @@ router.get('/plans', async (req, res) => {
       features: plan.features,
       stripePriceIds: plan.stripePriceIds,
       // Calculated fields
-      effectivePricePerReport: plan.getEffectivePricePerReport(),
-      savingsVsPayAsYouGo: plan.calculateSavings()
+      effectivePricePerReport: plan.billingType === 'per_report'
+        ? plan.pricePerReport
+        : (plan.reportsIncluded > 0 ? +(plan.monthlyPrice / plan.reportsIncluded).toFixed(2) : null),
+      savingsVsPayAsYouGo: plan.billingType === 'subscription' && plan.reportsIncluded > 0
+        ? +((15 - plan.monthlyPrice / plan.reportsIncluded) * plan.reportsIncluded).toFixed(2)
+        : 0
     }));
 
     res.json({

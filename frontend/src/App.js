@@ -19,6 +19,7 @@ import HelpPage from './components/HelpPage';
 import FeedbackPage from './components/FeedbackPage';
 import KnowledgeBase from './components/KnowledgeBase';
 import ResetPasswordPage from './components/ResetPasswordPage';
+import AdminPanel from './components/AdminPanel';
 import WelcomeFlow from './components/WelcomeFlow';
 import UserProfileModal from './components/UserProfileModal';
 // import PlanSelectionModal from './components/PlanSelectionModal';
@@ -126,7 +127,7 @@ const LoadingScreen = () => {
 
 // Main authenticated app component
 function AuthenticatedApp() {
-  const { user, logout, getAvailableTokens } = useUser();
+  const { user, logout, getAvailableTokens, isAdmin } = useUser();
   const [currentReport, setCurrentReport] = useState(null);
   const [showReportViewer, setShowReportViewer] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -308,7 +309,8 @@ function AuthenticatedApp() {
               React.createElement(CustomNavLink, { to: '/dashboard' }, 'Dashboard'),
               React.createElement(CustomNavLink, { to: '/consensus' }, 'Generate Report'),
               React.createElement(CustomNavLink, { to: '/reports' }, 'Report Library'),
-              React.createElement(CustomNavLink, { to: '/help' }, 'Help')
+              React.createElement(CustomNavLink, { to: '/help' }, 'Help'),
+              isAdmin() && React.createElement(CustomNavLink, { to: '/admin' }, 'Admin')
             )
           ),
           
@@ -363,6 +365,12 @@ function AuthenticatedApp() {
         React.createElement(Route, { 
           path: '/knowledge-base', 
           element: React.createElement(KnowledgeBase)
+        }),
+        React.createElement(Route, {
+          path: '/admin',
+          element: React.createElement(ProtectedRoute, null,
+            React.createElement(AdminPanel)
+          )
         }),
         React.createElement(Route, { path: '*', element: React.createElement('div', { className: 'flex flex-col items-center justify-center min-h-screen' },
           React.createElement('h1', { className: 'text-4xl font-bold text-slate-900 mb-4' }, '404'),
