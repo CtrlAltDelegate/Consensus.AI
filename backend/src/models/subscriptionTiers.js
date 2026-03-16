@@ -139,7 +139,7 @@ subscriptionTierSchema.statics.getDefaultTiers = function() {
       monthlyPrice: 79,
       reportsIncluded: 10,
       overageRate: 10,
-      maxTokensPerReport: 50000,
+      maxTokensPerReport: 15000,
       features: [
         '10 reports per month included',
         '$10 per additional report',
