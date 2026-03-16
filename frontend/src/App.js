@@ -18,6 +18,7 @@ import ContactPage from './components/ContactPage';
 import HelpPage from './components/HelpPage';
 import FeedbackPage from './components/FeedbackPage';
 import KnowledgeBase from './components/KnowledgeBase';
+import ResetPasswordPage from './components/ResetPasswordPage';
 import WelcomeFlow from './components/WelcomeFlow';
 import UserProfileModal from './components/UserProfileModal';
 // import PlanSelectionModal from './components/PlanSelectionModal';
@@ -564,9 +565,13 @@ function UnauthenticatedApp() {
         path: '/feedback', 
         element: React.createElement(FeedbackPage)
       }),
-      React.createElement(Route, { 
-        path: '/knowledge-base', 
+      React.createElement(Route, {
+        path: '/knowledge-base',
         element: React.createElement(KnowledgeBase)
+      }),
+      React.createElement(Route, {
+        path: '/reset-password',
+        element: React.createElement(ResetPasswordPage)
       })
     ),
 
