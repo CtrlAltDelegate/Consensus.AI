@@ -98,6 +98,7 @@ export const API_ENDPOINTS = {
     downloadPdf: (analysisId) => `/api/consensus/report/${analysisId}/pdf`,
     upload: '/api/consensus/upload',
     supportedTypes: '/api/consensus/upload/supported-types',
+    usage: '/api/consensus/usage',
   },
   
   // Token endpoints
@@ -208,6 +209,7 @@ export const apiHelpers = {
     });
   },
   getSupportedFileTypes: () => api.get(API_ENDPOINTS.consensus.supportedTypes),
+  getConsensusUsage: () => api.get(API_ENDPOINTS.consensus.usage),
   
   // Token helpers
   getTokenUsage: () => api.get(API_ENDPOINTS.tokens.usage),

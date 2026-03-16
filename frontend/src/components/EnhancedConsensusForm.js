@@ -53,6 +53,9 @@ function EnhancedConsensusForm({ progressModal, isFirstTimeUser: isFirstTimeUser
   const [supportedTypes, setSupportedTypes] = useState(null);
   const [reportCategory, setReportCategory] = useState('general');
   const [selectedModelIds, setSelectedModelIds] = useState([...CATEGORY_MODEL_PRESETS.general]);
+  // Report usage / limit state
+  const [reportUsage, setReportUsage] = useState(null);   // null = loading, false = not available
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   // Show guided experience (sample prompts) until user has completed at least one report
   const hasCompletedFirstReport = typeof window !== 'undefined' && !!localStorage.getItem('consensus_first_report_done');
   const isFirstTimeUser = isFirstTimeUserProp === true || !hasCompletedFirstReport;
@@ -103,6 +106,26 @@ function EnhancedConsensusForm({ progressModal, isFirstTimeUser: isFirstTimeUser
       }
     };
     loadSupportedTypes();
+  }, []);
+
+  // Fetch report usage so we can show limit banners before submission
+  useEffect(() => {
+    const loadUsage = async () => {
+      try {
+        const response = await apiHelpers.getConsensusUsage();
+        const data = response.data;
+        // Skip if demo user or no subscription
+        if (data.isDemo || data.noSubscription || data.billingType === 'per_report') {
+          setReportUsage(false);
+          return;
+        }
+        setReportUsage(data);
+      } catch (error) {
+        // Non-critical — silently ignore
+        setReportUsage(false);
+      }
+    };
+    loadUsage();
   }, []);
 
   // Handle file upload
@@ -200,9 +223,21 @@ function EnhancedConsensusForm({ progressModal, isFirstTimeUser: isFirstTimeUser
       
       const jobResponse = await apiHelpers.generateConsensus(requestData);
       console.log('✅ Job started successfully:', jobResponse.data);
-      
+
       if (!jobResponse.data.jobId) {
         throw new Error('No job ID received from server');
+      }
+
+      // Surface any report-limit warning the server attached to the job start response
+      if (jobResponse.data.reportWarning) {
+        setReportUsage(prev => prev ? {
+          ...prev,
+          reportsUsed: jobResponse.data.reportWarning.reportsUsed ?? prev.reportsUsed,
+          available: jobResponse.data.reportWarning.available ?? prev.available,
+          limitReached: jobResponse.data.reportWarning.level === 'limit_reached',
+          usageFraction: jobResponse.data.reportWarning.reportsUsed != null && prev.reportsIncluded > 0
+            ? Math.min(1, jobResponse.data.reportWarning.reportsUsed / prev.reportsIncluded) : prev.usageFraction
+        } : prev);
       }
 
       const jobId = jobResponse.data.jobId;
@@ -339,9 +374,99 @@ function EnhancedConsensusForm({ progressModal, isFirstTimeUser: isFirstTimeUser
     throw new Error('Job polling timeout - process may still be running');
   };
 
+  // ── Derived usage display values ──────────────────────────────────────────
+  const usagePct        = reportUsage ? Math.round((reportUsage.usageFraction || 0) * 100) : 0;
+  const showLimitBanner = reportUsage && reportUsage.reportsIncluded > 0;
+  const isAtLimit       = reportUsage?.limitReached;
+  const isNearLimit     = !isAtLimit && reportUsage?.usageFraction >= 0.8;
+
   return React.createElement('div', { className: 'min-h-screen bg-slate-50/50' },
     React.createElement('div', { className: 'max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8' },
-      
+
+      // ── Upgrade modal ────────────────────────────────────────────────────
+      showUpgradeModal && React.createElement('div', {
+        className: 'fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm',
+        onClick: () => setShowUpgradeModal(false)
+      },
+        React.createElement('div', {
+          className: 'relative bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 p-8',
+          onClick: (e) => e.stopPropagation()
+        },
+          React.createElement('button', {
+            onClick: () => setShowUpgradeModal(false),
+            className: 'absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-xl font-bold'
+          }, '×'),
+          React.createElement('div', { className: 'text-center mb-6' },
+            React.createElement('div', { className: 'text-4xl mb-3' }, '📊'),
+            React.createElement('h2', { className: 'text-2xl font-bold text-slate-900 mb-2' }, 'Monthly Report Limit Reached'),
+            React.createElement('p', { className: 'text-slate-600' },
+              reportUsage
+                ? `You've used all ${reportUsage.reportsIncluded} reports in your ${reportUsage.planName} plan this month.`
+                : "You've used all included reports this month."
+            )
+          ),
+          reportUsage?.overageRate > 0 && React.createElement('div', {
+            className: 'mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800'
+          },
+            `You can still generate reports at $${reportUsage.overageRate} each, or upgrade for more included reports.`
+          ),
+          React.createElement('div', { className: 'space-y-3' },
+            React.createElement('a', {
+              href: '/pricing',
+              className: 'block w-full py-3 px-4 bg-indigo-600 text-white font-semibold rounded-lg text-center hover:bg-indigo-700 transition-colors'
+            }, 'View Upgrade Options →'),
+            React.createElement('button', {
+              onClick: () => setShowUpgradeModal(false),
+              className: 'block w-full py-3 px-4 bg-slate-100 text-slate-700 font-medium rounded-lg text-center hover:bg-slate-200 transition-colors'
+            }, reportUsage?.overageRate > 0 ? `Continue at $${reportUsage.overageRate}/report` : 'Dismiss')
+          )
+        )
+      ),
+
+      // ── Report limit banner ──────────────────────────────────────────────
+      showLimitBanner && React.createElement('div', {
+        className: `mb-6 rounded-xl border px-5 py-4 flex items-start justify-between gap-4 ${
+          isAtLimit
+            ? 'bg-red-50 border-red-200'
+            : isNearLimit
+            ? 'bg-amber-50 border-amber-200'
+            : 'bg-blue-50 border-blue-200'
+        }`
+      },
+        React.createElement('div', { className: 'flex-1' },
+          React.createElement('div', { className: 'flex items-center gap-2 mb-1' },
+            React.createElement('span', { className: 'text-lg' },
+              isAtLimit ? '🚫' : isNearLimit ? '⚠️' : 'ℹ️'
+            ),
+            React.createElement('span', {
+              className: `font-semibold text-sm ${isAtLimit ? 'text-red-800' : isNearLimit ? 'text-amber-800' : 'text-blue-800'}`
+            },
+              isAtLimit
+                ? 'Monthly report limit reached'
+                : `${reportUsage.reportsUsed} of ${reportUsage.reportsIncluded} reports used this month`
+            )
+          ),
+          // Progress bar
+          React.createElement('div', { className: 'w-full bg-white/70 rounded-full h-1.5 mb-2' },
+            React.createElement('div', {
+              className: `h-1.5 rounded-full transition-all ${isAtLimit ? 'bg-red-500' : isNearLimit ? 'bg-amber-500' : 'bg-blue-500'}`,
+              style: { width: `${usagePct}%` }
+            })
+          ),
+          isAtLimit && reportUsage?.overageRate > 0 && React.createElement('p', {
+            className: 'text-xs text-red-700'
+          }, `Additional reports are $${reportUsage.overageRate} each. Upgrade for more included reports.`)
+        ),
+        React.createElement('button', {
+          onClick: () => setShowUpgradeModal(true),
+          className: `shrink-0 text-sm font-semibold px-4 py-2 rounded-lg transition-colors ${
+            isAtLimit
+              ? 'bg-red-600 text-white hover:bg-red-700'
+              : 'bg-indigo-600 text-white hover:bg-indigo-700'
+          }`
+        }, 'Upgrade Plan')
+      ),
+
       // Header Section
       React.createElement('div', { className: 'mb-10' },
         React.createElement('div', { className: 'text-center' },

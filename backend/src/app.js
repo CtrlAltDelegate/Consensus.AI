@@ -16,6 +16,9 @@ const { performanceMonitor, getMetrics, resetMetrics } = require('./middleware/p
 // Error monitoring
 const errorMonitor = require('./services/errorMonitor');
 
+// Rate limiting
+const { generalLimiter, authLimiter, webhookLimiter } = require('./middleware/rateLimiting');
+
 // Security middleware
 app.use(helmet({
   crossOriginEmbedderPolicy: false,
@@ -87,6 +90,10 @@ app.use((req, res, next) => {
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Global rate limiter — 100 req / 15 min per IP (all endpoints)
+// Consensus-specific limiting (5 req / 10 min) is applied inside the consensus router.
+app.use(generalLimiter);
 
 // Performance monitoring middleware
 app.use(performanceMonitor({
@@ -338,7 +345,8 @@ let authRoutesLoaded = false;
 
 try {
   const authRoutes = require('./routes/auth');
-  app.use('/api/auth', authRoutes);
+  // authLimiter: 5 login attempts per 15 min per IP (brute-force protection)
+  app.use('/api/auth', authLimiter, authRoutes);
   console.log('✅ Auth routes loaded successfully');
   authRoutesLoaded = true;
 } catch (error) {
@@ -407,7 +415,7 @@ app.use('/api/consensus', require('./routes/consensus'));
 app.use('/api/tokens', require('./routes/tokens'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/support', require('./routes/support'));
-app.use('/api/webhooks', require('./routes/webhooks'));
+app.use('/api/webhooks', webhookLimiter, require('./routes/webhooks'));
 
 // TEST ENDPOINT - debug connectivity - BYPASS ALL MIDDLEWARE
 app.get('/test', (req, res) => {
@@ -638,6 +646,37 @@ try {
       console.log(`⚠️  Port ${PORT} is already in use`);
     }
   });
+
+  // ── Graceful shutdown ────────────────────────────────────────────────────
+  // On SIGTERM (Railway deployment stop) or SIGINT (Ctrl-C in dev):
+  //   1. Stop accepting new connections.
+  //   2. Wait for in-flight requests to finish (up to 30 s).
+  //   3. Close the MongoDB connection cleanly.
+  //   4. Exit.
+  const shutdown = async (signal) => {
+    console.log(`\n🛑 ${signal} received — starting graceful shutdown...`);
+    server.close(async () => {
+      console.log('✅ HTTP server closed (no new connections accepted)');
+      try {
+        const mongoose = require('mongoose');
+        await mongoose.connection.close();
+        console.log('✅ MongoDB connection closed');
+      } catch (err) {
+        console.error('⚠️  MongoDB close error:', err.message);
+      }
+      console.log('👋 Process exiting cleanly');
+      process.exit(0);
+    });
+
+    // Safety net: force-exit after 30 seconds if something hangs
+    setTimeout(() => {
+      console.error('❌ Graceful shutdown timed out — forcing exit');
+      process.exit(1);
+    }, 30_000).unref(); // .unref() so the timer doesn't keep the event loop alive on its own
+  };
+
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT',  () => shutdown('SIGINT'));
 
 } catch (error) {
   console.error('❌ Failed to start server:', error);

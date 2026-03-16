@@ -20,15 +20,15 @@ class TokenManager {
       // Get current available tokens
       const availableTokens = await this.getAvailableTokens(userId);
       const tier = user.subscription.tier;
-      
+
       return {
         available: availableTokens,
         requested: requestedTokens,
         sufficient: availableTokens >= requestedTokens,
         overage: Math.max(0, requestedTokens - availableTokens),
-        tier: tier.name,
-        overagePrice: tier.tokenOveragePrice,
-        estimatedCost: Math.max(0, requestedTokens - availableTokens) * tier.tokenOveragePrice
+        tier: tier?.name
+        // Note: token overage is not billed — per-report token limits are enforced
+        // at the route level using maxTokensPerReport on the subscription tier.
       };
     } catch (error) {
       throw new Error(`Token availability check failed: ${error.message}`);
@@ -80,27 +80,15 @@ class TokenManager {
       // Clean up expired tokens first
       await this.cleanupExpiredTokens(userId);
 
-      const availability = await this.checkTokenAvailability(userId, tokensUsed);
-      
-      if (!availability.sufficient) {
-        // Handle overage
-        const overageTokens = availability.overage;
-        const overageCharge = overageTokens * user.subscription.tier.tokenOveragePrice;
-        
-        // Record overage for billing
-        await this.recordOverage(userId, overageTokens, overageCharge, operationId);
-      }
-
-      // Consume tokens using FIFO (oldest first)
+      // Consume tokens using FIFO (oldest first) — no overage billing.
+      // Per-report token limits are enforced before job start (maxTokensPerReport).
       await this.consumeTokensFIFO(userId, tokensUsed);
 
-      // Record usage
+      // Record usage for analytics / admin dashboard
       await this.recordTokenUsage(userId, tokensUsed, operationId, description);
 
       return {
         tokensConsumed: tokensUsed,
-        overage: availability.overage,
-        overageCharge: availability.estimatedCost,
         remainingTokens: await this.getAvailableTokens(userId)
       };
     } catch (error) {

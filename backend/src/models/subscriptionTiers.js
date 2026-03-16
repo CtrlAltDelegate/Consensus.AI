@@ -37,6 +37,14 @@ const subscriptionTierSchema = new mongoose.Schema({
     type: Number,
     default: 0 // price per additional report beyond included
   },
+  // Max tokens that can be consumed by a single report generation.
+  // If estimated input+output tokens exceed this, the request is rejected before
+  // any LLM calls are made. This is a cost guardrail, NOT a billable overage item.
+  // Flat across all plans — upgrade incentive is report count, not input size.
+  maxTokensPerReport: {
+    type: Number,
+    default: 15000
+  },
   // Legacy token fields for backward compatibility
   tokensPerMonth: {
     type: Number,
@@ -92,6 +100,7 @@ subscriptionTierSchema.statics.getDefaultTiers = function() {
       pricePerReport: 15,
       reportsIncluded: 0,
       overageRate: 0,
+      maxTokensPerReport: 15000,
       features: [
         'No monthly commitment',
         'Pay only for what you use',
@@ -110,6 +119,7 @@ subscriptionTierSchema.statics.getDefaultTiers = function() {
       monthlyPrice: 29,
       reportsIncluded: 3,
       overageRate: 12,
+      maxTokensPerReport: 15000,
       features: [
         '3 reports per month included',
         '$12 per additional report',
@@ -129,6 +139,7 @@ subscriptionTierSchema.statics.getDefaultTiers = function() {
       monthlyPrice: 79,
       reportsIncluded: 10,
       overageRate: 10,
+      maxTokensPerReport: 50000,
       features: [
         '10 reports per month included',
         '$10 per additional report',
@@ -150,6 +161,7 @@ subscriptionTierSchema.statics.getDefaultTiers = function() {
       monthlyPrice: 199,
       reportsIncluded: 30,
       overageRate: 8,
+      maxTokensPerReport: 15000,
       features: [
         '30 reports per month included',
         '$8 per additional report',

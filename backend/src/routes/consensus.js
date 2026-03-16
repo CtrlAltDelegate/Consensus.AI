@@ -8,9 +8,12 @@ const pdfGenerator = require('../services/pdfGenerator');
 const emailService = require('../services/emailService');
 const fileProcessor = require('../services/fileProcessor');
 const Report = require('../models/reportModel');
+const ConsensusJob = require('../models/jobModel');
 const billingService = require('../services/billingService');
 const auth = require('../middleware/auth');
 const tokenCheck = require('../middleware/tokenCheck');
+const { consensusLimiter } = require('../middleware/rateLimiting');
+const env = require('../config/environment');
 const { validateConsensusRequest, validateFileUpload } = require('../utils/validation');
 
 // Configure multer for file uploads
@@ -41,10 +44,70 @@ const upload = multer({
   }
 });
 
-// In-memory job storage (in production, use Redis or database)
+// ─────────────────────────────────────────────────────────────────────────────
+// Job persistence: in-memory Maps are the fast read-through cache;
+// MongoDB (ConsensusJob) is the durable store that survives restarts.
+// ─────────────────────────────────────────────────────────────────────────────
 const jobs = new Map();
 const jobResults = new Map();
-const jobPdfs = new Map(); // Store PDFs temporarily
+const jobPdfs = new Map(); // PDFs are transient — regenerate if lost on restart
+
+const _dbJobs = () => env.hasDatabase() && ConsensusJob;
+
+const persistJob = async (jobData) => {
+  // Always write in-memory first (fast)
+  jobs.set(jobData.jobId, jobData);
+  if (!_dbJobs()) return;
+  try {
+    await ConsensusJob.create(jobData);
+  } catch (err) {
+    console.warn('⚠️  Job persistence write failed (in-memory only):', err.message);
+  }
+};
+
+const persistJobUpdate = async (jobId, updates) => {
+  const current = jobs.get(jobId);
+  if (current) jobs.set(jobId, { ...current, ...updates });
+  if (!_dbJobs()) return;
+  try {
+    await ConsensusJob.findOneAndUpdate({ jobId }, { $set: updates });
+  } catch (err) {
+    console.warn('⚠️  Job persistence update failed:', err.message);
+  }
+};
+
+/**
+ * Look up a job: prefer in-memory (fast), fall back to MongoDB (survives restart).
+ */
+const findJob = async (jobId) => {
+  const mem = jobs.get(jobId);
+  if (mem) return mem;
+  if (!_dbJobs()) return null;
+  try {
+    const doc = await ConsensusJob.findOne({ jobId }).lean();
+    if (doc) {
+      // Re-hydrate in-memory cache so subsequent polls are fast
+      jobs.set(jobId, doc);
+      if (doc.result) jobResults.set(jobId, doc.result);
+    }
+    return doc || null;
+  } catch (err) {
+    console.warn('⚠️  Job persistence read failed:', err.message);
+    return null;
+  }
+};
+
+// On startup: mark any stale processing jobs as failed so they don't hang forever
+if (_dbJobs()) {
+  const STALE_THRESHOLD_MS = 3 * 60 * 60 * 1000; // 3 hours
+  ConsensusJob.updateMany(
+    {
+      status: { $in: ['started', 'processing'] },
+      startedAt: { $lt: new Date(Date.now() - STALE_THRESHOLD_MS) }
+    },
+    { $set: { status: 'failed', error: 'Job timed out (server restarted or hung)', completedAt: new Date() } }
+  ).catch(err => console.warn('⚠️  Stale job cleanup failed:', err.message));
+}
 
 // Test endpoint to verify LLM API connectivity
 router.get('/test-llms', async (req, res) => {
@@ -237,17 +300,17 @@ router.post('/upload', auth, upload.array('files', 5), async (req, res) => {
 
 // Generate consensus analysis (ASYNC VERSION to avoid Railway timeouts)
 // Requires authentication - user from auth middleware (real or demo token)
-router.post('/generate', auth, async (req, res) => {
+router.post('/generate', auth, consensusLimiter, async (req, res) => {
   try {
     const { topic, sources = [], options = {} } = req.body;
-    
+
     // Validate request with detailed logging
     console.log('📥 Request body:', JSON.stringify(req.body, null, 2));
     const { error } = validateConsensusRequest(req.body);
     if (error) {
       console.log('❌ Validation error:', error.details[0].message);
       console.log('🔍 Full error details:', error.details);
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: error.details[0].message,
         field: error.details[0].path,
         received: error.details[0].context
@@ -255,18 +318,81 @@ router.post('/generate', auth, async (req, res) => {
     }
     console.log('✅ Validation passed!');
 
-    // Estimate token usage
+    // Estimate token usage for this report
     const sourcesText = Array.isArray(sources) ? sources.join(' ') : '';
     const estimatedTokens = await tokenManager.estimateTokensForOperation(
-      'consensus', 
+      'consensus',
       topic.length + sourcesText.length
     );
 
+    // ── Limit checks for authenticated (non-demo) users ─────────────────────
+    const userId = req.user.id || req.user._id?.toString?.() || req.user.userId;
+    let reportWarning = null; // populated when user is close to / over their report limit
+
+    if (!req.user.isDemo && req.user.id !== 'demo-user-id') {
+      const User = require('../models/userModel');
+      const fullUser = await User.findById(userId).populate('subscription.tier');
+
+      if (fullUser?.subscription?.tier) {
+        const tier = fullUser.subscription.tier;
+
+        // 1. Per-report token limit ──────────────────────────────────────────
+        //    Reject if this report's estimated token cost exceeds the plan cap.
+        //    No extra charge — just a hard input-size guardrail.
+        const maxTokensPerReport = tier.maxTokensPerReport || 15000;
+        if (estimatedTokens > maxTokensPerReport) {
+          return res.status(400).json({
+            error: 'Input too large for your plan',
+            code: 'TOKEN_LIMIT_EXCEEDED',
+            estimated: estimatedTokens,
+            limit: maxTokensPerReport,
+            message: `This report requires ~${estimatedTokens.toLocaleString()} tokens but your ${tier.displayName} plan allows up to ${maxTokensPerReport.toLocaleString()} tokens per report. Please shorten your topic or sources, or upgrade your plan.`
+          });
+        }
+
+        // 2. Monthly report limit ────────────────────────────────────────────
+        //    Subscription users get a fixed number of included reports / month.
+        //    Additional reports are charged at the tier's overageRate.
+        //    We warn them when they're close to or at the limit; we never
+        //    block outright — the overage billing handles the rest.
+        if (tier.billingType !== 'per_report' && tier.reportsIncluded > 0) {
+          const reportsUsed    = fullUser.getReportsUsedThisPeriod();
+          const reportsIncluded = tier.reportsIncluded;
+          const available       = Math.max(0, reportsIncluded - reportsUsed);
+          const usagePct        = reportsUsed / reportsIncluded;
+
+          if (available === 0) {
+            // At limit — this report will be charged as overage
+            reportWarning = {
+              level: 'limit_reached',
+              reportsUsed,
+              reportsIncluded,
+              overageRate: tier.overageRate,
+              message: `You've used all ${reportsIncluded} included reports in your ${tier.displayName} plan. This report will be charged at $${tier.overageRate}.`,
+              upgradeUrl: '/pricing'
+            };
+          } else if (available === 1 || usagePct >= 0.8) {
+            // Approaching limit — friendly heads-up
+            reportWarning = {
+              level: 'approaching_limit',
+              reportsUsed,
+              reportsIncluded,
+              available,
+              message: `You've used ${reportsUsed} of ${reportsIncluded} reports this billing period.`,
+              upgradeUrl: '/pricing'
+            };
+          }
+        }
+      }
+    }
+    // ── End limit checks ─────────────────────────────────────────────────────
+
     // Generate unique job ID
     const jobId = `consensus_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
-    // Store job metadata
-    jobs.set(jobId, {
+
+    // Store job metadata (in-memory + MongoDB)
+    const jobData = {
+      jobId,
       id: jobId,
       status: 'started',
       progress: 0,
@@ -275,21 +401,21 @@ router.post('/generate', auth, async (req, res) => {
       sources,
       options,
       estimatedTokens,
-      userId: req.user.id || req.user._id?.toString?.() || req.user.userId,
+      userId,
       startedAt: new Date().toISOString(),
       phases: {
         phase1: { status: 'pending', startedAt: null, completedAt: null },
         phase2: { status: 'pending', startedAt: null, completedAt: null },
         phase3: { status: 'pending', startedAt: null, completedAt: null }
       }
-    });
+    };
+    await persistJob(jobData);
 
     // Start async processing (don't await - return immediately)
     processConsensusJob(jobId, topic, sources, options, estimatedTokens, req.user)
-      .catch(error => {
+      .catch(async (error) => {
         console.error(`❌ Job ${jobId} failed:`, error);
-        jobs.set(jobId, {
-          ...jobs.get(jobId),
+        await persistJobUpdate(jobId, {
           status: 'failed',
           error: error.message,
           completedAt: new Date().toISOString()
@@ -304,12 +430,14 @@ router.post('/generate', auth, async (req, res) => {
       status: 'started',
       message: 'Consensus generation started. Use the job ID to check progress.',
       estimatedDuration: '60-90 seconds',
-      checkStatusUrl: `/api/consensus/status/${jobId}`
+      checkStatusUrl: `/api/consensus/status/${jobId}`,
+      // Inform the frontend of any report-limit warnings so it can display a banner
+      ...(reportWarning && { reportWarning })
     });
 
   } catch (error) {
     console.error('💥 Consensus generation error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to start consensus generation',
       message: error.message
     });
@@ -317,10 +445,10 @@ router.post('/generate', auth, async (req, res) => {
 });
 
 // Check job status endpoint (auth required - users only see their own jobs)
-router.get('/status/:jobId', auth, (req, res) => {
+router.get('/status/:jobId', auth, async (req, res) => {
   const { jobId } = req.params;
-  const job = jobs.get(jobId);
-  
+  const job = await findJob(jobId);
+
   if (!job) {
     return res.status(404).json({ error: 'Job not found' });
   }
@@ -330,9 +458,9 @@ router.get('/status/:jobId', auth, (req, res) => {
     return res.status(403).json({ error: 'Access denied. This job belongs to another user.' });
   }
 
-  // If job is completed, return the result
+  // If job is completed, return the result (prefer in-memory, fall back to persisted)
   if (job.status === 'completed') {
-    const result = jobResults.get(jobId);
+    const result = jobResults.get(jobId) || job.result;
     return res.json({
       jobId,
       status: 'completed',
@@ -360,16 +488,20 @@ router.get('/status/:jobId', auth, (req, res) => {
 async function processConsensusJob(jobId, topic, sources, options, estimatedTokens, user) {
   try {
     console.log(`🔄 Processing job ${jobId}...`);
-    
-    const updateJob = (updates) => {
-      const currentJob = jobs.get(jobId);
-      jobs.set(jobId, { ...currentJob, ...updates });
+
+    const updateJob = async (updates) => {
+      await persistJobUpdate(jobId, updates);
     };
 
     // Start processing
-    updateJob({ status: 'processing', progress: 10, phase: 'phase1' });
+    await updateJob({ status: 'processing', progress: 10, phase: 'phase1' });
 
-    const onPhaseChange = (phase) => updateJob({ phase, progress: phase === 'phase1' ? 15 : phase === 'phase2' ? 50 : 80 });
+    const onPhaseChange = (phase) => {
+      persistJobUpdate(jobId, {
+        phase,
+        progress: phase === 'phase1' ? 15 : phase === 'phase2' ? 50 : 80
+      }).catch(() => {});
+    };
 
     // Generate consensus (this is the actual work)
     const consensus = await consensusEngine.generateConsensus(topic, sources, {
@@ -461,16 +593,22 @@ async function processConsensusJob(jobId, topic, sources, options, estimatedToke
     // Store result and mark job complete (only reached after Phase 3 / Cohere arbitration finishes or fallback)
     jobResults.set(jobId, result);
     const endTime = new Date();
+    const currentJobMem = jobs.get(jobId);
 
-    updateJob({
+    await updateJob({
       status: 'completed',
       progress: 100,
       phase: 'completed',
       completedAt: endTime.toISOString(),
       duration: `${duration} seconds`,
+      result, // persist full result so status polls survive restarts
       phases: {
-        ...jobs.get(jobId).phases,
-        phase3: { status: 'completed', startedAt: jobs.get(jobId).phases.phase3.startedAt, completedAt: endTime.toISOString() }
+        ...(currentJobMem?.phases || {}),
+        phase3: {
+          status: 'completed',
+          startedAt: currentJobMem?.phases?.phase3?.startedAt || null,
+          completedAt: endTime.toISOString()
+        }
       }
     });
 
@@ -618,13 +756,7 @@ async function processConsensusJob(jobId, topic, sources, options, estimatedToke
 
   } catch (error) {
     console.error(`💥 Job ${jobId} failed:`, error);
-    const updateJob = (updates) => {
-      const currentJob = jobs.get(jobId);
-      if (currentJob) {
-        jobs.set(jobId, { ...currentJob, ...updates });
-      }
-    };
-    updateJob({
+    await persistJobUpdate(jobId, {
       status: 'failed',
       error: error.message,
       completedAt: new Date().toISOString()
@@ -708,6 +840,49 @@ router.get('/report/:jobId/pdf', auth, async (req, res) => {
   } catch (error) {
     console.error('PDF download error:', error);
     res.status(500).json({ error: 'Failed to download PDF' });
+  }
+});
+
+// Report usage endpoint — used by the frontend to show limit banners
+router.get('/usage', auth, async (req, res) => {
+  try {
+    if (req.user.isDemo || req.user.id === 'demo-user-id') {
+      return res.json({ success: true, isDemo: true });
+    }
+
+    const userId = req.user.id || req.user._id?.toString?.() || req.user.userId;
+    const User = require('../models/userModel');
+    const fullUser = await User.findById(userId).populate('subscription.tier');
+
+    if (!fullUser || !fullUser.subscription?.tier) {
+      return res.json({ success: true, noSubscription: true });
+    }
+
+    const tier = fullUser.subscription.tier;
+    const reportsUsed     = fullUser.getReportsUsedThisPeriod();
+    const reportsIncluded = tier.reportsIncluded || 0;
+    const available       = fullUser.getAvailableReports(); // -1 = unlimited (pay-as-you-go)
+    const isPayAsYouGo    = tier.billingType === 'per_report';
+
+    res.json({
+      success: true,
+      billingType:      tier.billingType,
+      planName:         tier.displayName,
+      reportsUsed,
+      reportsIncluded,
+      available,
+      overageRate:      tier.overageRate,
+      maxTokensPerReport: tier.maxTokensPerReport || 15000,
+      periodEnd:        fullUser.reportUsage?.currentPeriod?.periodEnd,
+      limitReached:     !isPayAsYouGo && available === 0,
+      // 0–1 fraction: how far through their included reports they are
+      usageFraction:    (!isPayAsYouGo && reportsIncluded > 0)
+        ? Math.min(1, reportsUsed / reportsIncluded)
+        : 0
+    });
+  } catch (error) {
+    console.error('Error fetching consensus usage:', error);
+    res.status(500).json({ error: 'Failed to fetch usage', message: error.message });
   }
 });
 
