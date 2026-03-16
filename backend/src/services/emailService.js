@@ -280,6 +280,47 @@ class EmailService {
     }
   }
 
+  async sendPasswordResetEmail(userEmail, userName, resetLink) {
+    const mailOptions = {
+      from: process.env.SMTP_USER,
+      to: userEmail,
+      subject: 'Reset Your Consensus.AI Password',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h1 style="color: #333;">Password Reset Request</h1>
+          <p>Hi ${userName},</p>
+          <p>We received a request to reset the password for your Consensus.AI account. Click the button below to choose a new password:</p>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${resetLink}" style="background-color: #4F46E5; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-size: 16px; display: inline-block;">
+              Reset My Password
+            </a>
+          </div>
+
+          <div style="background-color: #f5f5f5; padding: 20px; border-radius: 5px; margin: 20px 0;">
+            <p style="margin: 0; font-size: 14px; color: #666;">
+              This link will expire in <strong>1 hour</strong>. If you didn't request a password reset, you can safely ignore this email — your password will not be changed.
+            </p>
+          </div>
+
+          <p style="font-size: 13px; color: #999;">If the button above doesn't work, copy and paste this link into your browser:<br>
+            <a href="${resetLink}" style="color: #4F46E5;">${resetLink}</a>
+          </p>
+
+          <p>Best regards,<br>The Consensus.AI Team</p>
+        </div>
+      `
+    };
+
+    try {
+      await this.transporter.sendMail(mailOptions);
+      console.log(`Password reset email sent to ${userEmail}`);
+    } catch (error) {
+      console.error('Failed to send password reset email:', error);
+      throw new Error(`Email sending failed: ${error.message}`);
+    }
+  }
+
   // Send feedback confirmation to user
   async sendFeedbackConfirmation({ email, title, type }) {
     try {

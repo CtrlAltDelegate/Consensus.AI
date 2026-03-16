@@ -219,6 +219,12 @@ const userSchema = new mongoose.Schema({
     default: true
   },
   
+  // Password reset (forgot password flow)
+  passwordReset: {
+    token: String,     // SHA-256 hash of the raw token sent in the email
+    expiresAt: Date    // 1 hour from request time
+  },
+
   // Data retention and deletion tracking
   deletion: {
     isDeleted: {
