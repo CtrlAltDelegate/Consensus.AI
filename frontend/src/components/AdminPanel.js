@@ -342,6 +342,26 @@ function AdminPanel() {
                 React.createElement('p', {
                   className: 'mt-4 text-xs text-gray-500'
                 }, `Blended rate: $${(usage.costPer1MTokens ?? 0).toFixed(2)} per 1M tokens'),
+                usage.costPerReport && usage.costPerReport.sampleSize > 0 && React.createElement('div', { className: 'mt-6 p-4 bg-white border border-gray-200 rounded-lg' },
+                  React.createElement('h4', { className: 'text-sm font-medium text-gray-900 mb-3' }, 'Report profitability (cost per report)'),
+                  React.createElement('p', { className: 'text-xs text-gray-500 mb-3' }, 'Actual API cost per report for margin monitoring. Validate against $15 PAYG floor and $29 Starter (3 reports ≤ ~$8–10 total cost).'),
+                  React.createElement('div', { className: 'grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm' },
+                    React.createElement('div', null, React.createElement('span', { className: 'text-gray-500' }, 'Sample size'), React.createElement('div', { className: 'font-medium text-gray-900' }, usage.costPerReport.sampleSize)),
+                    React.createElement('div', null, React.createElement('span', { className: 'text-gray-500' }, 'Min'), React.createElement('div', { className: 'font-medium text-gray-900' }, `$${usage.costPerReport.minUsd.toFixed(2)}`)),
+                    React.createElement('div', null, React.createElement('span', { className: 'text-gray-500' }, 'Mean'), React.createElement('div', { className: 'font-medium text-gray-900' }, `$${usage.costPerReport.meanUsd.toFixed(2)}`)),
+                    React.createElement('div', null, React.createElement('span', { className: 'text-gray-500' }, 'P95'), React.createElement('div', { className: 'font-medium text-gray-900' }, `$${usage.costPerReport.p95Usd.toFixed(2)}`)),
+                    React.createElement('div', null, React.createElement('span', { className: 'text-gray-500' }, 'Max'), React.createElement('div', { className: 'font-medium text-gray-900' }, `$${usage.costPerReport.maxUsd.toFixed(2)}`))
+                  ),
+                  React.createElement('div', { className: 'mt-3 flex flex-wrap gap-4 text-xs' },
+                    usage.costPerReport.withinPaygFloor !== null && React.createElement('span', {
+                      className: usage.costPerReport.withinPaygFloor ? 'text-green-600' : 'text-amber-600'
+                    }, `PAYG $${usage.costPerReport.paygFloorUsd} floor: ${usage.costPerReport.withinPaygFloor ? 'Mean cost within target' : 'Mean cost above floor — review pricing'}`),
+                    usage.costPerReport.withinStarterTarget !== null && React.createElement('span', {
+                      className: usage.costPerReport.withinStarterTarget ? 'text-green-600' : 'text-amber-600'
+                    }, `Starter 3 reports ≤ $${usage.costPerReport.starter3ReportMaxUsd}: ${usage.costPerReport.withinStarterTarget ? 'Within target' : 'Over target — margin at risk'}`)
+                  )
+                ),
+                usage.costPerReport && usage.costPerReport.sampleSize === 0 && React.createElement('p', { className: 'mt-4 text-sm text-gray-500' }, 'No report cost data yet. Generate reports to see cost per report and profitability validation.'),
                 tokenValidation && React.createElement('div', { className: 'mt-8 p-4 bg-gray-50 border border-gray-200 rounded-lg' },
                   React.createElement('h4', { className: 'text-sm font-medium text-gray-900 mb-2' }, 'Token cap validation (profitability)'),
                   React.createElement('p', { className: 'text-xs text-gray-500 mb-3' }, 'Basic tier at 10k tokens/month must not cost you $8+ in API fees. Validate with real test runs before scaling.'),

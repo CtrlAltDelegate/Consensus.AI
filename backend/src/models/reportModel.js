@@ -48,7 +48,9 @@ const reportSchema = new mongoose.Schema({
       type: String,
       enum: ['standard', 'detailed'],
       default: 'standard'
-    }
+    },
+    /** Estimated API cost (USD) for this report — set at generation time for margin monitoring */
+    estimatedCostUsd: { type: Number, min: 0 }
   },
   phases: {
     phase1_drafts: [{

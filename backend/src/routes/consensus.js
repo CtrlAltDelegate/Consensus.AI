@@ -8,6 +8,7 @@ const pdfGenerator = require('../services/pdfGenerator');
 const emailService = require('../services/emailService');
 const fileProcessor = require('../services/fileProcessor');
 const Report = require('../models/reportModel');
+const { estimatedCostUsdFromTokens } = require('../config/costs');
 const ConsensusJob = require('../models/jobModel');
 const billingService = require('../services/billingService');
 const auth = require('../middleware/auth');
@@ -619,6 +620,7 @@ async function processConsensusJob(jobId, topic, sources, options, estimatedToke
       try {
         console.log('💾 Auto-saving report to database...');
         
+        const totalTokens = consensus.totalTokens || estimatedTokens;
         const report = new Report({
           title: topic.length > 100 ? topic.substring(0, 100) + '...' : topic,
           topic,
@@ -627,7 +629,8 @@ async function processConsensusJob(jobId, topic, sources, options, estimatedToke
           consensus: consensus.consensus,
           confidence: consensus.confidence,
           metadata: {
-            totalTokens: consensus.totalTokens || estimatedTokens,
+            totalTokens,
+            estimatedCostUsd: estimatedCostUsdFromTokens(totalTokens),
             llmsUsed: consensus.metadata?.llmsUsed || consensus.llmsUsed || ['GPT-4o', 'Claude 3.5 Sonnet', 'Gemini 1.5 Pro', 'Command R+'],
             processingTime: `${duration} seconds`,
             priority: options.priority || 'standard',

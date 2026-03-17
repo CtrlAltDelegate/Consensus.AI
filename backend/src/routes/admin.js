@@ -136,8 +136,12 @@ router.get('/stats', auth, adminAuth, async (req, res) => {
   }
 });
 
-// Estimated $ per 1M tokens (blended LLM cost - adjust to your actual provider mix)
-const ESTIMATED_COST_PER_1M_TOKENS = Number(process.env.ADMIN_LLM_COST_PER_1M) || 6.5;
+const {
+  ESTIMATED_COST_PER_1M_TOKENS,
+  PAYG_FLOOR_USD,
+  STARTER_3_REPORT_MAX_COST_USD,
+  estimatedCostUsdFromTokens
+} = require('../config/costs');
 
 // Token cap validation constants (Basic tier profitability guardrail)
 const BASIC_CAP_TOKENS = 10000;
@@ -230,8 +234,7 @@ router.get('/usage', auth, adminAuth, async (req, res) => {
       ])
     ]);
 
-    const toEstimatedCost = (tokens) =>
-      Math.round((tokens / 1e6) * ESTIMATED_COST_PER_1M_TOKENS * 100) / 100;
+    const toEstimatedCost = (tokens) => estimatedCostUsdFromTokens(tokens);
 
     // Per-user: resolve emails/tiers and compute revenue vs cost flags
     const userIds = [...new Set(perUserAgg.map((r) => r._id).filter(Boolean))];
@@ -298,6 +301,39 @@ router.get('/usage', auth, adminAuth, async (req, res) => {
         (b.estimatedCostUsd - a.estimatedCostUsd)
     );
 
+    // Cost per report (actual from metadata or derived from totalTokens) for margin monitoring
+    const costReportDocs = await Report.find({
+      $or: [
+        { 'metadata.estimatedCostUsd': { $exists: true, $gte: 0 } },
+        { 'metadata.totalTokens': { $exists: true, $gte: 0 } }
+      ]
+    })
+      .select('metadata.totalTokens metadata.estimatedCostUsd')
+      .lean();
+    const costPerReportUsd = costReportDocs.map((d) => {
+      if (typeof d.metadata?.estimatedCostUsd === 'number' && d.metadata.estimatedCostUsd >= 0) {
+        return d.metadata.estimatedCostUsd;
+      }
+      return estimatedCostUsdFromTokens(d.metadata?.totalTokens);
+    }).filter((c) => typeof c === 'number' && c >= 0);
+    const sortedCosts = [...costPerReportUsd].sort((a, b) => a - b);
+    const meanCost = costPerReportUsd.length
+      ? costPerReportUsd.reduce((a, b) => a + b, 0) / costPerReportUsd.length
+      : 0;
+    const round2 = (n) => Math.round((n || 0) * 100) / 100;
+    const costPerReport = {
+      sampleSize: costPerReportUsd.length,
+      minUsd: costPerReportUsd.length ? round2(Math.min(...costPerReportUsd)) : 0,
+      maxUsd: costPerReportUsd.length ? round2(Math.max(...costPerReportUsd)) : 0,
+      meanUsd: round2(meanCost),
+      p50Usd: sortedCosts.length ? round2(percentile(sortedCosts, 50)) : 0,
+      p95Usd: sortedCosts.length ? round2(percentile(sortedCosts, 95)) : 0,
+      paygFloorUsd: PAYG_FLOOR_USD,
+      starter3ReportMaxUsd: STARTER_3_REPORT_MAX_COST_USD,
+      withinPaygFloor: costPerReportUsd.length ? meanCost <= PAYG_FLOOR_USD : null,
+      withinStarterTarget: costPerReportUsd.length ? meanCost * 3 <= STARTER_3_REPORT_MAX_COST_USD : null
+    };
+
     const usage = {
       thisMonth: {
         totalTokens: thisMonth.totalTokens,
@@ -315,6 +351,7 @@ router.get('/usage', auth, adminAuth, async (req, res) => {
         estimatedCostUsd: toEstimatedCost(allTime.totalTokens)
       },
       costPer1MTokens: ESTIMATED_COST_PER_1M_TOKENS,
+      costPerReport,
       perUser
     };
 
