@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 /**
- * Token Cap Validation — run real test generations and/or DB aggregation to validate
- * that token caps (e.g. Basic 10k/month) don't cost more than target (e.g. $8) in API fees.
- * Run before scaling to 200 subscribers to confirm profitability.
+ * Report Profitability Validation — run 20–30 real consensus generations across
+ * varying input types (short queries, long documents, 5-file-style) and measure
+ * actual API cost per report. Validates against $15 PAYG floor and $29/3-report
+ * Starter tier (3 reports must not cost you more than $8–10 in API fees).
  *
  * Usage:
- *   node scripts/validateTokenCaps.js                    # Use existing Report data only (no API calls)
- *   node scripts/validateTokenCaps.js --live               # Run 15 live tests (5 short + 5 medium + 5 long)
- *   node scripts/validateTokenCaps.js --live --runs 30    # Run 30 live tests (10 per profile)
+ *   node scripts/validateTokenCaps.js                      # Use existing Report data only (no API calls)
+ *   node scripts/validateTokenCaps.js --live                # Run live tests (short, medium, long, 5-file)
+ *   node scripts/validateTokenCaps.js --live --runs 30     # 30 runs (~8 per profile)
+ *   node scripts/validateTokenCaps.js --live --runs 30 --save-reports  # Same + persist to DB (admin dashboard)
  *   node scripts/validateTokenCaps.js --db-only           # Same as default
  */
 
@@ -15,9 +17,11 @@ require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') }
 
 const BASIC_CAP_TOKENS = 10000;   // Basic tier cap (tokens/month)
 const MAX_COST_PER_BASIC_USER = 8; // $8 — "Basic user must not cost you $8+ in API fees"
+const PAYG_FLOOR_USD = 15;        // $15 PAYG floor — cost per report must stay below this
+const STARTER_3_REPORT_MAX_USD = 10; // 3 reports (Starter) must not cost you more than $8–10 total
 const DEFAULT_COST_PER_1M = Number(process.env.ADMIN_LLM_COST_PER_1M) || 6.5;
 
-// Test profiles: short query, medium (paragraphs), long (document-style)
+// Test profiles: short query, medium (paragraphs), long (document-style), 5-file (simulated uploads)
 const TEST_PROFILES = {
   short: {
     label: 'Short query',
@@ -45,6 +49,17 @@ const TEST_PROFILES = {
       'Environmental groups: concerns over waste and accidents; renewables plus storage as alternative.',
       'IAEA: safety record of modern plants; small modular reactors and advanced designs.',
       'National policies: France, China expanding; Germany phase-out; US incentives under IRA.'
+    ]
+  },
+  fiveFile: {
+    label: '5-file upload (simulated)',
+    topic: 'Competitive analysis and consensus: Compare Product A vs Product B on pricing, features, support, and roadmap. Recommend which fits enterprise buyers.',
+    sources: [
+      '[File 1 - Product A datasheet] Product A: SaaS platform for workflow automation. Pricing: $99/user/month; enterprise custom. Features: 50+ integrations, RBAC, SSO, audit logs. Support: 24/7, SLA 99.9%. Roadmap: AI assistant Q3, mobile app Q4.',
+      '[File 2 - Product B datasheet] Product B: No-code automation and integrations. Pricing: $79/user/month; volume discounts. Features: 200+ connectors, custom workflows, API. Support: business hours, community. Roadmap: governance module Q2, analytics Q4.',
+      '[File 3 - Gartner excerpt] Gartner 2024: Workflow automation market growing 18% CAGR. Key differentiators: time-to-value, scalability, vendor lock-in. Enterprise buyers prioritize security and compliance over price.',
+      '[File 4 - G2 reviews summary] G2: Product A rated 4.5 (ease of use, support). Product B rated 4.3 (value, integrations). Common complaints: A = cost; B = support response time.',
+      '[File 5 - Internal memo] Internal memo: Our segment is mid-market (500–5K employees). Must have: SSO, audit trail, <3 month rollout. Nice to have: AI features. Budget: $80–120/user/month.'
     ]
   }
 };
@@ -96,24 +111,70 @@ function runFromDb() {
   });
 }
 
-async function runLiveTests(runsPerProfile = 5) {
+async function runLiveTests(runsPerProfile = 5, options = {}) {
   const consensusEngine = require('../src/services/consensusEngine');
+  const { saveReports = false } = options;
   const tokens = [];
-  const byProfile = { short: [], medium: [], long: [] };
+  const byProfile = { short: [], medium: [], long: [], fiveFile: [] };
 
-  for (const [key, profile] of Object.entries(TEST_PROFILES)) {
-    console.log(`\n📝 Running ${runsPerProfile} × "${profile.label}"...`);
-    for (let i = 0; i < runsPerProfile; i++) {
+  let Report;
+  let mongoose;
+  const estimatedCostUsdFromTokens = (t) => Math.round((t / 1e6) * DEFAULT_COST_PER_1M * 100) / 100;
+  if (saveReports) {
+    mongoose = require('mongoose');
+    Report = require('../src/models/reportModel');
+    const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGO_URI;
+    if (!MONGODB_URI) {
+      console.warn('--save-reports ignored: MONGODB_URI not set.');
+      options.saveReports = false;
+    } else {
+      await mongoose.connect(MONGODB_URI);
+    }
+  }
+
+  const profileKeys = Object.keys(TEST_PROFILES);
+  const runsEach = Math.max(1, Math.ceil(runsPerProfile / profileKeys.length));
+
+  for (const key of profileKeys) {
+    const profile = TEST_PROFILES[key];
+    console.log(`\n📝 Running ${runsEach} × "${profile.label}"...`);
+    for (let i = 0; i < runsEach; i++) {
       try {
         const result = await consensusEngine.generateConsensus(profile.topic, profile.sources, {});
         const total = result.totalTokens || 0;
         tokens.push(total);
         byProfile[key].push(total);
-        process.stdout.write(`   Run ${i + 1}: ${total.toLocaleString()} tokens\n`);
+        const costUsd = estimatedCostUsdFromTokens(total);
+        process.stdout.write(`   Run ${i + 1}: ${total.toLocaleString()} tokens ($${costUsd.toFixed(2)})\n`);
+
+        if (saveReports && Report && mongoose.connection.readyState === 1) {
+          const jobId = `validation_${Date.now()}_${key}_${i}`;
+          const report = new Report({
+            title: profile.topic.length > 100 ? profile.topic.substring(0, 97) + '...' : profile.topic,
+            topic: profile.topic,
+            userId: 'token-validation-script',
+            jobId,
+            consensus: result.consensus || '[validation run]',
+            confidence: result.confidence ?? 0.8,
+            metadata: {
+              totalTokens: total,
+              estimatedCostUsd: costUsd,
+              llmsUsed: result.metadata?.llmsUsed || ['GPT-4o', 'Claude', 'Gemini', 'Command R+'],
+              processingTime: 'script',
+              priority: 'standard'
+            },
+            sources: profile.sources || []
+          });
+          await report.save();
+        }
       } catch (err) {
         console.warn(`   Run ${i + 1} failed:`, err.message);
       }
     }
+  }
+
+  if (saveReports && mongoose && mongoose.connection.readyState === 1) {
+    await mongoose.connection.close();
   }
 
   return { tokens, byProfile };
@@ -152,6 +213,16 @@ function printReport(tokens, costPer1M, options = {}) {
   console.log(`  Target: cost < $${MAX_COST_PER_BASIC_USER} (profitability guardrail)`);
 
   const ok = costPerBasicUserAtCap <= MAX_COST_PER_BASIC_USER;
+  const meanCostUsd = (s.mean / 1e6) * costPer1M;
+  const threeReportCostUsd = meanCostUsd * 3;
+  const withinPayg = meanCostUsd <= PAYG_FLOOR_USD;
+  const withinStarter = threeReportCostUsd <= STARTER_3_REPORT_MAX_USD;
+
+  console.log('\n--- Report profitability (per generation) ---');
+  console.log(`  Mean cost per report: $${meanCostUsd.toFixed(2)}`);
+  console.log(`  $${PAYG_FLOOR_USD} PAYG floor: ${withinPayg ? '✅ Within (mean < $15)' : '⚠️ Mean cost above PAYG floor'}`);
+  console.log(`  Starter 3 reports ≤ $${STARTER_3_REPORT_MAX_USD}: $${threeReportCostUsd.toFixed(2)} total — ${withinStarter ? '✅ Within target' : '⚠️ Over $8–10 target'}`);
+
   console.log('\n--- Recommendation ---');
   if (ok) {
     console.log(`  ✅ At current cap (${BASIC_CAP_TOKENS.toLocaleString()} tokens/month), estimated API cost ($${costPerBasicUserAtCap.toFixed(2)}) is within $${MAX_COST_PER_BASIC_USER} target.`);
@@ -168,11 +239,14 @@ function printReport(tokens, costPer1M, options = {}) {
 async function main() {
   const args = process.argv.slice(2);
   const live = args.includes('--live');
+  const saveReports = args.includes('--save-reports');
   const dbOnly = args.includes('--db-only') || !live;
   const runsIdx = args.indexOf('--runs');
-  const runsPerProfile = runsIdx >= 0 && args[runsIdx + 1]
-    ? Math.max(1, parseInt(args[runsIdx + 1], 10) / 3)
-    : 5;
+  const totalRuns = runsIdx >= 0 && args[runsIdx + 1]
+    ? Math.max(20, parseInt(args[runsIdx + 1], 10))
+    : 24;
+  const profileCount = Object.keys(TEST_PROFILES).length;
+  const runsPerProfile = Math.max(1, Math.ceil(totalRuns / profileCount));
 
   const costPer1M = DEFAULT_COST_PER_1M;
 
@@ -181,7 +255,8 @@ async function main() {
 
   if (live) {
     console.log('Running live consensus tests (this will call LLM APIs and incur cost)...');
-    const result = await runLiveTests(Math.ceil(runsPerProfile));
+    if (saveReports) console.log('Reports will be saved to DB for admin dashboard.');
+    const result = await runLiveTests(runsPerProfile, { saveReports });
     tokens = result.tokens;
     source = `Live tests (${tokens.length} runs)`;
     if (result.byProfile) {
